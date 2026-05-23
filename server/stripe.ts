@@ -50,22 +50,71 @@ export const stripeRouter = router({
         dropoffState: z.string().optional(),
         dropoffZip: z.string().optional(),
         dropoffNotes: z.string().optional(),
+        // Coupon / discount fields
+        couponCode: z.string().optional(),
+        discountPercent: z.number().int().min(1).max(100).optional(),
+        // Delivery fee in cents to add as a separate Stripe line item
+        deliveryFeeCents: z.number().int().min(0).optional(),
+        // Convenience fee (3%) and Nevada sales tax (8.375%) in cents
+        convenienceFeeCents: z.number().int().min(0).optional(),
+        salesTaxCents: z.number().int().min(0).optional(),
       })
     )
     .mutation(async ({ input }) => {
       const stripe = getStripe();
 
-      const lineItems = input.items.map((item: { id: string; name: string; price: number; quantity: number; category?: string }) => ({
+      // Apply discount: if discountPercent is provided, reduce each item's unit_amount proportionally
+      const discountMultiplier = input.discountPercent ? (100 - input.discountPercent) / 100 : 1;
+
+      type StripeLineItem = { price_data: { currency: string; product_data: { name: string; metadata?: Record<string, string> }; unit_amount: number }; quantity: number };
+      const lineItems: StripeLineItem[] = input.items.map((item: { id: string; name: string; price: number; quantity: number; category?: string }) => ({
         price_data: {
           currency: "usd",
           product_data: {
             name: item.name,
             metadata: { category: item.category ?? "food" },
           },
-          unit_amount: Math.round(item.price * 100), // cents
+          unit_amount: Math.round(item.price * 100 * discountMultiplier), // cents, with discount applied
         },
         quantity: item.quantity,
       }));
+
+      // Add Convenience Fee as a separate line item (non-taxable)
+      if (input.convenienceFeeCents && input.convenienceFeeCents > 0) {
+        lineItems.push({
+          price_data: {
+            currency: "usd",
+            product_data: { name: "Convenience Fee" },
+            unit_amount: input.convenienceFeeCents,
+          },
+          quantity: 1,
+        });
+      }
+
+      // Add Nevada Sales Tax as a separate line item
+      if (input.salesTaxCents && input.salesTaxCents > 0) {
+        lineItems.push({
+          price_data: {
+            currency: "usd",
+            product_data: { name: "Sales Tax (NV 8.375%)" },
+            unit_amount: input.salesTaxCents,
+          },
+          quantity: 1,
+        });
+      }
+
+      // Add delivery fee as a separate line item if provided
+      if (input.deliveryFeeCents && input.deliveryFeeCents > 0) {
+        const providerLabel = input.deliveryProvider === "doordash" ? "DoorDash Drive" : "Uber Direct";
+        lineItems.push({
+          price_data: {
+            currency: "usd",
+            product_data: { name: `Delivery Fee (${providerLabel})` },
+            unit_amount: input.deliveryFeeCents,
+          },
+          quantity: 1,
+        });
+      }
 
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
@@ -91,6 +140,9 @@ export const stripeRouter = router({
           dropoffState: input.dropoffState ?? "",
           dropoffZip: input.dropoffZip ?? "",
           dropoffNotes: input.dropoffNotes ?? "",
+          // Coupon tracking
+          couponCode: input.couponCode ?? "",
+          discountPercent: input.discountPercent ? String(input.discountPercent) : "",
         },
         custom_text: {
           submit: {

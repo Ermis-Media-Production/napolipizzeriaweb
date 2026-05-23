@@ -189,6 +189,12 @@ export const authorizeNetRouter = router({
         customerName: z.string().min(1).max(100),
         customerEmail: z.string().email().optional(),
         customerPhone: z.string().optional(),
+        // Coupon / discount fields
+        couponCode: z.string().optional(),
+        discountPercent: z.number().int().min(1).max(100).optional(),
+        // Convenience fee (3%) and Nevada sales tax (8.375%) in cents
+        convenienceFeeCents: z.number().int().min(0).optional(),
+        salesTaxCents: z.number().int().min(0).optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -199,10 +205,17 @@ export const authorizeNetRouter = router({
         });
       }
 
-      const amount = input.items.reduce(
+      const rawAmount = input.items.reduce(
         (sum, item) => sum + item.price * item.quantity,
         0
       );
+      // Apply coupon discount if provided
+      const discountMultiplier = input.discountPercent ? (100 - input.discountPercent) / 100 : 1;
+      const discountedSubtotal = rawAmount * discountMultiplier;
+      // Add convenience fee and sales tax
+      const convenienceFee = (input.convenienceFeeCents ?? 0) / 100;
+      const salesTax = (input.salesTaxCents ?? 0) / 100;
+      const amount = discountedSubtotal + convenienceFee + salesTax;
 
       if (amount <= 0) {
         throw new TRPCError({
@@ -234,7 +247,7 @@ export const authorizeNetRouter = router({
           customerName: input.customerName,
           customerPhone: input.customerPhone,
           externalId: result.transactionId,
-          totalCents: Math.round(amount * 100),
+          totalCents: Math.round(amount * 100), // discounted total
         }).catch((err) =>
           console.error("[Clover] Failed to push Authorize.net order:", err)
         );
@@ -247,6 +260,8 @@ export const authorizeNetRouter = router({
           orderType: input.orderType,
           customerName: input.customerName,
           itemCount: input.items.reduce((s, i) => s + i.quantity, 0),
+          couponCode: input.couponCode,
+          discountPercent: input.discountPercent,
         };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Payment failed";

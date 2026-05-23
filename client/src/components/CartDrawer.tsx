@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { CONVENIENCE_FEE_RATE, NV_SALES_TAX_RATE } from "@shared/const";
 
 type PaymentMethod = "stripe" | "authorizenet";
 type DeliveryProvider = "uber" | "doordash";
@@ -54,6 +55,11 @@ export default function CartDrawer() {
   const [ddFee, setDdFee] = useState<number | null>(null);
   const [ddEta, setDdEta] = useState<string | null>(null);
   const [isFetchingDdQuote, setIsFetchingDdQuote] = useState(false);
+
+  // Coupon / discount state
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountPercent: number; description: string } | null>(null);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
   // Authorize.net card fields
   const [cardNumber, setCardNumber] = useState("");
@@ -129,6 +135,30 @@ export default function CartDrawer() {
   const createUberDelivery = trpc.uber.createDelivery.useMutation();
   const createDdDelivery = trpc.doordash.createDelivery.useMutation();
 
+  const redeemCoupon = trpc.coupon.redeem.useMutation();
+
+  const utils = trpc.useUtils();
+  const handleApplyCoupon = async () => {
+    const code = couponCode.trim().toUpperCase();
+    if (!code) return;
+    setIsApplyingCoupon(true);
+    try {
+      const result = await utils.coupon.validate.fetch({ code });
+      if (result?.discountPercent) {
+        setAppliedCoupon({ code: result.code, discountPercent: result.discountPercent, description: result.description });
+        toast.success(`Coupon applied: ${result.discountPercent}% off!`);
+        setCouponCode("");
+      } else {
+        toast.error("Invalid or expired coupon code.");
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Invalid or expired coupon code.";
+      toast.error(message);
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
   const createCheckout = trpc.stripe.createCheckoutSession.useMutation({
     onSuccess: (data) => {
       if (data.url) window.location.href = data.url;
@@ -138,6 +168,10 @@ export default function CartDrawer() {
 
   const chargeCard = trpc.authorizenet.chargeCard.useMutation({
     onSuccess: async (data) => {
+      // Redeem coupon usage after successful payment
+      if (data.couponCode) {
+        redeemCoupon.mutate({ code: data.couponCode });
+      }
       if (orderType === "delivery") {
         try {
           if (deliveryProvider === "uber" && uberQuoteId) {
@@ -280,6 +314,12 @@ export default function CartDrawer() {
       orderType,
       customerName: customerName || undefined,
       customerPhone: customerPhone || undefined,
+      couponCode: appliedCoupon?.code || undefined,
+      discountPercent: appliedCoupon?.discountPercent || undefined,
+      // Delivery fee, convenience fee, and sales tax as separate Stripe line items
+      deliveryFeeCents: selectedDeliveryFee !== null ? selectedDeliveryFee : undefined,
+      convenienceFeeCents: Math.round(convenienceFee * 100),
+      salesTaxCents: Math.round(salesTax * 100),
       ...deliveryMeta,
     });
   };
@@ -349,6 +389,11 @@ export default function CartDrawer() {
         orderType,
         customerName,
         customerPhone: customerPhone || undefined,
+        couponCode: appliedCoupon?.code || undefined,
+        discountPercent: appliedCoupon?.discountPercent || undefined,
+        // Convenience fee and sales tax in cents
+        convenienceFeeCents: Math.round(convenienceFee * 100),
+        salesTaxCents: Math.round(salesTax * 100),
       });
     });
   };
@@ -375,6 +420,21 @@ export default function CartDrawer() {
         ? ddFee
         : null
       : null;
+
+  // Pricing breakdown
+  // 1. Food subtotal (from cart)
+  const subtotal = totalPrice;
+  // 2. Coupon discount applied to food subtotal
+  const discountAmount = appliedCoupon ? (subtotal * appliedCoupon.discountPercent) / 100 : 0;
+  const discountedSubtotal = subtotal - discountAmount;
+  // 3. Convenience Fee: 3% of discounted food subtotal (non-taxable)
+  const convenienceFee = Math.round(discountedSubtotal * CONVENIENCE_FEE_RATE * 100) / 100;
+  // 4. Nevada Sales Tax: 8.375% of discounted food subtotal only (fee & delivery are not taxed)
+  const salesTax = Math.round(discountedSubtotal * NV_SALES_TAX_RATE * 100) / 100;
+  // 5. Delivery fee in dollars (quotes return cents)
+  const deliveryFeeDollars = selectedDeliveryFee !== null ? selectedDeliveryFee / 100 : 0;
+  // 6. Grand total
+  const grandTotal = discountedSubtotal + convenienceFee + salesTax + deliveryFeeDollars;
 
   const formatCardNumber = (val: string) =>
     val.replace(/\D/g, "").replace(/(.{4})/g, "$1 ").trim().slice(0, 19);
@@ -805,26 +865,107 @@ export default function CartDrawer() {
               </div>
             )}
 
-            {/* Total */}
+            {/* Coupon code input */}
+            <div className="space-y-1.5">
+              {appliedCoupon ? (
+                <div
+                  className="flex items-center justify-between px-3 py-2 rounded-lg border"
+                  style={{ borderColor: "oklch(0.70 0.15 145)", background: "oklch(0.96 0.04 145)" }}
+                >
+                  <div>
+                    <span className="text-xs font-bold" style={{ color: "oklch(0.35 0.12 145)", fontFamily: "'Oswald', sans-serif" }}>
+                      {appliedCoupon.discountPercent}% OFF
+                    </span>
+                    <span className="text-xs ml-2" style={{ color: "oklch(0.45 0.08 145)" }}>
+                      {appliedCoupon.code} — {appliedCoupon.description}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setAppliedCoupon(null)}
+                    className="text-xs px-2 py-0.5 rounded border transition-colors"
+                    style={{ borderColor: "oklch(0.65 0.12 145)", color: "oklch(0.40 0.12 145)" }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Coupon code"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => e.key === "Enter" && handleApplyCoupon()}
+                    className="flex-1 text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+                  />
+                  <button
+                    onClick={handleApplyCoupon}
+                    disabled={!couponCode.trim() || isApplyingCoupon}
+                    className="text-xs px-3 py-2 rounded font-semibold border transition-all"
+                    style={{
+                      background: couponCode.trim() ? "oklch(0.38 0.12 145)" : "transparent",
+                      color: couponCode.trim() ? "white" : "oklch(0.60 0.03 30)",
+                      borderColor: couponCode.trim() ? "oklch(0.38 0.12 145)" : "oklch(0.82 0.015 80)",
+                      fontFamily: "'Oswald', sans-serif",
+                    }}
+                  >
+                    {isApplyingCoupon ? "..." : "Apply"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Order Summary — full receipt breakdown */}
             <div
-              className="flex items-center justify-between py-2 border-t"
+              className="flex flex-col gap-1 py-2 border-t"
               style={{ borderColor: "oklch(0.88 0.015 80)" }}
             >
-              <div>
-                <span className="text-sm font-semibold" style={{ color: "oklch(0.35 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
-                  Total ({totalItems} items)
-                </span>
-                {selectedDeliveryFee !== null && (
-                  <p className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>
-                    + ${(selectedDeliveryFee / 100).toFixed(2)} delivery ({deliveryProvider === "uber" ? "Uber Direct" : "DoorDash"})
-                  </p>
-                )}
+              {/* Food subtotal */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>Subtotal ({totalItems} item{totalItems !== 1 ? "s" : ""})</span>
+                <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>${subtotal.toFixed(2)}</span>
               </div>
-              <span className="text-xl font-bold" style={{ color: "var(--napoli-red, #c0392b)", fontFamily: "'Oswald', sans-serif" }}>
-                ${selectedDeliveryFee !== null
-                  ? (totalPrice + selectedDeliveryFee / 100).toFixed(2)
-                  : totalPrice.toFixed(2)}
-              </span>
+
+              {/* Coupon discount */}
+              {appliedCoupon && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: "oklch(0.35 0.12 145)" }}>Discount ({appliedCoupon.discountPercent}% off — {appliedCoupon.code})</span>
+                  <span className="text-xs font-semibold" style={{ color: "oklch(0.35 0.12 145)" }}>−${discountAmount.toFixed(2)}</span>
+                </div>
+              )}
+
+              {/* Convenience Fee */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>
+                  Convenience Fee (3%)
+                </span>
+                <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>+${convenienceFee.toFixed(2)}</span>
+              </div>
+
+              {/* Nevada Sales Tax */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>
+                  Sales Tax (NV 8.375%)
+                </span>
+                <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>+${salesTax.toFixed(2)}</span>
+              </div>
+
+              {/* Delivery fee */}
+              {selectedDeliveryFee !== null && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>Delivery ({deliveryProvider === "uber" ? "Uber Direct" : "DoorDash Drive"})</span>
+                  <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>+${deliveryFeeDollars.toFixed(2)}</span>
+                </div>
+              )}
+
+              {/* Divider + Grand Total */}
+              <div className="flex items-center justify-between pt-2 mt-1 border-t" style={{ borderColor: "oklch(0.82 0.015 80)" }}>
+                <span className="text-sm font-semibold" style={{ color: "oklch(0.35 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>Total</span>
+                <span className="text-xl font-bold" style={{ color: "var(--napoli-red, #c0392b)", fontFamily: "'Oswald', sans-serif" }}>
+                  ${grandTotal.toFixed(2)}
+                </span>
+              </div>
             </div>
 
             {/* Checkout button */}

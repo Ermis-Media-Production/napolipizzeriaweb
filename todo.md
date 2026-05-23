@@ -58,14 +58,17 @@
 - [x] All 38 Vitest tests passing (Stripe 3, Authorize.net 8, Uber Direct 11, Clover 15, Auth 1)
 
 ## Coupon / Discount System
-- [ ] Add `coupons` table to drizzle schema (code, discountPercent, isActive, usageLimit, usageCount)
-- [ ] Seed 98% discount coupon (code: NAPOLI98) in DB migration
-- [ ] Create couponRouter with validateCoupon procedure (public) and createCoupon procedure (admin)
-- [ ] Add coupon input field to CartDrawer with "Apply" button
-- [ ] Show discount line in CartDrawer order summary when coupon is applied
-- [ ] Pass discounted total to Stripe createCheckoutSession
-- [ ] Apply discount to Authorize.net chargeCard amount
-- [ ] Vitest tests for coupon router
+- [x] Add `coupons` table to drizzle schema (code, discountPercent, isActive, usageLimit, usageCount)
+- [x] Seed 98% discount coupon (code: NAPOLI98) in DB migration
+- [x] Create couponRouter with validateCoupon procedure (public) and createCoupon procedure (admin)
+- [x] Add coupon input field to CartDrawer with "Apply" button
+- [x] Show discount line in CartDrawer order summary when coupon is applied
+- [x] Pass discounted total to Stripe createCheckoutSession
+- [x] Apply discount to Authorize.net chargeCard amount
+- [x] Call coupon.redeem after successful Authorize.net payment
+- [x] Vitest tests for coupon router (15 dedicated coupon tests)
+- [x] Include delivery fee as Stripe line item so charged total matches CartDrawer grand total
+- [x] All 62 Vitest tests passing (Stripe 3, Authorize.net 8, Uber Direct 11, Clover 15, DoorDash 7, Coupon 15, Auth 1 + Doordash 2)
 
 ## DoorDash Drive Integration + Dual Delivery Provider
 - [x] Research DoorDash Drive API (JWT auth, quote, create delivery)
@@ -78,3 +81,11 @@
 - [x] Wire DoorDash createDelivery into Stripe webhook + OrderSuccess flow
 - [x] Update OrderSuccess to show DoorDash tracking URL when DoorDash was selected
 - [x] Vitest tests for DoorDash router (47 total tests passing)
+
+## Convenience Fee + Nevada Sales Tax
+- [x] Add CONVENIENCE_FEE_RATE (3%) and NV_SALES_TAX_RATE (8.375%) constants to shared/const.ts
+- [x] CartDrawer: compute convenienceFee (3% of subtotal) and salesTax (8.375% of subtotal) and display as separate line items in order summary
+- [x] CartDrawer: grand total = subtotal + convenienceFee + salesTax + deliveryFee - discount
+- [x] Stripe: add Convenience Fee and Sales Tax as separate Stripe line items in createCheckoutSession
+- [x] Authorize.net: include convenienceFee and salesTax in the charged amount
+- [x] All 62 Vitest tests still passing after changes
