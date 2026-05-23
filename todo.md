@@ -89,3 +89,14 @@
 - [x] Stripe: add Convenience Fee and Sales Tax as separate Stripe line items in createCheckoutSession
 - [x] Authorize.net: include convenienceFee and salesTax in the charged amount
 - [x] All 62 Vitest tests still passing after changes
+
+## Convenience Fee Settings Panel
+- [ ] Add `store_settings` table to drizzle schema (key, value, updatedAt)
+- [ ] Seed default row: convenience_fee_enabled=true, convenience_fee_percent=3
+- [ ] Run pnpm db:push to apply schema
+- [ ] Create settingsRouter: getConvenienceFee (public), updateConvenienceFee (admin-only)
+- [ ] Build admin Settings page (/admin/settings) with enable/disable toggle and % input
+- [ ] Add Settings nav item to admin sidebar
+- [ ] CartDrawer: fetch live fee config via trpc.settings.getConvenienceFee instead of hardcoded constant
+- [ ] CartDrawer: re-compute convenienceFee reactively when config loads
+- [ ] Vitest tests for settingsRouter

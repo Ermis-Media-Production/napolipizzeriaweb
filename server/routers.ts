@@ -8,6 +8,7 @@ import { uberDirectRouter } from "./uberdirect";
 import { cloverRouter } from "./clover";
 import { couponRouter } from "./coupon";
 import { doordashRouter } from "./doordash";
+import { settingsRouter } from "./settings";
 
 export const appRouter = router({
   system: systemRouter,
@@ -27,6 +28,7 @@ export const appRouter = router({
   clover: cloverRouter,
   coupon: couponRouter,
   doordash: doordashRouter,
+  settings: settingsRouter,
 });
 
 export type AppRouter = typeof appRouter;

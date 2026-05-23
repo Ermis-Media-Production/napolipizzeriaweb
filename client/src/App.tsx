@@ -12,6 +12,7 @@ import Specials from "./pages/Specials";
 import Order from "./pages/Order";
 import OrderSuccess from "./pages/OrderSuccess";
 import AdminOrders from "./pages/AdminOrders";
+import AdminDoorDashTest from "./pages/AdminDoorDashTest";
 
 function Router() {
   return (
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/order" component={Order} />
       <Route path="/order-success" component={OrderSuccess} />
       <Route path="/admin/orders" component={AdminOrders} />
+      <Route path="/admin/doordash-test" component={AdminDoorDashTest} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

@@ -15,6 +15,13 @@
       "when": 1779570873085,
       "tag": "0001_flimsy_stick",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1779575561024,
+      "tag": "0002_sharp_dexter_bennett",
+      "breakpoints": true
     }
   ]
 }

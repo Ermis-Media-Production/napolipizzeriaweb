@@ -21,6 +21,7 @@ import {
   Package,
   ExternalLink,
 } from "lucide-react";
+import { Link } from "wouter";
 import { toast } from "sonner";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -206,6 +207,15 @@ export default function AdminOrders() {
             <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
             Refresh
           </button>
+          <Link href="/admin/doordash-test">
+            <button
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95"
+              style={{ background: "oklch(0.96 0.04 145)", color: "oklch(0.28 0.10 145)", border: "1px solid oklch(0.70 0.15 145)", fontFamily: "'Oswald', sans-serif" }}
+            >
+              <Truck size={13} />
+              DD Test Delivery
+            </button>
+          </Link>
           <a
             href={`https://www.clover.com/r/${496603379884}/orders`}
             target="_blank"

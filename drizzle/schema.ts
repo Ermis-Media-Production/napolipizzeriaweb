@@ -60,3 +60,20 @@ export const coupons = mysqlTable("coupons", {
 
 export type Coupon = typeof coupons.$inferSelect;
 export type InsertCoupon = typeof coupons.$inferInsert;
+
+/**
+ * Key-value store for runtime-configurable store settings.
+ * Examples: convenience_fee_enabled, convenience_fee_percent.
+ * Values are stored as text and parsed by the application layer.
+ */
+export const storeSettings = mysqlTable("storeSettings", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Setting identifier, e.g. "convenience_fee_enabled" */
+  key: varchar("key", { length: 128 }).notNull().unique(),
+  /** Setting value stored as text (parse as needed: "true"/"false" or numeric string) */
+  value: text("value").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type StoreSetting = typeof storeSettings.$inferSelect;
+export type InsertStoreSetting = typeof storeSettings.$inferInsert;
