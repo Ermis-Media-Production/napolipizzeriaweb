@@ -4,12 +4,14 @@
  */
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Phone, MapPin, Clock, Menu, X } from "lucide-react";
+import { Phone, MapPin, Clock, Menu, X, ShoppingCart } from "lucide-react";
 import { RESTAURANT_INFO } from "@/lib/napoliData";
+import { useCart } from "@/contexts/CartContext";
 
 export default function NapoliNavbar() {
   const [open, setOpen] = useState(false);
   const [location] = useLocation();
+  const { totalItems, openCart } = useCart();
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -111,16 +113,51 @@ export default function NapoliNavbar() {
                 </Link>
               );
             })}
+
+            {/* Cart button */}
+            <button
+              onClick={openCart}
+              className="relative ml-2 p-2.5 rounded-full transition-colors hover:bg-red-50"
+              style={{ color: "var(--napoli-red)" }}
+              aria-label={`Cart with ${totalItems} items`}
+            >
+              <ShoppingCart size={22} />
+              {totalItems > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                  style={{ background: "var(--napoli-red)", color: "white", fontSize: "0.65rem" }}
+                >
+                  {totalItems > 9 ? "9+" : totalItems}
+                </span>
+              )}
+            </button>
           </div>
 
-          {/* Mobile hamburger */}
-          <button
-            className="md:hidden p-2 rounded"
-            onClick={() => setOpen(!open)}
-            style={{ color: "var(--napoli-red)" }}
-          >
-            {open ? <X size={22} /> : <Menu size={22} />}
-          </button>
+          {/* Mobile: cart + hamburger */}
+          <div className="md:hidden flex items-center gap-2">
+            <button
+              onClick={openCart}
+              className="relative p-2 rounded"
+              style={{ color: "var(--napoli-red)" }}
+            >
+              <ShoppingCart size={22} />
+              {totalItems > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold"
+                  style={{ background: "var(--napoli-red)", color: "white", fontSize: "0.6rem" }}
+                >
+                  {totalItems}
+                </span>
+              )}
+            </button>
+            <button
+              className="p-2 rounded"
+              onClick={() => setOpen(!open)}
+              style={{ color: "var(--napoli-red)" }}
+            >
+              {open ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile menu */}

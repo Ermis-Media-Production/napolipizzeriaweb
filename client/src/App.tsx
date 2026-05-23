@@ -4,10 +4,13 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { CartProvider } from "./contexts/CartContext";
+import CartDrawer from "./components/CartDrawer";
 import Home from "./pages/Home";
 import Menu from "./pages/Menu";
 import Specials from "./pages/Specials";
 import Order from "./pages/Order";
+import OrderSuccess from "./pages/OrderSuccess";
 
 function Router() {
   return (
@@ -16,6 +19,7 @@ function Router() {
       <Route path="/menu" component={Menu} />
       <Route path="/specials" component={Specials} />
       <Route path="/order" component={Order} />
+      <Route path="/order-success" component={OrderSuccess} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -26,10 +30,13 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <CartProvider>
+          <TooltipProvider>
+            <Toaster richColors position="top-right" />
+            <Router />
+            <CartDrawer />
+          </TooltipProvider>
+        </CartProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

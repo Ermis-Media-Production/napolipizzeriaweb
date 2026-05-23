@@ -2,8 +2,10 @@
  * Napoli Pizzeria — Full Menu Page
  * All categories: Appetizers, Lunch Specials, Pizzeria, Wings, Pasta, Subs, Burgers, Salads, Desserts, Specials
  */
-import { useState, useRef } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ChevronUp, Plus } from "lucide-react";
+import { useCart } from "@/contexts/CartContext";
+import { toast } from "sonner";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
 import {
@@ -37,7 +39,31 @@ function MenuCard({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ItemRow({ name, desc, price, highlight }: { name: string; desc?: string; price?: string; highlight?: boolean }) {
+function parsePrice(priceStr?: string): number | null {
+  if (!priceStr) return null;
+  const match = priceStr.match(/\$([\d.]+)/);
+  return match ? parseFloat(match[1]) : null;
+}
+
+function ItemRow({ name, desc, price, highlight, category }: { name: string; desc?: string; price?: string; highlight?: boolean; category?: string }) {
+  const { addItem, openCart } = useCart();
+  const numericPrice = parsePrice(price);
+
+  const handleAdd = () => {
+    if (!numericPrice) return;
+    addItem({
+      id: `${name}-${Date.now()}`,
+      name,
+      price: numericPrice,
+      quantity: 1,
+      category: category ?? "food",
+      description: desc,
+    });
+    toast.success(`${name} added to cart`, {
+      action: { label: "View Cart", onClick: openCart },
+    });
+  };
+
   return (
     <div
       className="napoli-menu-item flex items-start justify-between gap-4 px-5 py-3 border-b last:border-b-0"
@@ -50,9 +76,21 @@ function ItemRow({ name, desc, price, highlight }: { name: string; desc?: string
         <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{name}</span>
         {desc && <p className="text-xs napoli-body mt-0.5 leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>{desc}</p>}
       </div>
-      {price && (
-        <span className="napoli-price text-sm shrink-0" style={{ color: "var(--napoli-red)" }}>{price}</span>
-      )}
+      <div className="flex items-center gap-2 shrink-0">
+        {price && (
+          <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{price}</span>
+        )}
+        {numericPrice && (
+          <button
+            onClick={handleAdd}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90 hover:opacity-90"
+            style={{ background: "var(--napoli-red)", color: "white" }}
+            title={`Add ${name} to cart`}
+          >
+            <Plus size={14} />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
