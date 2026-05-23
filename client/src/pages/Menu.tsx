@@ -117,6 +117,88 @@ function MultiSizeItemRow({ name, desc, prices, highlight, category }: {
   );
 }
 
+function WingsRow({
+  qty,
+  boneIn,
+  boneless,
+  fingers,
+}: {
+  qty: string;
+  boneIn: { qty: string; price: string; addFries: string };
+  boneless: { qty: string; price: string; addFries: string };
+  fingers: { qty: string; price: string; addFries: string };
+}) {
+  const { addItem, openCart } = useCart();
+
+  const handleAdd = (type: string, price: number, qty: string) => {
+    addItem({
+      id: `wings-${type}-${qty}-${Date.now()}`,
+      name: `${type} Wings (${qty})`,
+      price,
+      quantity: 1,
+      category: "wings",
+    });
+    toast.success(`${type} Wings (${qty}) added to cart`, {
+      action: { label: "View Cart", onClick: openCart },
+    });
+  };
+
+  const boneInPrice = parsePrice(boneIn.price);
+  const bonelessPrice = parsePrice(boneless.price);
+  const fingersPrice = parsePrice(fingers.price);
+
+  return (
+    <div
+      className="napoli-menu-item flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 border-b last:border-b-0"
+      style={{ borderColor: "oklch(0.93 0.012 80)" }}
+    >
+      <div className="w-12 shrink-0">
+        <span
+          className="inline-flex items-center justify-center px-2 py-1 rounded text-xs font-bold napoli-price"
+          style={{ background: "oklch(0.97 0.012 80)", color: "var(--napoli-dark)", border: "1px solid oklch(0.88 0.015 80)" }}
+        >
+          {qty}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-2 flex-1">
+        {boneInPrice && (
+          <button
+            onClick={() => handleAdd("Bone-In", boneInPrice, boneIn.qty)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
+            style={{ background: "var(--napoli-red)", color: "white" }}
+          >
+            <Plus size={11} />
+            <span>Bone-In {boneIn.price}</span>
+          </button>
+        )}
+        {bonelessPrice && (
+          <button
+            onClick={() => handleAdd("Boneless", bonelessPrice, boneless.qty)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
+            style={{ background: "oklch(0.97 0.012 80)", color: "var(--napoli-red)", border: "1px solid oklch(0.88 0.015 80)" }}
+          >
+            <Plus size={11} />
+            <span>Boneless {boneless.price}</span>
+          </button>
+        )}
+        {fingersPrice && (
+          <button
+            onClick={() => handleAdd("Chicken Fingers", fingersPrice, fingers.qty)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
+            style={{ background: "oklch(0.26 0.10 145)", color: "white" }}
+          >
+            <Plus size={11} />
+            <span>Fingers {fingers.price}</span>
+          </button>
+        )}
+      </div>
+      <div className="text-xs napoli-body shrink-0" style={{ color: "oklch(0.62 0.03 30)" }}>
+        +Fries {boneIn.addFries}
+      </div>
+    </div>
+  );
+}
+
 function BurgerRow({ item }: { item: { name: string; desc?: string; half: string; single: string } }) {
   const { addItem, openCart } = useCart();
 
@@ -554,36 +636,16 @@ export default function Menu() {
               ))}
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ background: "oklch(0.97 0.012 80)" }}>
-                  <th className="text-left px-5 py-3 napoli-label text-xs" style={{ color: "oklch(0.52 0.03 30)" }}>Qty</th>
-                  <th className="text-center px-4 py-3 napoli-label text-xs" style={{ color: "oklch(0.52 0.03 30)" }}>Bone-In</th>
-                  <th className="text-center px-4 py-3 napoli-label text-xs" style={{ color: "oklch(0.52 0.03 30)" }}>Boneless</th>
-                  <th className="text-center px-4 py-3 napoli-label text-xs" style={{ color: "oklch(0.52 0.03 30)" }}>Chicken Fingers</th>
-                </tr>
-              </thead>
-              <tbody>
-                {WINGS.boneIn.map((row, i) => (
-                  <tr key={row.qty} className="border-t" style={{ borderColor: "oklch(0.93 0.012 80)" }}>
-                    <td className="px-5 py-3 napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{row.qty}</td>
-                    <td className="text-center px-4 py-3">
-                      <div className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{row.price}</div>
-                      <div className="text-xs napoli-body" style={{ color: "oklch(0.62 0.03 30)" }}>+Fries {row.addFries}</div>
-                    </td>
-                    <td className="text-center px-4 py-3">
-                      <div className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{WINGS.boneless[i].price}</div>
-                      <div className="text-xs napoli-body" style={{ color: "oklch(0.62 0.03 30)" }}>+Fries {WINGS.boneless[i].addFries}</div>
-                    </td>
-                    <td className="text-center px-4 py-3">
-                      <div className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{WINGS.chickenFingers[i].price}</div>
-                      <div className="text-xs napoli-body" style={{ color: "oklch(0.62 0.03 30)" }}>+Fries {WINGS.chickenFingers[i].addFries}</div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="divide-y" style={{ borderColor: "oklch(0.93 0.012 80)" }}>
+            {WINGS.boneIn.map((row, i) => (
+              <WingsRow
+                key={row.qty}
+                qty={row.qty}
+                boneIn={row}
+                boneless={WINGS.boneless[i]}
+                fingers={WINGS.chickenFingers[i]}
+              />
+            ))}
           </div>
         </MenuCard>
 
