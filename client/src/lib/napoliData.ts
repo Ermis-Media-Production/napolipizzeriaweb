@@ -41,7 +41,7 @@ export const APPETIZERS = [
   { name: "Chili Cheese Fries", desc: "", price: "$10.49" },
   { name: "Bruschetta", desc: "", price: "$12.49" },
   { name: "Curly Fries W/ Bacon", desc: "", price: "$12.49" },
-  { name: "Onion Rings", desc: "", price: "" },
+  { name: "Onion Rings", desc: "", price: "$9.49" },
 ];
 
 // ── SIDES ──────────────────────────────────────────────────
