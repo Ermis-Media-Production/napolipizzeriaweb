@@ -1,314 +1,451 @@
 /**
- * TradeVault Home Page
- * Design: Merchant Heritage — editorial hero, curated finds, product grid, supplier showcase
- * Colors: Navy (#0D2545), Warm White (#FAFAF8), Amber (#F5A623)
- * Typography: Libre Baskerville (display) + Nunito Sans (body)
+ * Napoli Pizzeria — Home Page
+ * Design: Authentic Italian trattoria — red/cream/green, Playfair Display headings
  */
-import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Star, ShieldCheck, TrendingUp, Package, Globe, ChevronRight, Award, Zap } from "lucide-react";
+import { ArrowRight, Star, Phone, MapPin, Clock, Truck, UtensilsCrossed, ShoppingBag, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import ProductCard from "@/components/ProductCard";
-import { PRODUCTS, SUPPLIERS, CATEGORIES } from "@/lib/data";
+import NapoliNavbar from "@/components/NapoliNavbar";
+import NapoliFooter from "@/components/NapoliFooter";
+import { RESTAURANT_INFO, LUNCH_SPECIALS, PIZZA_SPECIALS, APPETIZERS } from "@/lib/napoliData";
 
-const handlePlaceholder = () => toast.info("Feature coming soon.");
+const handleOrder = () => toast.info("Order online at NapoliPizzeria.com or call 725-204-0379!");
 
-const STATS = [
-  { value: "12,400+", label: "Verified Suppliers" },
-  { value: "850K+", label: "Products Listed" },
-  { value: "50+", label: "Countries" },
-  { value: "$2.4B", label: "Trade Volume" },
-];
-
-const HOW_IT_WORKS = [
-  { step: "01", title: "Browse & Discover", desc: "Search thousands of verified suppliers and products across 200+ categories with powerful MOQ and price filters." },
-  { step: "02", title: "Compare & Evaluate", desc: "Review bulk pricing tiers, supplier ratings, certifications, and lead times side by side." },
-  { step: "03", title: "Request & Negotiate", desc: "Send RFQs directly to suppliers, negotiate terms, and request product samples before committing." },
-  { step: "04", title: "Order & Scale", desc: "Place secure bulk orders with trade assurance protection and integrated logistics support." },
+const SERVICES = [
+  { icon: <Truck size={22} />, label: "Delivery", desc: "Fast delivery to your door" },
+  { icon: <UtensilsCrossed size={22} />, label: "Dine-In", desc: "Enjoy the full Italian experience" },
+  { icon: <ShoppingBag size={22} />, label: "Pick Up", desc: "Order ahead, skip the wait" },
+  { icon: <Phone size={22} />, label: "Catering", desc: "Events big & small" },
 ];
 
 export default function Home() {
-  const [activeCategory, setActiveCategory] = useState("all");
-
-  const featuredProducts = PRODUCTS.filter((p) => p.featured).slice(0, 3);
-  const filteredProducts = activeCategory === "all"
-    ? PRODUCTS
-    : PRODUCTS.filter((p) => p.category === activeCategory);
-
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "oklch(0.99 0.003 90)" }}>
-      <Navbar onCategoryChange={setActiveCategory} activeCategory={activeCategory} />
+    <div className="min-h-screen flex flex-col bg-napoli-cream">
+      <NapoliNavbar />
 
       {/* ── HERO ─────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden" style={{ minHeight: "560px" }}>
-        {/* Background image */}
+      <section className="relative overflow-hidden" style={{ minHeight: "580px" }}>
         <div className="absolute inset-0">
           <img
-            src="https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/tradevault-hero-FUDmFhjoGUHF5YPCnYUKZ2.webp"
-            alt="TradeVault warehouse hero"
+            src="https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/napoli-hero-oMHothV9Si69i2odSCVBya.webp"
+            alt="Napoli Pizzeria interior with wood-fired oven"
             className="w-full h-full object-cover"
           />
           <div
             className="absolute inset-0"
             style={{
-              background: "linear-gradient(105deg, oklch(0.16 0.05 248 / 0.92) 0%, oklch(0.16 0.05 248 / 0.75) 55%, oklch(0.16 0.05 248 / 0.30) 100%)",
+              background: "linear-gradient(110deg, oklch(0.14 0.03 27 / 0.92) 0%, oklch(0.14 0.03 27 / 0.72) 55%, oklch(0.14 0.03 27 / 0.30) 100%)",
             }}
           />
         </div>
 
         <div className="relative container py-20 md:py-28">
-          <div className="max-w-2xl">
+          <div className="max-w-xl">
             {/* Eyebrow */}
-            <div className="flex items-center gap-2 mb-5 animate-fade-up" style={{ animationDelay: "0ms" }}>
-              <span className="tv-badge-amber">B2B Wholesale Marketplace</span>
-              <span
-                className="flex items-center gap-1 text-xs font-semibold"
-                style={{ color: "oklch(0.80 0.02 248)", fontFamily: "'Nunito Sans', sans-serif" }}
-              >
-                <ShieldCheck size={12} style={{ color: "oklch(0.75 0.16 65)" }} />
-                Verified Suppliers Only
-              </span>
+            <div className="flex items-center gap-2 mb-4 animate-fade-up">
+              <span className="napoli-badge-gold">North Las Vegas, NV</span>
+              <span className="napoli-badge-green">Est. Original</span>
             </div>
 
             {/* Headline */}
-            <h1
-              className="tv-display text-4xl md:text-5xl lg:text-6xl mb-5 animate-fade-up"
-              style={{ color: "oklch(0.99 0.003 90)", animationDelay: "60ms" }}
-            >
-              Source Smarter.<br />
-              <span style={{ color: "oklch(0.75 0.16 65)" }}>Buy in Bulk.</span><br />
-              Grow Faster.
-            </h1>
+            <div className="animate-fade-up" style={{ animationDelay: "60ms" }}>
+              <p className="napoli-label text-sm mb-1" style={{ color: "oklch(0.80 0.015 80)", letterSpacing: "0.2em" }}>
+                The Original
+              </p>
+              <h1 className="napoli-display text-5xl md:text-6xl mb-2" style={{ color: "oklch(0.99 0.015 80)" }}>
+                Napoli
+              </h1>
+              <h1 className="napoli-display text-5xl md:text-6xl mb-4" style={{ color: "var(--napoli-gold)" }}>
+                Pizzeria
+              </h1>
+            </div>
 
-            {/* Subheadline */}
             <p
-              className="text-lg mb-8 leading-relaxed animate-fade-up"
-              style={{ color: "oklch(0.80 0.02 248)", fontFamily: "'Nunito Sans', sans-serif", animationDelay: "120ms" }}
+              className="text-base mb-3 napoli-body leading-relaxed animate-fade-up"
+              style={{ color: "oklch(0.80 0.015 80)", animationDelay: "120ms" }}
             >
-              Connect with 12,400+ verified global suppliers. Compare bulk pricing, request samples, and place wholesale orders — all in one trusted platform.
+              {RESTAURANT_INFO.tagline} — {RESTAURANT_INFO.subtitle}
             </p>
+
+            {/* Stars */}
+            <div className="flex items-center gap-1.5 mb-6 animate-fade-up" style={{ animationDelay: "150ms" }}>
+              {[1,2,3,4,5].map((s) => (
+                <Star key={s} size={16} fill="var(--napoli-gold)" stroke="none" />
+              ))}
+              <span className="text-sm napoli-body ml-1" style={{ color: "oklch(0.75 0.015 80)" }}>
+                Loved by the community
+              </span>
+            </div>
 
             {/* CTAs */}
             <div className="flex flex-wrap gap-3 animate-fade-up" style={{ animationDelay: "180ms" }}>
-              <Link href="/products">
+              <button
+                onClick={handleOrder}
+                className="napoli-btn-red flex items-center gap-2 px-7 py-3.5 rounded text-sm"
+              >
+                Order Online
+                <ArrowRight size={16} />
+              </button>
+              <Link href="/menu">
                 <button
-                  className="tv-btn-amber flex items-center gap-2 px-6 py-3 rounded text-sm"
+                  className="flex items-center gap-2 px-7 py-3.5 rounded text-sm font-semibold border-2 transition-colors napoli-label"
+                  style={{
+                    borderColor: "oklch(0.60 0.015 80)",
+                    color: "oklch(0.92 0.015 80)",
+                  }}
                 >
-                  Browse Products
-                  <ArrowRight size={16} />
+                  View Menu
+                  <ChevronRight size={16} />
                 </button>
               </Link>
-              <button
-                onClick={handlePlaceholder}
-                className="flex items-center gap-2 px-6 py-3 rounded text-sm font-bold border transition-colors"
-                style={{
-                  borderColor: "oklch(0.75 0.02 248)",
-                  color: "oklch(0.99 0.003 90)",
-                  fontFamily: "'Nunito Sans', sans-serif",
-                }}
-              >
-                Find Suppliers
-                <ChevronRight size={16} />
-              </button>
             </div>
 
-            {/* Mini stats */}
-            <div className="flex flex-wrap gap-6 mt-10 animate-fade-up" style={{ animationDelay: "240ms" }}>
-              {STATS.map((stat) => (
-                <div key={stat.label}>
+            {/* Pick-up special badge */}
+            <div
+              className="inline-flex items-center gap-3 mt-8 px-4 py-3 rounded border-2 border-dashed animate-fade-up"
+              style={{ borderColor: "var(--napoli-gold)", background: "oklch(0.14 0.03 27 / 0.6)", animationDelay: "240ms" }}
+            >
+              <div>
+                <div className="napoli-label text-xs" style={{ color: "var(--napoli-gold)" }}>Pick Up Special</div>
+                <div className="napoli-body text-sm" style={{ color: "oklch(0.90 0.015 80)" }}>
+                  {RESTAURANT_INFO.pickupSpecial.label}
+                </div>
+              </div>
+              <div className="napoli-price text-2xl" style={{ color: "var(--napoli-gold)" }}>
+                {RESTAURANT_INFO.pickupSpecial.price}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── SERVICES BAR ─────────────────────────────────────── */}
+      <div className="bg-napoli-red py-4 shadow-md">
+        <div className="container">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {SERVICES.map((s) => (
+              <div key={s.label} className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                  style={{ background: "oklch(0.35 0.18 27)", color: "white" }}
+                >
+                  {s.icon}
+                </div>
+                <div>
+                  <div className="napoli-label text-xs text-white">{s.label}</div>
+                  <div className="text-xs napoli-body" style={{ color: "oklch(0.85 0.015 80)" }}>{s.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── INFO STRIP ───────────────────────────────────────── */}
+      <div
+        className="py-4 border-b"
+        style={{ background: "oklch(0.22 0.04 30)", borderColor: "oklch(0.28 0.04 30)" }}
+      >
+        <div className="container flex flex-wrap items-center justify-center gap-6 text-sm">
+          <a href={`tel:${RESTAURANT_INFO.phone}`} className="flex items-center gap-2 napoli-body hover:opacity-80 transition-opacity" style={{ color: "var(--napoli-gold)" }}>
+            <Phone size={14} />
+            <strong>{RESTAURANT_INFO.phone}</strong>
+          </a>
+          <span className="flex items-center gap-2 napoli-body" style={{ color: "oklch(0.75 0.015 80)" }}>
+            <MapPin size={14} style={{ color: "var(--napoli-gold)" }} />
+            {RESTAURANT_INFO.address}, {RESTAURANT_INFO.city}
+          </span>
+          {RESTAURANT_INFO.hours.map((h) => (
+            <span key={h.days} className="flex items-center gap-2 napoli-body" style={{ color: "oklch(0.75 0.015 80)" }}>
+              <Clock size={14} style={{ color: "var(--napoli-gold)" }} />
+              <span>{h.days}: <strong style={{ color: "oklch(0.90 0.015 80)" }}>{h.time}</strong></span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* ── PIZZA SHOWCASE ───────────────────────────────────── */}
+      <section className="py-14">
+        <div className="container">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+            <div>
+              <p className="napoli-label text-xs mb-2" style={{ color: "var(--napoli-red)", letterSpacing: "0.2em" }}>
+                Hand Tossed New York Style
+              </p>
+              <h2 className="napoli-display text-4xl md:text-5xl mb-4" style={{ color: "var(--napoli-dark)" }}>
+                Home of the<br />
+                <span style={{ color: "var(--napoli-red)" }}>30" & 36" Pizza</span>
+              </h2>
+              <p className="napoli-body text-base leading-relaxed mb-6" style={{ color: "oklch(0.42 0.03 30)" }}>
+                Our hand-tossed New York style pizzas come in sizes from 10" all the way to a massive 36". With over 30 toppings to choose from and specialty creations like BBQ Chicken, Meat Lover, and our famous Napoli's Special — there's a pizza for every craving.
+              </p>
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                {[
+                  { label: "Sizes Available", value: "10\" – 36\"" },
+                  { label: "Toppings", value: "30+" },
+                  { label: "Plain Cheese from", value: "$9.49" },
+                  { label: "Gluten Free", value: "14\" Available" },
+                ].map((stat) => (
                   <div
-                    className="text-2xl font-bold tv-number"
-                    style={{ color: "oklch(0.75 0.16 65)", fontFamily: "'Nunito Sans', sans-serif" }}
+                    key={stat.label}
+                    className="p-3 rounded border"
+                    style={{ borderColor: "oklch(0.88 0.015 80)", background: "white" }}
                   >
-                    {stat.value}
+                    <div className="napoli-price text-lg" style={{ color: "var(--napoli-red)" }}>{stat.value}</div>
+                    <div className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{stat.label}</div>
                   </div>
-                  <div className="text-xs" style={{ color: "oklch(0.70 0.02 248)", fontFamily: "'Nunito Sans', sans-serif" }}>
-                    {stat.label}
+                ))}
+              </div>
+              <Link href="/menu">
+                <button className="napoli-btn-red flex items-center gap-2 px-6 py-3 rounded text-sm">
+                  See Full Pizza Menu <ArrowRight size={15} />
+                </button>
+              </Link>
+            </div>
+            <div className="relative">
+              <div className="rounded-md overflow-hidden shadow-xl">
+                <img
+                  src="https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/napoli-pizza-hero-YEnYByvTXcXnaJkADsVxqq.webp"
+                  alt="Napoli's signature pizza with multiple toppings"
+                  className="w-full object-cover"
+                  style={{ maxHeight: "380px" }}
+                />
+              </div>
+              {/* Floating badge */}
+              <div
+                className="absolute -bottom-4 -left-4 px-4 py-3 rounded shadow-lg border-2"
+                style={{
+                  background: "var(--napoli-red)",
+                  borderColor: "var(--napoli-gold)",
+                  color: "white",
+                }}
+              >
+                <div className="napoli-label text-xs" style={{ color: "var(--napoli-gold)" }}>Pick Up Special</div>
+                <div className="napoli-price text-xl">$12.99</div>
+                <div className="text-xs napoli-body opacity-90">16" 1 Topping</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── MENU HIGHLIGHTS ──────────────────────────────────── */}
+      <section
+        className="py-14 border-t border-b"
+        style={{ background: "oklch(0.96 0.012 80)", borderColor: "oklch(0.88 0.015 80)" }}
+      >
+        <div className="container">
+          <div className="text-center mb-10">
+            <p className="napoli-label text-xs mb-2" style={{ color: "var(--napoli-red)", letterSpacing: "0.2em" }}>
+              Something for Everyone
+            </p>
+            <h2 className="napoli-display text-3xl md:text-4xl" style={{ color: "var(--napoli-dark)" }}>
+              Explore Our Menu
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Appetizers */}
+            <Link href="/menu">
+              <div
+                className="napoli-card-hover rounded-md overflow-hidden border cursor-pointer bg-white"
+                style={{ borderColor: "oklch(0.88 0.015 80)" }}
+              >
+                <div className="relative h-48 overflow-hidden">
+                  <img
+                    src="https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/napoli-appetizers-YvAsr6L6PifDDkdKLJhf7c.webp"
+                    alt="Appetizers"
+                    className="w-full h-full object-cover"
+                  />
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: "linear-gradient(to top, oklch(0.14 0.03 27 / 0.7), transparent)" }}
+                  />
+                  <div className="absolute bottom-3 left-4">
+                    <span className="napoli-badge-red">Appetizers</span>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h3 className="napoli-heading text-lg mb-1" style={{ color: "var(--napoli-dark)" }}>
+                    Starters & Sides
+                  </h3>
+                  <p className="text-sm napoli-body mb-3" style={{ color: "oklch(0.50 0.03 30)" }}>
+                    Napoli's Combo Platter, Mozzarella Sticks, Bruschetta, Garlic Bread & more
+                  </p>
+                  <div className="flex items-center gap-1 text-sm font-semibold napoli-label" style={{ color: "var(--napoli-red)", fontSize: "0.75rem" }}>
+                    View Menu <ChevronRight size={13} />
+                  </div>
+                </div>
+              </div>
+            </Link>
+
+            {/* Lunch Specials */}
+            <Link href="/menu">
+              <div
+                className="napoli-card-hover rounded-md overflow-hidden border cursor-pointer bg-white"
+                style={{ borderColor: "oklch(0.88 0.015 80)" }}
+              >
+                <div className="relative h-48 overflow-hidden">
+                  <img
+                    src="https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/napoli-lunch-kSRpB84botD33aygyJvCHH.webp"
+                    alt="Lunch Specials"
+                    className="w-full h-full object-cover"
+                  />
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: "linear-gradient(to top, oklch(0.14 0.03 27 / 0.7), transparent)" }}
+                  />
+                  <div className="absolute bottom-3 left-4">
+                    <span className="napoli-badge-green">Lunch Specials</span>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h3 className="napoli-heading text-lg mb-1" style={{ color: "var(--napoli-dark)" }}>
+                    Lunch Specials
+                  </h3>
+                  <p className="text-sm napoli-body mb-1" style={{ color: "oklch(0.50 0.03 30)" }}>
+                    Mon–Fri 9AM–3PM · 24 options starting at $9.49
+                  </p>
+                  <p className="text-xs font-bold napoli-label mb-3" style={{ color: "var(--napoli-green)" }}>
+                    FREE Can of Soda with every order!
+                  </p>
+                  <div className="flex items-center gap-1 text-sm font-semibold napoli-label" style={{ color: "var(--napoli-red)", fontSize: "0.75rem" }}>
+                    View Menu <ChevronRight size={13} />
+                  </div>
+                </div>
+              </div>
+            </Link>
+
+            {/* Pizzeria */}
+            <Link href="/menu">
+              <div
+                className="napoli-card-hover rounded-md overflow-hidden border cursor-pointer bg-white"
+                style={{ borderColor: "oklch(0.88 0.015 80)" }}
+              >
+                <div className="relative h-48 overflow-hidden">
+                  <img
+                    src="https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/napoli-pizza-hero-YEnYByvTXcXnaJkADsVxqq.webp"
+                    alt="Pizzeria"
+                    className="w-full h-full object-cover"
+                  />
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: "linear-gradient(to top, oklch(0.14 0.03 27 / 0.7), transparent)" }}
+                  />
+                  <div className="absolute bottom-3 left-4">
+                    <span className="napoli-badge-gold">Pizzeria</span>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h3 className="napoli-heading text-lg mb-1" style={{ color: "var(--napoli-dark)" }}>
+                    Hand Tossed Pizzas
+                  </h3>
+                  <p className="text-sm napoli-body mb-3" style={{ color: "oklch(0.50 0.03 30)" }}>
+                    17 specialty creations, 30+ toppings, sizes 10"–36", stuffed dough & more
+                  </p>
+                  <div className="flex items-center gap-1 text-sm font-semibold napoli-label" style={{ color: "var(--napoli-red)", fontSize: "0.75rem" }}>
+                    View Menu <ChevronRight size={13} />
+                  </div>
+                </div>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── LUNCH SPECIALS PROMO ─────────────────────────────── */}
+      <section
+        className="py-14"
+        style={{ background: "var(--napoli-green)" }}
+      >
+        <div className="container">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div>
+              <p className="napoli-label text-xs mb-2" style={{ color: "oklch(0.75 0.08 145)", letterSpacing: "0.2em" }}>
+                Monday – Friday · 9AM – 3PM Only
+              </p>
+              <h2 className="napoli-display text-3xl md:text-4xl mb-2" style={{ color: "oklch(0.99 0.015 80)" }}>
+                Lunch Specials
+              </h2>
+              <div
+                className="inline-block px-4 py-2 rounded mb-4"
+                style={{ background: "var(--napoli-gold)", color: "var(--napoli-dark)" }}
+              >
+                <span className="napoli-label text-sm">🥤 FREE Can of Soda with any Lunch Special!</span>
+              </div>
+              <p className="napoli-body text-sm leading-relaxed" style={{ color: "oklch(0.82 0.06 145)" }}>
+                24 lunch options to choose from — pasta, pizza, subs, salads & more. All starting at just $9.49.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 shrink-0 w-full md:w-auto">
+              {LUNCH_SPECIALS.items.slice(0, 6).map((item) => (
+                <div
+                  key={item.num}
+                  className="flex items-start gap-2 p-3 rounded"
+                  style={{ background: "oklch(0.26 0.10 145)" }}
+                >
+                  <span
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 napoli-price"
+                    style={{ background: "var(--napoli-red)", color: "white" }}
+                  >
+                    {item.num}
+                  </span>
+                  <div>
+                    <div className="text-xs font-semibold napoli-body" style={{ color: "oklch(0.92 0.015 80)" }}>
+                      {item.name}
+                    </div>
+                    <div className="napoli-price text-sm" style={{ color: "var(--napoli-gold)" }}>
+                      {item.price}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* ── CURATED SUPPLIER FINDS BANNER ───────────────────── */}
-      <section
-        className="py-10 border-b"
-        style={{ background: "oklch(0.22 0.06 248)", borderColor: "oklch(0.28 0.07 248)" }}
-      >
-        <div className="container">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <Zap size={18} style={{ color: "oklch(0.75 0.16 65)" }} />
-              <h2
-                className="text-lg font-bold"
-                style={{ color: "oklch(0.99 0.003 90)", fontFamily: "'Libre Baskerville', serif" }}
-              >
-                Curated Supplier Finds
-              </h2>
-              <span className="tv-badge-amber">This Week</span>
-            </div>
-            <Link href="/products">
+          <div className="text-center mt-8">
+            <Link href="/menu">
               <button
-                className="flex items-center gap-1.5 text-sm font-semibold transition-colors hover:opacity-80"
-                style={{ color: "oklch(0.75 0.16 65)", fontFamily: "'Nunito Sans', sans-serif" }}
+                className="inline-flex items-center gap-2 px-7 py-3 rounded text-sm font-semibold border-2 napoli-label transition-colors"
+                style={{ borderColor: "oklch(0.75 0.08 145)", color: "oklch(0.99 0.015 80)" }}
               >
-                View All <ChevronRight size={14} />
+                See All 24 Lunch Specials <ArrowRight size={15} />
               </button>
             </Link>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {featuredProducts.map((product, i) => (
-              <Link key={product.id} href={`/product/${product.id}`}>
-                <div
-                  className="relative rounded-md overflow-hidden cursor-pointer group"
-                  style={{
-                    background: "oklch(0.28 0.07 248)",
-                    animationDelay: `${i * 60}ms`,
-                  }}
-                >
-                  <div className="flex gap-4 p-4">
-                    <div className="shrink-0 w-20 h-20 rounded overflow-hidden">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span
-                        className="text-xs font-semibold uppercase tracking-wide"
-                        style={{ color: "oklch(0.75 0.16 65)", fontFamily: "'Nunito Sans', sans-serif" }}
-                      >
-                        {product.subcategory}
-                      </span>
-                      <h3
-                        className="text-sm font-bold mt-0.5 mb-1 line-clamp-2"
-                        style={{ color: "oklch(0.99 0.003 90)", fontFamily: "'Nunito Sans', sans-serif" }}
-                      >
-                        {product.name}
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="text-base font-bold tv-number"
-                          style={{ color: "oklch(0.75 0.16 65)", fontFamily: "'Nunito Sans', sans-serif" }}
-                        >
-                          ${product.priceRange.min.toFixed(2)}
-                        </span>
-                        <span className="text-xs" style={{ color: "oklch(0.62 0.03 248)" }}>
-                          MOQ {product.moq} {product.moqUnit}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div
-                    className="absolute bottom-0 left-0 right-0 h-0.5 scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-left"
-                    style={{ background: "oklch(0.75 0.16 65)" }}
-                  />
-                </div>
-              </Link>
-            ))}
-          </div>
         </div>
       </section>
 
-      {/* ── PRODUCT GRID ─────────────────────────────────────── */}
+      {/* ── PIZZA SPECIALS GRID ───────────────────────────────── */}
       <section className="py-14">
         <div className="container">
           <div className="flex items-end justify-between mb-8">
             <div>
-              <p
-                className="text-xs font-bold uppercase tracking-widest mb-1"
-                style={{ color: "oklch(0.75 0.16 65)", fontFamily: "'Nunito Sans', sans-serif" }}
-              >
-                Wholesale Catalog
+              <p className="napoli-label text-xs mb-1" style={{ color: "var(--napoli-red)", letterSpacing: "0.2em" }}>
+                Signature Creations
               </p>
-              <h2 className="tv-display text-3xl" style={{ color: "oklch(0.18 0.04 248)" }}>
-                {activeCategory === "all"
-                  ? "All Products"
-                  : CATEGORIES.find((c) => c.id === activeCategory)?.label ?? "Products"}
+              <h2 className="napoli-display text-3xl" style={{ color: "var(--napoli-dark)" }}>
+                Specialty Pizzas
               </h2>
             </div>
-            <Link href="/products">
-              <button
-                className="hidden md:flex items-center gap-1.5 text-sm font-semibold"
-                style={{ color: "oklch(0.52 0.03 248)", fontFamily: "'Nunito Sans', sans-serif" }}
-              >
-                View full catalog <ArrowRight size={14} />
+            <Link href="/menu">
+              <button className="hidden md:flex items-center gap-1.5 text-sm napoli-label" style={{ color: "var(--napoli-red)", fontSize: "0.75rem" }}>
+                Full Pizza Menu <ArrowRight size={13} />
               </button>
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredProducts.map((product, i) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                style={{ animationDelay: `${i * 50}ms` }}
-              />
-            ))}
-          </div>
-
-          {filteredProducts.length === 0 && (
-            <div className="text-center py-20">
-              <Package size={40} className="mx-auto mb-3 opacity-30" style={{ color: "oklch(0.52 0.03 248)" }} />
-              <p className="text-sm" style={{ color: "oklch(0.52 0.03 248)", fontFamily: "'Nunito Sans', sans-serif" }}>
-                No products found in this category yet.
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* ── HOW IT WORKS ─────────────────────────────────────── */}
-      <section
-        className="py-16 border-t border-b"
-        style={{ background: "oklch(0.96 0.004 90)", borderColor: "oklch(0.90 0.006 248)" }}
-      >
-        <div className="container">
-          <div className="text-center mb-12">
-            <p
-              className="text-xs font-bold uppercase tracking-widest mb-2"
-              style={{ color: "oklch(0.75 0.16 65)", fontFamily: "'Nunito Sans', sans-serif" }}
-            >
-              The TradeVault Process
-            </p>
-            <h2 className="tv-display text-3xl md:text-4xl" style={{ color: "oklch(0.18 0.04 248)" }}>
-              How It Works
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {HOW_IT_WORKS.map((step, i) => (
-              <div key={step.step} className="relative">
-                {i < HOW_IT_WORKS.length - 1 && (
-                  <div
-                    className="hidden md:block absolute top-6 left-[calc(100%-1rem)] w-8 h-px"
-                    style={{ background: "oklch(0.75 0.16 65)" }}
-                  />
-                )}
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm mb-4 tv-number"
-                  style={{
-                    background: "oklch(0.22 0.06 248)",
-                    color: "oklch(0.75 0.16 65)",
-                    fontFamily: "'Nunito Sans', sans-serif",
-                  }}
-                >
-                  {step.step}
-                </div>
-                <h3
-                  className="font-bold text-base mb-2"
-                  style={{ color: "oklch(0.18 0.04 248)", fontFamily: "'Nunito Sans', sans-serif" }}
-                >
-                  {step.title}
-                </h3>
-                <p className="text-sm leading-relaxed" style={{ color: "oklch(0.52 0.03 248)", fontFamily: "'Nunito Sans', sans-serif" }}>
-                  {step.desc}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {PIZZA_SPECIALS.slice(0, 8).map((pizza) => (
+              <div
+                key={pizza.name}
+                className="napoli-menu-item p-4 rounded border bg-white"
+                style={{ borderColor: "oklch(0.88 0.015 80)" }}
+              >
+                <h4 className="napoli-heading text-sm mb-1" style={{ color: "var(--napoli-dark)" }}>
+                  {pizza.name}
+                </h4>
+                <p className="text-xs napoli-body leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>
+                  {pizza.desc}
                 </p>
               </div>
             ))}
@@ -316,169 +453,38 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── SUPPLIER SHOWCASE ────────────────────────────────── */}
-      <section className="py-14">
-        <div className="container">
-          <div className="flex items-end justify-between mb-8">
-            <div>
-              <p
-                className="text-xs font-bold uppercase tracking-widest mb-1"
-                style={{ color: "oklch(0.75 0.16 65)", fontFamily: "'Nunito Sans', sans-serif" }}
-              >
-                Top-Rated Suppliers
-              </p>
-              <h2 className="tv-display text-3xl" style={{ color: "oklch(0.18 0.04 248)" }}>
-                Featured Suppliers
-              </h2>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {SUPPLIERS.map((supplier) => (
-              <Link key={supplier.id} href={`/supplier/${supplier.id}`}>
-                <div
-                  className="tv-card-hover tv-amber-border-hover bg-white rounded-md overflow-hidden border cursor-pointer group"
-                  style={{ borderColor: "oklch(0.90 0.006 248)" }}
-                >
-                  {/* Supplier banner */}
-                  <div className="relative h-28 overflow-hidden">
-                    <img
-                      src={supplier.banner}
-                      alt={supplier.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div
-                      className="absolute inset-0"
-                      style={{ background: "linear-gradient(to top, oklch(0.18 0.04 248 / 0.6), transparent)" }}
-                    />
-                    {supplier.goldSupplier && (
-                      <div className="absolute top-2 right-2">
-                        <span className="tv-badge-amber flex items-center gap-1">
-                          <Award size={10} /> Gold Supplier
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-4">
-                    <div className="flex items-start gap-3 mb-3">
-                      <div
-                        className="w-10 h-10 rounded shrink-0 overflow-hidden border-2"
-                        style={{ borderColor: "oklch(0.75 0.16 65)" }}
-                      >
-                        <img src={supplier.logo} alt={supplier.name} className="w-full h-full object-cover" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3
-                          className="font-bold text-sm leading-tight mb-0.5"
-                          style={{ color: "oklch(0.18 0.04 248)", fontFamily: "'Nunito Sans', sans-serif" }}
-                        >
-                          {supplier.name}
-                        </h3>
-                        <div className="flex items-center gap-1.5">
-                          <Globe size={11} style={{ color: "oklch(0.52 0.03 248)" }} />
-                          <span className="text-xs" style={{ color: "oklch(0.52 0.03 248)", fontFamily: "'Nunito Sans', sans-serif" }}>
-                            {supplier.location}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 mb-3">
-                      {[
-                        { label: "Rating", value: `${supplier.rating}★` },
-                        { label: "Products", value: supplier.totalProducts },
-                        { label: "Response", value: supplier.responseTime },
-                      ].map((stat) => (
-                        <div
-                          key={stat.label}
-                          className="text-center py-2 rounded"
-                          style={{ background: "oklch(0.96 0.004 90)" }}
-                        >
-                          <div
-                            className="font-bold text-sm tv-number"
-                            style={{ color: "oklch(0.22 0.06 248)", fontFamily: "'Nunito Sans', sans-serif" }}
-                          >
-                            {stat.value}
-                          </div>
-                          <div className="text-xs" style={{ color: "oklch(0.62 0.03 248)", fontFamily: "'Nunito Sans', sans-serif" }}>
-                            {stat.label}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex flex-wrap gap-1">
-                      {supplier.specialties.slice(0, 3).map((spec) => (
-                        <span
-                          key={spec}
-                          className="text-xs px-2 py-0.5 rounded"
-                          style={{
-                            background: "oklch(0.96 0.004 90)",
-                            color: "oklch(0.35 0.04 248)",
-                            fontFamily: "'Nunito Sans', sans-serif",
-                          }}
-                        >
-                          {spec}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA BANNER ───────────────────────────────────────── */}
+      {/* ── CTA BAND ─────────────────────────────────────────── */}
       <section
-        className="py-16"
-        style={{ background: "oklch(0.22 0.06 248)" }}
+        className="py-12"
+        style={{ background: "var(--napoli-red)" }}
       >
         <div className="container text-center">
-          <p
-            className="text-xs font-bold uppercase tracking-widest mb-3"
-            style={{ color: "oklch(0.75 0.16 65)", fontFamily: "'Nunito Sans', sans-serif" }}
-          >
-            Ready to Scale Your Business?
-          </p>
-          <h2
-            className="tv-display text-3xl md:text-4xl mb-4"
-            style={{ color: "oklch(0.99 0.003 90)" }}
-          >
-            Join 80,000+ Business Buyers
+          <h2 className="napoli-display text-3xl mb-3" style={{ color: "oklch(0.99 0.015 80)" }}>
+            Ready to Order?
           </h2>
-          <p
-            className="text-base mb-8 max-w-xl mx-auto leading-relaxed"
-            style={{ color: "oklch(0.75 0.02 248)", fontFamily: "'Nunito Sans', sans-serif" }}
-          >
-            Get access to exclusive wholesale pricing, verified supplier contacts, and dedicated trade support — all free for registered buyers.
+          <p className="napoli-body text-base mb-6" style={{ color: "oklch(0.88 0.015 80)" }}>
+            Call us or order online — delivery, pick-up, and dine-in available!
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <button
-              onClick={handlePlaceholder}
-              className="tv-btn-amber flex items-center gap-2 px-8 py-3 rounded text-sm"
+              onClick={handleOrder}
+              className="flex items-center gap-2 px-8 py-3.5 rounded text-sm font-semibold napoli-label transition-colors"
+              style={{ background: "var(--napoli-gold)", color: "var(--napoli-dark)" }}
             >
-              Create Free Account
-              <ArrowRight size={16} />
+              Order Online <ArrowRight size={15} />
             </button>
-            <button
-              onClick={handlePlaceholder}
-              className="flex items-center gap-2 px-8 py-3 rounded text-sm font-bold border transition-colors"
-              style={{
-                borderColor: "oklch(0.50 0.04 248)",
-                color: "oklch(0.80 0.02 248)",
-                fontFamily: "'Nunito Sans', sans-serif",
-              }}
+            <a
+              href={`tel:${RESTAURANT_INFO.phone}`}
+              className="flex items-center gap-2 px-8 py-3.5 rounded text-sm font-semibold napoli-label border-2 transition-colors"
+              style={{ borderColor: "oklch(0.60 0.015 80)", color: "white" }}
             >
-              Learn More
-            </button>
+              <Phone size={15} /> Call {RESTAURANT_INFO.phone}
+            </a>
           </div>
         </div>
       </section>
 
-      <Footer />
+      <NapoliFooter />
     </div>
   );
 }

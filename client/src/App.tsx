@@ -5,17 +5,17 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
-import Products from "./pages/Products";
-import ProductDetail from "./pages/ProductDetail";
-import SupplierStorefront from "./pages/SupplierStorefront";
+import Menu from "./pages/Menu";
+import Specials from "./pages/Specials";
+import Order from "./pages/Order";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/products" component={Products} />
-      <Route path="/product/:id" component={ProductDetail} />
-      <Route path="/supplier/:id" component={SupplierStorefront} />
+      <Route path="/menu" component={Menu} />
+      <Route path="/specials" component={Specials} />
+      <Route path="/order" component={Order} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -27,7 +27,7 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
-          <Toaster position="top-right" />
+          <Toaster />
           <Router />
         </TooltipProvider>
       </ThemeProvider>
