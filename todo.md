@@ -56,3 +56,25 @@
 - [x] Auto-dispatch Uber Direct createDelivery after successful Authorize.net payment
 - [x] Auto-dispatch Uber Direct createDelivery after Stripe payment (via OrderSuccess + session metadata)
 - [x] All 38 Vitest tests passing (Stripe 3, Authorize.net 8, Uber Direct 11, Clover 15, Auth 1)
+
+## Coupon / Discount System
+- [ ] Add `coupons` table to drizzle schema (code, discountPercent, isActive, usageLimit, usageCount)
+- [ ] Seed 98% discount coupon (code: NAPOLI98) in DB migration
+- [ ] Create couponRouter with validateCoupon procedure (public) and createCoupon procedure (admin)
+- [ ] Add coupon input field to CartDrawer with "Apply" button
+- [ ] Show discount line in CartDrawer order summary when coupon is applied
+- [ ] Pass discounted total to Stripe createCheckoutSession
+- [ ] Apply discount to Authorize.net chargeCard amount
+- [ ] Vitest tests for coupon router
+
+## DoorDash Drive Integration + Dual Delivery Provider
+- [x] Research DoorDash Drive API (JWT auth, quote, create delivery)
+- [x] Store DoorDash credentials as secrets (DOORDASH_DEVELOPER_ID, DOORDASH_KEY_ID, DOORDASH_SIGNING_SECRET)
+- [x] Create doordash.ts server router (getQuote, createDelivery, getDelivery)
+- [x] Register doordashRouter in routers.ts
+- [x] Update CartDrawer: address input field triggers real-time quotes from both Uber Direct and DoorDash
+- [x] CartDrawer: show both provider cards with logos, ETA, and cost — let customer select one
+- [x] Wire DoorDash createDelivery into Authorize.net chargeCard flow
+- [x] Wire DoorDash createDelivery into Stripe webhook + OrderSuccess flow
+- [x] Update OrderSuccess to show DoorDash tracking URL when DoorDash was selected
+- [x] Vitest tests for DoorDash router (47 total tests passing)

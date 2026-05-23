@@ -16,6 +16,7 @@ type OrderInfo = {
   orderType?: string;
   deliveryId?: string;
   trackingUrl?: string;
+  deliveryProvider?: "uber" | "doordash";
 };
 
 export default function OrderSuccess() {
@@ -23,11 +24,12 @@ export default function OrderSuccess() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [authNetOrder, setAuthNetOrder] = useState<OrderInfo | null>(null);
 
-  // Uber Direct dispatch state (for Stripe delivery orders)
-  const [uberDeliveryId, setUberDeliveryId] = useState<string | null>(null);
-  const [uberTrackingUrl, setUberTrackingUrl] = useState<string | null>(null);
-  const [isDispatchingUber, setIsDispatchingUber] = useState(false);
-  const uberDispatchedRef = useRef(false); // prevent double-dispatch on re-render
+  // Delivery dispatch state (for Stripe delivery orders)
+  const [deliveryId, setDeliveryId] = useState<string | null>(null);
+  const [trackingUrl, setTrackingUrl] = useState<string | null>(null);
+  const [activeProvider, setActiveProvider] = useState<"uber" | "doordash" | null>(null);
+  const [isDispatching, setIsDispatching] = useState(false);
+  const dispatchedRef = useRef(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -40,6 +42,7 @@ export default function OrderSuccess() {
       clearCart();
     } else if (txn && method === "authorizenet") {
       clearCart();
+      const provider = params.get("provider") as "uber" | "doordash" | null;
       setAuthNetOrder({
         method: "authorizenet",
         transactionId: txn,
@@ -48,6 +51,7 @@ export default function OrderSuccess() {
         orderType: params.get("type") ?? undefined,
         deliveryId: params.get("delivery_id") ?? undefined,
         trackingUrl: params.get("tracking_url") ? decodeURIComponent(params.get("tracking_url")!) : undefined,
+        deliveryProvider: provider ?? "uber",
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -58,67 +62,107 @@ export default function OrderSuccess() {
     { enabled: !!sessionId }
   );
 
-  const createDelivery = trpc.uber.createDelivery.useMutation();
+  const createUberDelivery = trpc.uber.createDelivery.useMutation();
+  const createDdDelivery = trpc.doordash.createDelivery.useMutation();
 
-  // Auto-dispatch Uber Direct when Stripe session loads with delivery data.
+  // Auto-dispatch delivery when Stripe session loads.
   // Uses sessionStorage to prevent re-dispatch on page reload/revisit.
   useEffect(() => {
     if (
       !stripeSession ||
       stripeSession.orderType !== "delivery" ||
-      !stripeSession.uberQuoteId ||
       !stripeSession.dropoffAddress ||
-      uberDispatchedRef.current
+      dispatchedRef.current
     ) return;
 
-    // Check if we already dispatched for this session (survives re-renders, not reloads)
-    const storageKey = `uber_dispatched_${sessionId}`;
+    const provider = stripeSession.deliveryProvider ?? "uber";
+    const storageKey = `delivery_dispatched_${sessionId}`;
     const alreadyDispatched = sessionStorage.getItem(storageKey);
+
     if (alreadyDispatched) {
-      // Restore previously dispatched delivery info
       try {
-        const saved = JSON.parse(alreadyDispatched) as { deliveryId: string; trackingUrl: string };
-        setUberDeliveryId(saved.deliveryId);
-        setUberTrackingUrl(saved.trackingUrl);
-      } catch { /* ignore parse errors */ }
-      uberDispatchedRef.current = true;
+        const saved = JSON.parse(alreadyDispatched) as { deliveryId: string; trackingUrl: string; provider: "uber" | "doordash" };
+        setDeliveryId(saved.deliveryId);
+        setTrackingUrl(saved.trackingUrl);
+        setActiveProvider(saved.provider);
+      } catch { /* ignore */ }
+      dispatchedRef.current = true;
       return;
     }
 
-    uberDispatchedRef.current = true;
-    setIsDispatchingUber(true);
+    dispatchedRef.current = true;
+    setIsDispatching(true);
+    setActiveProvider(provider);
 
-    createDelivery.mutate(
-      {
-        quoteId: stripeSession.uberQuoteId,
-        dropoffAddress: stripeSession.dropoffAddress,
-        dropoffCity: stripeSession.dropoffCity ?? "North Las Vegas",
-        dropoffState: stripeSession.dropoffState ?? "NV",
-        dropoffZip: stripeSession.dropoffZip ?? "89032",
-        dropoffName: stripeSession.customerName ?? "Customer",
-        dropoffPhone: stripeSession.customerPhone ?? "+17025550000",
-        dropoffNotes: stripeSession.dropoffNotes ?? undefined,
-        // Pass actual cart items from session metadata
-        orderItems: (stripeSession.cartItems ?? []).map((i) => ({ name: i.name, quantity: i.quantity })),
-        externalId: sessionId ?? undefined,
-      },
-      {
-        onSuccess: (data) => {
-          setUberDeliveryId(data.deliveryId);
-          setUberTrackingUrl(data.trackingUrl);
-          setIsDispatchingUber(false);
-          // Persist dispatch result so page reload doesn't re-dispatch
-          sessionStorage.setItem(storageKey, JSON.stringify({ deliveryId: data.deliveryId, trackingUrl: data.trackingUrl }));
-          toast.success("Delivery dispatched! Track your order in real time.");
+    if (provider === "uber" && stripeSession.uberQuoteId) {
+      createUberDelivery.mutate(
+        {
+          quoteId: stripeSession.uberQuoteId,
+          dropoffAddress: stripeSession.dropoffAddress,
+          dropoffCity: stripeSession.dropoffCity ?? "North Las Vegas",
+          dropoffState: stripeSession.dropoffState ?? "NV",
+          dropoffZip: stripeSession.dropoffZip ?? "89032",
+          dropoffName: stripeSession.customerName ?? "Customer",
+          dropoffPhone: stripeSession.customerPhone ?? "+17025550000",
+          dropoffNotes: stripeSession.dropoffNotes ?? undefined,
+          orderItems: (stripeSession.cartItems ?? []).map((i) => ({ name: i.name, quantity: i.quantity })),
+          externalId: sessionId ?? undefined,
         },
-        onError: (err) => {
-          setIsDispatchingUber(false);
-          uberDispatchedRef.current = false; // allow retry on error
-          console.error("[Uber Direct] Dispatch failed:", err);
-          toast.warning("Payment confirmed! We'll arrange your delivery shortly.");
+        {
+          onSuccess: (data) => {
+            setDeliveryId(data.deliveryId);
+            setTrackingUrl(data.trackingUrl);
+            setIsDispatching(false);
+            sessionStorage.setItem(storageKey, JSON.stringify({ deliveryId: data.deliveryId, trackingUrl: data.trackingUrl, provider: "uber" }));
+            toast.success("Delivery dispatched via Uber Direct! Track your order in real time.");
+          },
+          onError: (err) => {
+            setIsDispatching(false);
+            dispatchedRef.current = false;
+            console.error("[Uber Direct] Dispatch failed:", err);
+            toast.warning("Payment confirmed! We'll arrange your delivery shortly.");
+          },
+        }
+      );
+    } else if (provider === "doordash" && stripeSession.doordashExternalId) {
+      const customerName = stripeSession.customerName ?? "Customer";
+      const [firstName, ...rest] = customerName.trim().split(" ");
+      const totalCents = stripeSession.amountTotal ? Math.round(stripeSession.amountTotal * 100) : 0;
+      createDdDelivery.mutate(
+        {
+          externalDeliveryId: stripeSession.doordashExternalId,
+          dropoffAddress: `${stripeSession.dropoffAddress}, ${stripeSession.dropoffCity ?? "North Las Vegas"}, ${stripeSession.dropoffState ?? "NV"} ${stripeSession.dropoffZip ?? "89032"}`,
+          dropoffContactGivenName: firstName || customerName,
+          dropoffContactFamilyName: rest.join(" ") || undefined,
+          dropoffPhone: stripeSession.customerPhone ?? "+17025550000",
+          dropoffInstructions: stripeSession.dropoffNotes ?? undefined,
+          orderValue: totalCents,
+          items: (stripeSession.cartItems ?? []).map((i) => ({
+            name: i.name,
+            quantity: i.quantity,
+            price: Math.round(i.price * 100),
+          })),
         },
-      }
-    );
+        {
+          onSuccess: (data) => {
+            setDeliveryId(data.deliveryId);
+            setTrackingUrl(data.trackingUrl);
+            setIsDispatching(false);
+            sessionStorage.setItem(storageKey, JSON.stringify({ deliveryId: data.deliveryId, trackingUrl: data.trackingUrl, provider: "doordash" }));
+            toast.success("Delivery dispatched via DoorDash Drive! Track your order in real time.");
+          },
+          onError: (err) => {
+            setIsDispatching(false);
+            dispatchedRef.current = false;
+            console.error("[DoorDash] Dispatch failed:", err);
+            toast.warning("Payment confirmed! We'll arrange your delivery shortly.");
+          },
+        }
+      );
+    } else {
+      // No valid quote ID — skip dispatch
+      setIsDispatching(false);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stripeSession]);
 
@@ -130,14 +174,16 @@ export default function OrderSuccess() {
         customerName: stripeSession.customerName,
         amountTotal: stripeSession.amountTotal,
         orderType: stripeSession.orderType,
-        deliveryId: uberDeliveryId ?? undefined,
-        trackingUrl: uberTrackingUrl ?? undefined,
+        deliveryId: deliveryId ?? undefined,
+        trackingUrl: trackingUrl ?? undefined,
+        deliveryProvider: activeProvider ?? undefined,
       }
     : authNetOrder;
 
   const isAuthNet = orderData?.method === "authorizenet";
   const hasDelivery = !!orderData?.trackingUrl;
-  const isStripeDelivery = stripeSession?.orderType === "delivery" && !!stripeSession?.uberQuoteId;
+  const isStripeDelivery = stripeSession?.orderType === "delivery" && !!stripeSession?.dropoffAddress;
+  const resolvedProvider = orderData?.deliveryProvider ?? activeProvider ?? "uber";
 
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">
@@ -165,7 +211,6 @@ export default function OrderSuccess() {
             <p className="text-white/80 text-sm" style={{ fontFamily: "'Lato', sans-serif" }}>
               Thank you for ordering from The Original Napoli Pizzeria
             </p>
-            {/* Payment method badge */}
             {orderData && (
               <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-xs font-semibold"
                 style={{ background: "oklch(0.25 0.08 145)", color: "oklch(0.85 0.08 145)" }}>
@@ -229,52 +274,58 @@ export default function OrderSuccess() {
               </div>
             )}
 
-            {/* Uber Direct: dispatching spinner (Stripe delivery orders) */}
-            {isStripeDelivery && isDispatchingUber && (
+            {/* Delivery dispatching spinner */}
+            {isStripeDelivery && isDispatching && (
               <div
                 className="rounded-lg p-4 border flex items-center gap-3"
-                style={{ background: "oklch(0.96 0.015 220)", borderColor: "oklch(0.75 0.12 220)" }}
+                style={{
+                  background: resolvedProvider === "doordash" ? "oklch(0.97 0.04 25)" : "oklch(0.96 0.015 220)",
+                  borderColor: resolvedProvider === "doordash" ? "oklch(0.75 0.15 25)" : "oklch(0.75 0.12 220)",
+                }}
               >
-                <Loader2 size={20} className="animate-spin shrink-0" style={{ color: "oklch(0.40 0.15 220)" }} />
+                <Loader2 size={20} className="animate-spin shrink-0" style={{ color: resolvedProvider === "doordash" ? "oklch(0.52 0.20 25)" : "oklch(0.40 0.15 220)" }} />
                 <div>
-                  <p className="text-sm font-bold" style={{ color: "oklch(0.28 0.12 220)", fontFamily: "'Oswald', sans-serif" }}>
+                  <p className="text-sm font-bold" style={{ color: resolvedProvider === "doordash" ? "oklch(0.35 0.18 25)" : "oklch(0.28 0.12 220)", fontFamily: "'Oswald', sans-serif" }}>
                     Dispatching Your Courier…
                   </p>
-                  <p className="text-xs" style={{ color: "oklch(0.45 0.10 220)" }}>
-                    Connecting with Uber Direct — this takes a few seconds
+                  <p className="text-xs" style={{ color: resolvedProvider === "doordash" ? "oklch(0.50 0.12 25)" : "oklch(0.45 0.10 220)" }}>
+                    Connecting with {resolvedProvider === "doordash" ? "DoorDash Drive" : "Uber Direct"} — this takes a few seconds
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Uber Direct Tracking Section */}
+            {/* Delivery Tracking Section */}
             {hasDelivery && orderData?.trackingUrl && (
               <div
                 className="rounded-lg p-4 border"
-                style={{ background: "oklch(0.96 0.015 220)", borderColor: "oklch(0.75 0.12 220)" }}
+                style={{
+                  background: resolvedProvider === "doordash" ? "oklch(0.97 0.04 25)" : "oklch(0.96 0.015 220)",
+                  borderColor: resolvedProvider === "doordash" ? "oklch(0.75 0.15 25)" : "oklch(0.75 0.12 220)",
+                }}
               >
                 <div className="flex items-center gap-2 mb-3">
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                    style={{ background: "oklch(0.40 0.15 220)" }}
+                    style={{ background: resolvedProvider === "doordash" ? "oklch(0.52 0.20 25)" : "oklch(0.40 0.15 220)" }}
                   >
                     <Truck size={16} className="text-white" />
                   </div>
                   <div>
                     <p
                       className="text-sm font-bold"
-                      style={{ color: "oklch(0.28 0.12 220)", fontFamily: "'Oswald', sans-serif" }}
+                      style={{ color: resolvedProvider === "doordash" ? "oklch(0.35 0.18 25)" : "oklch(0.28 0.12 220)", fontFamily: "'Oswald', sans-serif" }}
                     >
                       Your Order is On Its Way!
                     </p>
-                    <p className="text-xs" style={{ color: "oklch(0.45 0.10 220)" }}>
-                      Powered by Uber Direct · Real-time tracking available
+                    <p className="text-xs" style={{ color: resolvedProvider === "doordash" ? "oklch(0.50 0.12 25)" : "oklch(0.45 0.10 220)" }}>
+                      {resolvedProvider === "doordash" ? "Powered by DoorDash Drive" : "Powered by Uber Direct"} · Real-time tracking available
                     </p>
                   </div>
                 </div>
 
                 {orderData.deliveryId && (
-                  <p className="text-xs mb-3" style={{ color: "oklch(0.50 0.08 220)" }}>
+                  <p className="text-xs mb-3" style={{ color: resolvedProvider === "doordash" ? "oklch(0.50 0.12 25)" : "oklch(0.50 0.08 220)" }}>
                     Delivery ID: <span className="font-mono font-semibold">{orderData.deliveryId}</span>
                   </p>
                 )}
@@ -285,14 +336,14 @@ export default function OrderSuccess() {
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 w-full py-3 rounded font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98]"
                   style={{
-                    background: "oklch(0.40 0.15 220)",
+                    background: resolvedProvider === "doordash" ? "oklch(0.52 0.20 25)" : "oklch(0.40 0.15 220)",
                     color: "white",
                     fontFamily: "'Oswald', sans-serif",
                     letterSpacing: "0.05em",
                   }}
                 >
                   <Truck size={15} />
-                  Track Your Delivery (Uber Direct)
+                  Track Your Delivery ({resolvedProvider === "doordash" ? "DoorDash" : "Uber Direct"})
                   <ExternalLink size={13} />
                 </a>
               </div>

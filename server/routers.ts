@@ -6,6 +6,8 @@ import { stripeRouter } from "./stripe";
 import { authorizeNetRouter } from "./authorizenet";
 import { uberDirectRouter } from "./uberdirect";
 import { cloverRouter } from "./clover";
+import { couponRouter } from "./coupon";
+import { doordashRouter } from "./doordash";
 
 export const appRouter = router({
   system: systemRouter,
@@ -23,6 +25,8 @@ export const appRouter = router({
   authorizenet: authorizeNetRouter,
   uber: uberDirectRouter,
   clover: cloverRouter,
+  coupon: couponRouter,
+  doordash: doordashRouter,
 });
 
 export type AppRouter = typeof appRouter;

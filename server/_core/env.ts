@@ -34,6 +34,15 @@ export const CLOVER_ENV = {
     : "https://api.clover.com",
 };
 
+// DoorDash Drive
+export const DOORDASH_ENV = {
+  developerId: process.env.DOORDASH_DEVELOPER_ID ?? "",
+  keyId: process.env.DOORDASH_KEY_ID ?? "",
+  signingSecret: process.env.DOORDASH_SIGNING_SECRET ?? "",
+  isSandbox: process.env.DOORDASH_ENV !== "production", // default to sandbox
+  baseUrl: "https://openapi.doordash.com",
+};
+
 // Stripe
 export const STRIPE_ENV = {
   secretKey: process.env.STRIPE_SECRET_KEY ?? "",
