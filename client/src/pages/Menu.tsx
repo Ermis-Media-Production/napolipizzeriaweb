@@ -117,6 +117,56 @@ function MultiSizeItemRow({ name, desc, prices, highlight, category }: {
   );
 }
 
+function LunchSpecialRow({ item, isLeft }: { item: { num: number; name: string; price: string }; isLeft: boolean }) {
+  const { addItem, openCart } = useCart();
+  const numericPrice = parsePrice(item.price);
+
+  const handleAdd = () => {
+    if (!numericPrice) return;
+    addItem({
+      id: `lunch-${item.num}-${Date.now()}`,
+      name: `#${item.num} ${item.name}`,
+      price: numericPrice,
+      quantity: 1,
+      category: "lunch",
+    });
+    toast.success(`#${item.num} ${item.name} added to cart`, {
+      action: { label: "View Cart", onClick: openCart },
+    });
+  };
+
+  return (
+    <div
+      className="napoli-menu-item flex items-center gap-3 px-5 py-3 border-b"
+      style={{
+        borderColor: "oklch(0.93 0.012 80)",
+        borderRight: isLeft ? "1px solid oklch(0.93 0.012 80)" : "none",
+      }}
+    >
+      <span
+        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 napoli-price"
+        style={{ background: "var(--napoli-red)", color: "white" }}
+      >
+        {item.num}
+      </span>
+      <div className="flex-1 min-w-0">
+        <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
+      </div>
+      <span className="napoli-price text-sm shrink-0" style={{ color: "var(--napoli-red)" }}>{item.price}</span>
+      {numericPrice && (
+        <button
+          onClick={handleAdd}
+          className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90 hover:opacity-90 shrink-0"
+          style={{ background: "var(--napoli-red)", color: "white" }}
+          title={`Add #${item.num} ${item.name} to cart`}
+        >
+          <Plus size={14} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ItemRow({ name, desc, price, highlight, category }: { name: string; desc?: string; price?: string; highlight?: boolean; category?: string }) {
   const { addItem, openCart } = useCart();
   const numericPrice = parsePrice(price);
@@ -261,25 +311,7 @@ export default function Menu() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2">
             {LUNCH_SPECIALS.items.map((item, i) => (
-              <div
-                key={item.num}
-                className="napoli-menu-item flex items-start gap-3 px-5 py-3 border-b border-r"
-                style={{
-                  borderColor: "oklch(0.93 0.012 80)",
-                  borderRight: i % 2 === 0 ? "1px solid oklch(0.93 0.012 80)" : "none",
-                }}
-              >
-                <span
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 napoli-price"
-                  style={{ background: "var(--napoli-red)", color: "white" }}
-                >
-                  {item.num}
-                </span>
-                <div className="flex-1">
-                  <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
-                </div>
-                <span className="napoli-price text-sm shrink-0" style={{ color: "var(--napoli-red)" }}>{item.price}</span>
-              </div>
+              <LunchSpecialRow key={item.num} item={item} isLeft={i % 2 === 0} />
             ))}
           </div>
         </MenuCard>
