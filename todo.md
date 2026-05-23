@@ -37,3 +37,13 @@
 - [x] Export _resetTokenCache helper for test isolation
 - [x] OrderSuccess page: show Uber Direct tracking card with real-time tracking URL when delivery_id & tracking_url present in URL params
 - [x] Vitest tests for Uber Direct router (11 tests passing)
+
+## Clover POS Integration
+- [x] Store Clover API token and Merchant ID as project secrets
+- [x] Create cloverSync.ts shared helper (pushOrderToClover)
+- [x] Create cloverRouter with createOrder, getOrder, and listOrders procedures
+- [x] Register cloverRouter in routers.ts
+- [x] Wire Clover sync into Authorize.net chargeCard (fire-and-forget after payment)
+- [x] Wire Clover sync into Stripe webhook checkout.session.completed
+- [x] Add Clover env config (CLOVER_ENV) to env.ts
+- [x] Vitest tests for Clover router (15 tests passing)

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, processedWebhookEvents } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -87,6 +87,28 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Check if a webhook event has already been processed (idempotency guard).
+ * Returns true if the event was newly recorded (first time seen),
+ * false if it was already processed (duplicate/replay).
+ */
+export async function markWebhookEventProcessed(eventId: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) {
+    // If DB is unavailable, allow processing (fail-open) to avoid blocking payments
+    console.warn("[Database] Cannot check webhook idempotency: database not available");
+    return true;
+  }
+
+  try {
+    await db.insert(processedWebhookEvents).values({ eventId });
+    return true; // newly inserted → first time seen
+  } catch {
+    // Duplicate key error → event already processed
+    return false;
+  }
 }
 
 // TODO: add feature queries here as your schema grows.

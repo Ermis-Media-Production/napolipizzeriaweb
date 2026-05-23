@@ -25,4 +25,13 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * Tracks processed Stripe webhook event IDs to prevent duplicate Clover orders
+ * when Stripe retries or replays events.
+ */
+export const processedWebhookEvents = mysqlTable("processedWebhookEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  eventId: varchar("eventId", { length: 128 }).notNull().unique(),
+  processedAt: timestamp("processedAt").defaultNow().notNull(),
+});
+export type ProcessedWebhookEvent = typeof processedWebhookEvents.$inferSelect;

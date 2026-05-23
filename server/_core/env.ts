@@ -24,6 +24,16 @@ export const UBER_ENV = {
   isSandbox: process.env.UBER_IS_SANDBOX !== "false", // default to sandbox
 };
 
+// Clover POS
+export const CLOVER_ENV = {
+  apiToken: process.env.CLOVER_API_TOKEN ?? "",
+  merchantId: process.env.CLOVER_MERCHANT_ID ?? "",
+  // Production: https://api.clover.com  |  Sandbox: https://apisandbox.dev.clover.com
+  baseUrl: process.env.CLOVER_SANDBOX === "true"
+    ? "https://apisandbox.dev.clover.com"
+    : "https://api.clover.com",
+};
+
 // Stripe
 export const STRIPE_ENV = {
   secretKey: process.env.STRIPE_SECRET_KEY ?? "",

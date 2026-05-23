@@ -2,6 +2,8 @@ import Stripe from "stripe";
 import { z } from "zod";
 import { STRIPE_ENV } from "./_core/env";
 import { publicProcedure, router } from "./_core/trpc";
+import { pushOrderToClover } from "./cloverSync";
+import { markWebhookEventProcessed } from "./db";
 import type { Request, Response } from "express";
 
 // Initialize Stripe lazily so the server can start without keys in dev
@@ -64,6 +66,10 @@ export const stripeRouter = router({
           customerName: input.customerName ?? "",
           customerPhone: input.customerPhone ?? "",
           restaurantName: "The Original Napoli Pizzeria",
+          // Serialize cart items so the webhook can push them to Clover
+          cartItems: JSON.stringify(
+            input.items.map((i) => ({ name: i.name, price: i.price, quantity: i.quantity }))
+          ),
         },
         custom_text: {
           submit: {
@@ -126,6 +132,46 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       console.log(
         `[Stripe] Payment completed for session ${session.id}. Order type: ${session.metadata?.orderType}`
       );
+
+      // Idempotency guard: skip if this event was already processed (Stripe retry/replay)
+      const isNew = await markWebhookEventProcessed(event.id);
+      if (!isNew) {
+        console.log(`[Stripe] Webhook event ${event.id} already processed — skipping Clover sync`);
+        break;
+      }
+
+      // Push order to Clover POS (fire-and-forget)
+      try {
+        const rawItems = session.metadata?.cartItems;
+        const parsedItems: Array<{ name: string; price: number; quantity: number }> = rawItems
+          ? JSON.parse(rawItems)
+          : [];
+
+        if (parsedItems.length > 0 && session.amount_total) {
+          const orderType = (session.metadata?.orderType ?? "pickup") as "delivery" | "pickup" | "dine-in";
+          const customerName =
+            session.customer_details?.name ??
+            session.metadata?.customerName ??
+            undefined;
+          const customerPhone =
+            session.customer_details?.phone ??
+            session.metadata?.customerPhone ??
+            undefined;
+
+          pushOrderToClover({
+            items: parsedItems,
+            orderType,
+            customerName: customerName || undefined,
+            customerPhone: customerPhone || undefined,
+            externalId: session.id,
+            totalCents: session.amount_total,
+          }).catch((err) =>
+            console.error("[Clover] Failed to push Stripe order:", err)
+          );
+        }
+      } catch (err) {
+        console.error("[Clover] Error parsing Stripe session metadata:", err);
+      }
       break;
     }
     case "payment_intent.payment_failed": {

@@ -10,6 +10,7 @@ import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { AUTHNET_ENV } from "./_core/env";
 import { TRPCError } from "@trpc/server";
+import { pushOrderToClover } from "./cloverSync";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -225,6 +226,18 @@ export const authorizeNetRouter = router({
           orderDescription,
           orderType: input.orderType,
         });
+
+        // Fire-and-forget: push order to Clover POS (non-blocking)
+        pushOrderToClover({
+          items: input.items,
+          orderType: input.orderType,
+          customerName: input.customerName,
+          customerPhone: input.customerPhone,
+          externalId: result.transactionId,
+          totalCents: Math.round(amount * 100),
+        }).catch((err) =>
+          console.error("[Clover] Failed to push Authorize.net order:", err)
+        );
 
         return {
           success: true,
