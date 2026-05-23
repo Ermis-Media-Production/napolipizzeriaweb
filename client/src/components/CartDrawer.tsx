@@ -1,42 +1,175 @@
 import { useCart } from "@/contexts/CartContext";
-import { X, Plus, Minus, Trash2, ShoppingCart, ChevronRight, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { X, Plus, Minus, Trash2, ShoppingCart, ChevronRight, Loader2, CreditCard, Lock } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
+
+type PaymentMethod = "stripe" | "authorizenet";
+
+declare global {
+  interface Window {
+    Accept?: {
+      dispatchData: (
+        secureData: {
+          authData: { clientKey: string; apiLoginID: string };
+          cardData: { cardNumber: string; month: string; year: string; cardCode: string };
+        },
+        callback: (response: { opaqueData?: { dataDescriptor: string; dataValue: string }; messages?: { resultCode: string; message: Array<{ text: string }> } }) => void
+      ) => void;
+    };
+  }
+}
 
 export default function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, clearCart, totalItems, totalPrice } = useCart();
+  const [, navigate] = useLocation();
+
   const [orderType, setOrderType] = useState<"delivery" | "pickup" | "dine-in">("pickup");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("stripe");
 
+  // Authorize.net card fields
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvc, setCardCvc] = useState("");
+  const [isProcessingAuthNet, setIsProcessingAuthNet] = useState(false);
+
+  // Load Accept.js script when Authorize.net is selected
+  const acceptJsLoaded = useRef(false);
+  const { data: authnetConfig } = trpc.authorizenet.getClientKey.useQuery();
+
+  useEffect(() => {
+    if (paymentMethod !== "authorizenet" || acceptJsLoaded.current) return;
+    const isSandbox = authnetConfig?.isSandbox ?? true;
+    const src = isSandbox
+      ? "https://jstest.authorize.net/v1/Accept.js"
+      : "https://js.authorize.net/v1/Accept.js";
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (!existing) {
+      const script = document.createElement("script");
+      script.src = src;
+      script.charset = "utf-8";
+      document.body.appendChild(script);
+    }
+    acceptJsLoaded.current = true;
+  }, [paymentMethod, authnetConfig]);
+
+  // Stripe checkout
   const createCheckout = trpc.stripe.createCheckoutSession.useMutation({
     onSuccess: (data) => {
-      if (data.url) {
-        window.location.href = data.url;
-      }
+      if (data.url) window.location.href = data.url;
+    },
+    onError: (err) => toast.error("Could not start checkout: " + err.message),
+  });
+
+  // Authorize.net charge
+  const chargeCard = trpc.authorizenet.chargeCard.useMutation({
+    onSuccess: (data) => {
+      clearCart();
+      closeCart();
+      navigate(`/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}`);
     },
     onError: (err) => {
-      toast.error("Could not start checkout: " + err.message);
+      toast.error("Payment failed: " + err.message);
+      setIsProcessingAuthNet(false);
     },
   });
 
-  const handleCheckout = () => {
+  const handleStripeCheckout = () => {
     if (items.length === 0) return;
     createCheckout.mutate({
-      items: items.map((item) => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        category: item.category,
-      })),
+      items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category })),
       successUrl: `${window.location.origin}/order-success?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${window.location.origin}/menu`,
       orderType,
       customerName: customerName || undefined,
       customerPhone: customerPhone || undefined,
     });
+  };
+
+  const handleAuthorizeNetCheckout = () => {
+    if (!authnetConfig?.configured) {
+      toast.error("Authorize.net is not configured. Please add API credentials in Settings.");
+      return;
+    }
+    if (!customerName.trim()) {
+      toast.error("Please enter your name.");
+      return;
+    }
+    if (!cardNumber || !cardExpiry || !cardCvc) {
+      toast.error("Please fill in all card fields.");
+      return;
+    }
+
+    const [expMonth, expYear] = cardExpiry.split("/").map((s) => s.trim());
+    if (!expMonth || !expYear) {
+      toast.error("Please enter expiry as MM/YY.");
+      return;
+    }
+
+    if (!window.Accept) {
+      toast.error("Payment library not loaded. Please try again.");
+      return;
+    }
+
+    setIsProcessingAuthNet(true);
+
+    const secureData = {
+      authData: {
+        clientKey: authnetConfig.apiLoginId, // Accept.js uses apiLoginId as client key
+        apiLoginID: authnetConfig.apiLoginId,
+      },
+      cardData: {
+        cardNumber: cardNumber.replace(/\s/g, ""),
+        month: expMonth.padStart(2, "0"),
+        year: expYear.length === 2 ? `20${expYear}` : expYear,
+        cardCode: cardCvc,
+      },
+    };
+
+    window.Accept.dispatchData(secureData, (response) => {
+      if (response.messages?.resultCode === "Error") {
+        const errText = response.messages.message?.[0]?.text ?? "Tokenization failed";
+        toast.error(errText);
+        setIsProcessingAuthNet(false);
+        return;
+      }
+
+      if (!response.opaqueData) {
+        toast.error("Could not tokenize card. Please try again.");
+        setIsProcessingAuthNet(false);
+        return;
+      }
+
+      chargeCard.mutate({
+        opaqueDataDescriptor: response.opaqueData.dataDescriptor,
+        opaqueDataValue: response.opaqueData.dataValue,
+        items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category })),
+        orderType,
+        customerName,
+        customerPhone: customerPhone || undefined,
+      });
+    });
+  };
+
+  const handleCheckout = () => {
+    if (paymentMethod === "stripe") handleStripeCheckout();
+    else handleAuthorizeNetCheckout();
+  };
+
+  const isLoading = createCheckout.isPending || isProcessingAuthNet || chargeCard.isPending;
+
+  // Format card number with spaces
+  const formatCardNumber = (val: string) =>
+    val.replace(/\D/g, "").replace(/(.{4})/g, "$1 ").trim().slice(0, 19);
+
+  // Format expiry MM/YY
+  const formatExpiry = (val: string) => {
+    const digits = val.replace(/\D/g, "").slice(0, 4);
+    if (digits.length >= 3) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    return digits;
   };
 
   return (
@@ -52,9 +185,9 @@ export default function CartDrawer() {
 
       {/* Drawer */}
       <div
-        className="fixed top-0 right-0 h-full z-50 flex flex-col shadow-2xl"
+        className="fixed top-0 right-0 h-full z-50 flex flex-col shadow-2xl overflow-hidden"
         style={{
-          width: "min(420px, 100vw)",
+          width: "min(440px, 100vw)",
           background: "var(--napoli-cream, #faf8f3)",
           transform: isOpen ? "translateX(0)" : "translateX(100%)",
           transition: "transform 280ms cubic-bezier(0.23, 1, 0.32, 1)",
@@ -62,7 +195,7 @@ export default function CartDrawer() {
       >
         {/* Header */}
         <div
-          className="flex items-center justify-between px-5 py-4 border-b"
+          className="flex items-center justify-between px-5 py-4 border-b shrink-0"
           style={{ background: "var(--napoli-red, #c0392b)", borderColor: "oklch(0.35 0.18 27)" }}
         >
           <div className="flex items-center gap-2">
@@ -79,11 +212,7 @@ export default function CartDrawer() {
               </span>
             )}
           </div>
-          <button
-            onClick={closeCart}
-            className="text-white/80 hover:text-white transition-colors p-1 rounded"
-            aria-label="Close cart"
-          >
+          <button onClick={closeCart} className="text-white/80 hover:text-white transition-colors p-1 rounded">
             <X size={22} />
           </button>
         </div>
@@ -158,8 +287,6 @@ export default function CartDrawer() {
                   </div>
                 </div>
               ))}
-
-              {/* Clear cart */}
               <button
                 onClick={clearCart}
                 className="text-xs w-full text-center py-1.5 transition-colors"
@@ -174,7 +301,7 @@ export default function CartDrawer() {
         {/* Checkout panel */}
         {items.length > 0 && (
           <div
-            className="border-t px-4 py-4 space-y-3"
+            className="border-t px-4 py-4 space-y-3 shrink-0"
             style={{ borderColor: "oklch(0.88 0.015 80)", background: "white" }}
           >
             {/* Order type */}
@@ -205,7 +332,7 @@ export default function CartDrawer() {
             <div className="grid grid-cols-2 gap-2">
               <input
                 type="text"
-                placeholder="Your name"
+                placeholder="Your name *"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
@@ -221,6 +348,90 @@ export default function CartDrawer() {
               />
             </div>
 
+            {/* Payment method selector */}
+            <div>
+              <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
+                PAYMENT METHOD
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setPaymentMethod("stripe")}
+                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded border text-xs font-semibold transition-all"
+                  style={{
+                    background: paymentMethod === "stripe" ? "oklch(0.46 0.18 264)" : "transparent",
+                    color: paymentMethod === "stripe" ? "white" : "oklch(0.42 0.03 30)",
+                    borderColor: paymentMethod === "stripe" ? "oklch(0.46 0.18 264)" : "oklch(0.82 0.015 80)",
+                    fontFamily: "'Oswald', sans-serif",
+                  }}
+                >
+                  <CreditCard size={14} />
+                  Stripe
+                </button>
+                <button
+                  onClick={() => setPaymentMethod("authorizenet")}
+                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded border text-xs font-semibold transition-all"
+                  style={{
+                    background: paymentMethod === "authorizenet" ? "oklch(0.38 0.12 145)" : "transparent",
+                    color: paymentMethod === "authorizenet" ? "white" : "oklch(0.42 0.03 30)",
+                    borderColor: paymentMethod === "authorizenet" ? "oklch(0.38 0.12 145)" : "oklch(0.82 0.015 80)",
+                    fontFamily: "'Oswald', sans-serif",
+                  }}
+                >
+                  <Lock size={14} />
+                  Authorize.net
+                </button>
+              </div>
+            </div>
+
+            {/* Authorize.net card fields */}
+            {paymentMethod === "authorizenet" && (
+              <div className="space-y-2 p-3 rounded-lg border" style={{ borderColor: "oklch(0.82 0.015 80)", background: "oklch(0.98 0.005 80)" }}>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Lock size={12} style={{ color: "oklch(0.38 0.12 145)" }} />
+                  <span className="text-xs font-semibold" style={{ color: "oklch(0.38 0.12 145)", fontFamily: "'Oswald', sans-serif" }}>
+                    Secure Card Entry (Authorize.net)
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Card number"
+                  value={cardNumber}
+                  onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                  maxLength={19}
+                  className="w-full text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                  style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+                  autoComplete="cc-number"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder="MM/YY"
+                    value={cardExpiry}
+                    onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
+                    maxLength={5}
+                    className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+                    autoComplete="cc-exp"
+                  />
+                  <input
+                    type="text"
+                    placeholder="CVV"
+                    value={cardCvc}
+                    onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    maxLength={4}
+                    className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+                    autoComplete="cc-csc"
+                  />
+                </div>
+                {!authnetConfig?.configured && (
+                  <p className="text-xs text-amber-700 bg-amber-50 px-2 py-1.5 rounded border border-amber-200">
+                    Authorize.net credentials not configured. Add API Login ID and Transaction Key in Secrets.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Total */}
             <div className="flex items-center justify-between py-2 border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
               <span className="text-sm font-semibold" style={{ color: "oklch(0.35 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
@@ -234,30 +445,37 @@ export default function CartDrawer() {
             {/* Checkout button */}
             <button
               onClick={handleCheckout}
-              disabled={createCheckout.isPending}
+              disabled={isLoading}
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded font-bold text-sm transition-all active:scale-[0.98]"
               style={{
-                background: createCheckout.isPending ? "oklch(0.55 0.03 30)" : "var(--napoli-red, #c0392b)",
+                background: isLoading
+                  ? "oklch(0.55 0.03 30)"
+                  : paymentMethod === "authorizenet"
+                  ? "oklch(0.38 0.12 145)"
+                  : "var(--napoli-red, #c0392b)",
                 color: "white",
                 fontFamily: "'Oswald', sans-serif",
                 letterSpacing: "0.05em",
               }}
             >
-              {createCheckout.isPending ? (
+              {isLoading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  Redirecting to Payment...
+                  {paymentMethod === "authorizenet" ? "Processing Payment..." : "Redirecting to Payment..."}
                 </>
               ) : (
                 <>
-                  Pay with Card
+                  {paymentMethod === "authorizenet" ? <Lock size={15} /> : <CreditCard size={15} />}
+                  {paymentMethod === "authorizenet" ? "Pay Securely" : "Pay with Stripe"}
                   <ChevronRight size={16} />
                 </>
               )}
             </button>
 
             <p className="text-center text-xs" style={{ color: "oklch(0.60 0.03 30)" }}>
-              Secured by Stripe · Taxes not included
+              {paymentMethod === "authorizenet"
+                ? "Secured by Authorize.net · PCI Compliant · Taxes not included"
+                : "Secured by Stripe · Taxes not included"}
             </p>
           </div>
         )}

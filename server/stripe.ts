@@ -9,7 +9,7 @@ function getStripe() {
   if (!STRIPE_ENV.secretKey) {
     throw new Error("STRIPE_SECRET_KEY is not configured");
   }
-  return new Stripe(STRIPE_ENV.secretKey, { apiVersion: "2025-04-30.basil" });
+  return new Stripe(STRIPE_ENV.secretKey, { apiVersion: "2026-04-22.dahlia" });
 }
 
 // ─── Cart item schema ──────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ export const stripeRouter = router({
     .mutation(async ({ input }) => {
       const stripe = getStripe();
 
-      const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = input.items.map((item) => ({
+      const lineItems = input.items.map((item: { id: string; name: string; price: number; quantity: number; category?: string }) => ({
         price_data: {
           currency: "usd",
           product_data: {

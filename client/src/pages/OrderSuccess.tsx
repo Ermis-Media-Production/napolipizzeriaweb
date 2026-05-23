@@ -1,30 +1,64 @@
 import { useEffect, useState } from "react";
-import { useLocation, Link } from "wouter";
-import { CheckCircle, Phone, MapPin, Clock, ArrowRight, Loader2 } from "lucide-react";
+import { Link } from "wouter";
+import { CheckCircle, Phone, MapPin, Clock, ArrowRight, Loader2, Shield } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
 import { useCart } from "@/contexts/CartContext";
 import { RESTAURANT_INFO } from "@/lib/napoliData";
 
+type OrderInfo = {
+  method: "stripe" | "authorizenet";
+  transactionId?: string;
+  customerName?: string;
+  amountTotal?: number;
+  orderType?: string;
+};
+
 export default function OrderSuccess() {
-  const [location] = useLocation();
   const { clearCart } = useCart();
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [authNetOrder, setAuthNetOrder] = useState<OrderInfo | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sid = params.get("session_id");
+    const txn = params.get("txn");
+    const method = params.get("method");
+
     if (sid) {
       setSessionId(sid);
       clearCart();
+    } else if (txn && method === "authorizenet") {
+      clearCart();
+      setAuthNetOrder({
+        method: "authorizenet",
+        transactionId: txn,
+        customerName: params.get("name") ?? undefined,
+        amountTotal: params.get("total") ? parseFloat(params.get("total")!) : undefined,
+        orderType: params.get("type") ?? undefined,
+      });
     }
-  }, [clearCart]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const { data: session, isLoading } = trpc.stripe.getSession.useQuery(
+  const { data: stripeSession, isLoading } = trpc.stripe.getSession.useQuery(
     { sessionId: sessionId! },
     { enabled: !!sessionId }
   );
+
+  // Resolve display data from either payment method
+  const orderData = stripeSession
+    ? {
+        method: "stripe" as const,
+        transactionId: sessionId ?? "N/A",
+        customerName: stripeSession.customerName,
+        amountTotal: stripeSession.amountTotal,
+        orderType: stripeSession.orderType,
+      }
+    : authNetOrder;
+
+  const isAuthNet = orderData?.method === "authorizenet";
 
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">
@@ -52,6 +86,14 @@ export default function OrderSuccess() {
             <p className="text-white/80 text-sm" style={{ fontFamily: "'Lato', sans-serif" }}>
               Thank you for ordering from The Original Napoli Pizzeria
             </p>
+            {/* Payment method badge */}
+            {orderData && (
+              <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-xs font-semibold"
+                style={{ background: "oklch(0.25 0.08 145)", color: "oklch(0.85 0.08 145)" }}>
+                <Shield size={11} />
+                {isAuthNet ? "Paid via Authorize.net" : "Paid via Stripe"}
+              </div>
+            )}
           </div>
 
           {/* Order details */}
@@ -62,42 +104,48 @@ export default function OrderSuccess() {
               </div>
             )}
 
-            {session && (
+            {orderData && (
               <div
                 className="rounded-lg p-4 border"
                 style={{ background: "oklch(0.97 0.012 80)", borderColor: "oklch(0.88 0.015 80)" }}
               >
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  {session.customerName && (
+                  {orderData.customerName && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
                         Name
                       </p>
-                      <p style={{ color: "oklch(0.22 0.04 30)" }}>{session.customerName}</p>
+                      <p style={{ color: "oklch(0.22 0.04 30)" }}>{orderData.customerName}</p>
                     </div>
                   )}
-                  {session.customerPhone && (
+                  {orderData.transactionId && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
-                        Phone
+                        {isAuthNet ? "Transaction ID" : "Payment ID"}
                       </p>
-                      <p style={{ color: "oklch(0.22 0.04 30)" }}>{session.customerPhone}</p>
+                      <p className="text-xs truncate" style={{ color: "oklch(0.42 0.03 30)" }}>
+                        {orderData.transactionId}
+                      </p>
                     </div>
                   )}
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
-                      Order Type
-                    </p>
-                    <p className="capitalize" style={{ color: "oklch(0.22 0.04 30)" }}>{session.orderType}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
-                      Total Paid
-                    </p>
-                    <p className="font-bold" style={{ color: "var(--napoli-red)" }}>
-                      ${session.amountTotal.toFixed(2)}
-                    </p>
-                  </div>
+                  {orderData.orderType && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
+                        Order Type
+                      </p>
+                      <p className="capitalize" style={{ color: "oklch(0.22 0.04 30)" }}>{orderData.orderType}</p>
+                    </div>
+                  )}
+                  {orderData.amountTotal != null && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
+                        Total Paid
+                      </p>
+                      <p className="font-bold" style={{ color: "var(--napoli-red)" }}>
+                        ${orderData.amountTotal.toFixed(2)}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

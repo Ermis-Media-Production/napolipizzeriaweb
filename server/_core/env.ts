@@ -9,6 +9,13 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
 };
 
+// Authorize.net
+export const AUTHNET_ENV = {
+  apiLoginId: process.env.AUTHORIZENET_API_LOGIN_ID ?? "",
+  transactionKey: process.env.AUTHORIZENET_TRANSACTION_KEY ?? "",
+  isSandbox: process.env.AUTHORIZENET_SANDBOX !== "false", // default to sandbox
+};
+
 // Stripe
 export const STRIPE_ENV = {
   secretKey: process.env.STRIPE_SECRET_KEY ?? "",
