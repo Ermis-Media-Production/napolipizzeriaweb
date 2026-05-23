@@ -45,6 +45,78 @@ function parsePrice(priceStr?: string): number | null {
   return match ? parseFloat(match[1]) : null;
 }
 
+/**
+ * Renders an item that has multiple size options (S/M/L etc.).
+ * Each size becomes a button that adds that specific size+price to the cart.
+ */
+function MultiSizeItemRow({ name, desc, prices, highlight, category }: {
+  name: string;
+  desc?: string;
+  prices: { size: string; price: string }[];
+  highlight?: boolean;
+  category?: string;
+}) {
+  const { addItem, openCart } = useCart();
+
+  const handleAdd = (size: string, priceStr: string) => {
+    const numericPrice = parsePrice(priceStr);
+    if (!numericPrice) return;
+    const itemName = `${name} (${size})`;
+    addItem({
+      id: `${name}-${size}-${Date.now()}`,
+      name: itemName,
+      price: numericPrice,
+      quantity: 1,
+      category: category ?? "food",
+      description: desc,
+    });
+    toast.success(`${itemName} added to cart`, {
+      action: { label: "View Cart", onClick: openCart },
+    });
+  };
+
+  return (
+    <div
+      className="napoli-menu-item flex items-start justify-between gap-4 px-5 py-3 border-b last:border-b-0"
+      style={{
+        borderColor: "oklch(0.93 0.012 80)",
+        background: highlight ? "oklch(0.99 0.02 65 / 0.4)" : "transparent",
+      }}
+    >
+      <div className="flex-1 min-w-0">
+        <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{name}</span>
+        {desc && <p className="text-xs napoli-body mt-0.5 leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>{desc}</p>}
+      </div>
+      <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+        {prices.map((p) => {
+          const numeric = parsePrice(p.price);
+          return (
+            <button
+              key={p.size}
+              onClick={() => handleAdd(p.size, p.price)}
+              disabled={!numeric}
+              className="flex flex-col items-center px-2.5 py-1.5 rounded border transition-all active:scale-95 hover:opacity-90"
+              style={{
+                borderColor: "var(--napoli-red)",
+                background: "white",
+                minWidth: "52px",
+                cursor: numeric ? "pointer" : "default",
+              }}
+              title={numeric ? `Add ${name} (${p.size}) to cart` : undefined}
+            >
+              <span className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{p.size}</span>
+              <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{p.price}</span>
+              {numeric && (
+                <Plus size={10} style={{ color: "var(--napoli-red)", marginTop: "2px" }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ItemRow({ name, desc, price, highlight, category }: { name: string; desc?: string; price?: string; highlight?: boolean; category?: string }) {
   const { addItem, openCart } = useCart();
   const numericPrice = parsePrice(price);
@@ -160,25 +232,15 @@ export default function Menu() {
           {APPETIZERS.map((item) => (
             <div key={item.name}>
               {(item as any).prices ? (
-                <div
-                  className="napoli-menu-item flex items-start justify-between gap-4 px-5 py-3 border-b last:border-b-0"
-                  style={{ borderColor: "oklch(0.93 0.012 80)" }}
-                >
-                  <div className="flex-1">
-                    <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
-                    {item.desc && <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{item.desc}</p>}
-                  </div>
-                  <div className="flex gap-3 shrink-0">
-                    {(item as any).prices.map((p: any) => (
-                      <div key={p.size} className="text-center">
-                        <div className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{p.size}</div>
-                        <div className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{p.price}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <MultiSizeItemRow
+                  name={item.name}
+                  desc={item.desc}
+                  prices={(item as any).prices}
+                  highlight={(item as any).highlight}
+                  category="appetizers"
+                />
               ) : (
-                <ItemRow name={item.name} desc={item.desc} price={(item as any).price} highlight={(item as any).highlight} />
+                <ItemRow name={item.name} desc={item.desc} price={(item as any).price} highlight={(item as any).highlight} category="appetizers" />
               )}
             </div>
           ))}
@@ -186,17 +248,16 @@ export default function Menu() {
           <div className="px-5 py-3 border-t" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
             <p className="napoli-label text-xs mb-2" style={{ color: "var(--napoli-red)" }}>Sides</p>
             {SIDES.map((item) => (
-              <div key={item.name} className="flex items-start justify-between gap-4 py-2 border-b last:border-b-0" style={{ borderColor: "oklch(0.93 0.012 80)" }}>
-                <span className="text-sm napoli-body" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
-                <div className="flex gap-3 shrink-0">
-                  {(item as any).prices ? (item as any).prices.map((p: any) => (
-                    <div key={p.size} className="text-center">
-                      <div className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{p.size}</div>
-                      <div className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{p.price}</div>
-                    </div>
-                  )) : <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{(item as any).price}</span>}
-                </div>
-              </div>
+              (item as any).prices ? (
+                <MultiSizeItemRow
+                  key={item.name}
+                  name={item.name}
+                  prices={(item as any).prices}
+                  category="sides"
+                />
+              ) : (
+                <ItemRow key={item.name} name={item.name} price={(item as any).price} category="sides" />
+              )
             ))}
           </div>
           {/* Soups */}
@@ -527,22 +588,15 @@ export default function Menu() {
           {SALADS.map((item) => (
             <div key={item.name}>
               {(item as any).prices ? (
-                <div className="napoli-menu-item flex items-start justify-between gap-4 px-5 py-3 border-b last:border-b-0" style={{ borderColor: "oklch(0.93 0.012 80)", background: (item as any).highlight ? "oklch(0.99 0.02 65 / 0.4)" : "transparent" }}>
-                  <div className="flex-1">
-                    <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
-                    {item.desc && <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{item.desc}</p>}
-                  </div>
-                  <div className="flex gap-3 shrink-0">
-                    {(item as any).prices.map((p: any) => (
-                      <div key={p.size} className="text-center">
-                        <div className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{p.size}</div>
-                        <div className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{p.price}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <MultiSizeItemRow
+                  name={item.name}
+                  desc={item.desc}
+                  prices={(item as any).prices}
+                  highlight={(item as any).highlight}
+                  category="salads"
+                />
               ) : (
-                <ItemRow name={item.name} desc={item.desc} price={(item as any).price} highlight={(item as any).highlight} />
+                <ItemRow name={item.name} desc={item.desc} price={(item as any).price} highlight={(item as any).highlight} category="salads" />
               )}
             </div>
           ))}
