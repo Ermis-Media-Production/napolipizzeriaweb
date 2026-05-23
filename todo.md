@@ -47,3 +47,12 @@
 - [x] Wire Clover sync into Stripe webhook checkout.session.completed
 - [x] Add Clover env config (CLOVER_ENV) to env.ts
 - [x] Vitest tests for Clover router (15 tests passing)
+
+## Follow-Up Features (Round 3)
+- [x] Admin Orders panel (/admin/orders) — list Clover orders with status, customer, items, total
+- [x] Admin route guard (role=admin) in App.tsx for /admin/* routes
+- [x] Owner notification via notifyOwner inside pushOrderToClover on every new order
+- [x] Uber Direct quote in CartDrawer — show delivery fee before checkout when order type is delivery
+- [x] Auto-dispatch Uber Direct createDelivery after successful Authorize.net payment
+- [x] Auto-dispatch Uber Direct createDelivery after Stripe payment (via OrderSuccess + session metadata)
+- [x] All 38 Vitest tests passing (Stripe 3, Authorize.net 8, Uber Direct 11, Clover 15, Auth 1)

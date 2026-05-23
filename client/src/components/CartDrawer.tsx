@@ -177,6 +177,15 @@ export default function CartDrawer() {
       orderType,
       customerName: customerName || undefined,
       customerPhone: customerPhone || undefined,
+      // Pass Uber Direct fields so OrderSuccess can dispatch delivery after Stripe redirect
+      ...(orderType === "delivery" && uberQuoteId ? {
+        uberQuoteId,
+        dropoffAddress: deliveryAddress,
+        dropoffCity: deliveryCity,
+        dropoffState: deliveryState,
+        dropoffZip: deliveryZip,
+        dropoffNotes: deliveryNotes || undefined,
+      } : {}),
     });
   };
 

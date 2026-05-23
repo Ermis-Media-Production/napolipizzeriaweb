@@ -11,6 +11,7 @@ import Menu from "./pages/Menu";
 import Specials from "./pages/Specials";
 import Order from "./pages/Order";
 import OrderSuccess from "./pages/OrderSuccess";
+import AdminOrders from "./pages/AdminOrders";
 
 function Router() {
   return (
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/specials" component={Specials} />
       <Route path="/order" component={Order} />
       <Route path="/order-success" component={OrderSuccess} />
+      <Route path="/admin/orders" component={AdminOrders} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

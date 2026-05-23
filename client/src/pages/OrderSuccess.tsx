@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { CheckCircle, Phone, MapPin, Clock, ArrowRight, Loader2, Shield, Truck, ExternalLink } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -6,6 +6,7 @@ import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
 import { useCart } from "@/contexts/CartContext";
 import { RESTAURANT_INFO } from "@/lib/napoliData";
+import { toast } from "sonner";
 
 type OrderInfo = {
   method: "stripe" | "authorizenet";
@@ -21,6 +22,12 @@ export default function OrderSuccess() {
   const { clearCart } = useCart();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [authNetOrder, setAuthNetOrder] = useState<OrderInfo | null>(null);
+
+  // Uber Direct dispatch state (for Stripe delivery orders)
+  const [uberDeliveryId, setUberDeliveryId] = useState<string | null>(null);
+  const [uberTrackingUrl, setUberTrackingUrl] = useState<string | null>(null);
+  const [isDispatchingUber, setIsDispatchingUber] = useState(false);
+  const uberDispatchedRef = useRef(false); // prevent double-dispatch on re-render
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -51,6 +58,70 @@ export default function OrderSuccess() {
     { enabled: !!sessionId }
   );
 
+  const createDelivery = trpc.uber.createDelivery.useMutation();
+
+  // Auto-dispatch Uber Direct when Stripe session loads with delivery data.
+  // Uses sessionStorage to prevent re-dispatch on page reload/revisit.
+  useEffect(() => {
+    if (
+      !stripeSession ||
+      stripeSession.orderType !== "delivery" ||
+      !stripeSession.uberQuoteId ||
+      !stripeSession.dropoffAddress ||
+      uberDispatchedRef.current
+    ) return;
+
+    // Check if we already dispatched for this session (survives re-renders, not reloads)
+    const storageKey = `uber_dispatched_${sessionId}`;
+    const alreadyDispatched = sessionStorage.getItem(storageKey);
+    if (alreadyDispatched) {
+      // Restore previously dispatched delivery info
+      try {
+        const saved = JSON.parse(alreadyDispatched) as { deliveryId: string; trackingUrl: string };
+        setUberDeliveryId(saved.deliveryId);
+        setUberTrackingUrl(saved.trackingUrl);
+      } catch { /* ignore parse errors */ }
+      uberDispatchedRef.current = true;
+      return;
+    }
+
+    uberDispatchedRef.current = true;
+    setIsDispatchingUber(true);
+
+    createDelivery.mutate(
+      {
+        quoteId: stripeSession.uberQuoteId,
+        dropoffAddress: stripeSession.dropoffAddress,
+        dropoffCity: stripeSession.dropoffCity ?? "North Las Vegas",
+        dropoffState: stripeSession.dropoffState ?? "NV",
+        dropoffZip: stripeSession.dropoffZip ?? "89032",
+        dropoffName: stripeSession.customerName ?? "Customer",
+        dropoffPhone: stripeSession.customerPhone ?? "+17025550000",
+        dropoffNotes: stripeSession.dropoffNotes ?? undefined,
+        // Pass actual cart items from session metadata
+        orderItems: (stripeSession.cartItems ?? []).map((i) => ({ name: i.name, quantity: i.quantity })),
+        externalId: sessionId ?? undefined,
+      },
+      {
+        onSuccess: (data) => {
+          setUberDeliveryId(data.deliveryId);
+          setUberTrackingUrl(data.trackingUrl);
+          setIsDispatchingUber(false);
+          // Persist dispatch result so page reload doesn't re-dispatch
+          sessionStorage.setItem(storageKey, JSON.stringify({ deliveryId: data.deliveryId, trackingUrl: data.trackingUrl }));
+          toast.success("Delivery dispatched! Track your order in real time.");
+        },
+        onError: (err) => {
+          setIsDispatchingUber(false);
+          uberDispatchedRef.current = false; // allow retry on error
+          console.error("[Uber Direct] Dispatch failed:", err);
+          toast.warning("Payment confirmed! We'll arrange your delivery shortly.");
+        },
+      }
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stripeSession]);
+
   // Resolve display data from either payment method
   const orderData = stripeSession
     ? {
@@ -59,13 +130,14 @@ export default function OrderSuccess() {
         customerName: stripeSession.customerName,
         amountTotal: stripeSession.amountTotal,
         orderType: stripeSession.orderType,
-        deliveryId: undefined as string | undefined,
-        trackingUrl: undefined as string | undefined,
+        deliveryId: uberDeliveryId ?? undefined,
+        trackingUrl: uberTrackingUrl ?? undefined,
       }
     : authNetOrder;
 
   const isAuthNet = orderData?.method === "authorizenet";
   const hasDelivery = !!orderData?.trackingUrl;
+  const isStripeDelivery = stripeSession?.orderType === "delivery" && !!stripeSession?.uberQuoteId;
 
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">
@@ -153,6 +225,24 @@ export default function OrderSuccess() {
                       </p>
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Uber Direct: dispatching spinner (Stripe delivery orders) */}
+            {isStripeDelivery && isDispatchingUber && (
+              <div
+                className="rounded-lg p-4 border flex items-center gap-3"
+                style={{ background: "oklch(0.96 0.015 220)", borderColor: "oklch(0.75 0.12 220)" }}
+              >
+                <Loader2 size={20} className="animate-spin shrink-0" style={{ color: "oklch(0.40 0.15 220)" }} />
+                <div>
+                  <p className="text-sm font-bold" style={{ color: "oklch(0.28 0.12 220)", fontFamily: "'Oswald', sans-serif" }}>
+                    Dispatching Your Courier…
+                  </p>
+                  <p className="text-xs" style={{ color: "oklch(0.45 0.10 220)" }}>
+                    Connecting with Uber Direct — this takes a few seconds
+                  </p>
                 </div>
               </div>
             )}

@@ -9,6 +9,7 @@
 
 import axios from "axios";
 import { CLOVER_ENV } from "./_core/env";
+import { notifyOwner } from "./_core/notification";
 
 export interface CloverOrderInput {
   items: Array<{ name: string; price: number; quantity: number }>;
@@ -88,6 +89,28 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
   );
 
   console.log(`[Clover] Order ${orderId} created for ${input.customerName ?? "unknown"} (${orderTypeLabel})`);
+
+  // Fire-and-forget owner notification
+  const itemSummary = input.items
+    .map((i) => `${i.quantity}x ${i.name}`)
+    .join(", ");
+  const totalFormatted = `$${(input.totalCents / 100).toFixed(2)}`;
+  notifyOwner({
+    title: `New ${orderTypeLabel} Order — ${totalFormatted}`,
+    content: [
+      `Customer: ${input.customerName ?? "Unknown"}`,
+      input.customerPhone ? `Phone: ${input.customerPhone}` : null,
+      `Items: ${itemSummary}`,
+      `Total: ${totalFormatted}`,
+      input.externalId ? `Ref: ${input.externalId}` : null,
+      `Clover Order: ${orderId}`,
+      `View: https://www.clover.com/r/${CLOVER_ENV.merchantId}/orders/${orderId}`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  }).catch((err) => {
+    console.warn("[Notification] Failed to notify owner:", err);
+  });
 
   return {
     cloverOrderId: orderId,

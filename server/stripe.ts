@@ -38,6 +38,13 @@ export const stripeRouter = router({
         customerName: z.string().optional(),
         customerPhone: z.string().optional(),
         orderType: z.enum(["delivery", "pickup", "dine-in"]).default("pickup"),
+        // Uber Direct delivery fields (only for delivery orders)
+        uberQuoteId: z.string().optional(),
+        dropoffAddress: z.string().optional(),
+        dropoffCity: z.string().optional(),
+        dropoffState: z.string().optional(),
+        dropoffZip: z.string().optional(),
+        dropoffNotes: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -70,6 +77,13 @@ export const stripeRouter = router({
           cartItems: JSON.stringify(
             input.items.map((i) => ({ name: i.name, price: i.price, quantity: i.quantity }))
           ),
+          // Uber Direct delivery fields stored for post-payment dispatch on OrderSuccess
+          uberQuoteId: input.uberQuoteId ?? "",
+          dropoffAddress: input.dropoffAddress ?? "",
+          dropoffCity: input.dropoffCity ?? "",
+          dropoffState: input.dropoffState ?? "",
+          dropoffZip: input.dropoffZip ?? "",
+          dropoffNotes: input.dropoffNotes ?? "",
         },
         custom_text: {
           submit: {
@@ -99,6 +113,17 @@ export const stripeRouter = router({
         customerPhone: session.customer_details?.phone ?? null,
         amountTotal: session.amount_total ? session.amount_total / 100 : 0,
         orderType: session.metadata?.orderType ?? "pickup",
+        // Uber Direct delivery fields
+        uberQuoteId: session.metadata?.uberQuoteId || null,
+        dropoffAddress: session.metadata?.dropoffAddress || null,
+        dropoffCity: session.metadata?.dropoffCity || null,
+        dropoffState: session.metadata?.dropoffState || null,
+        dropoffZip: session.metadata?.dropoffZip || null,
+        dropoffNotes: session.metadata?.dropoffNotes || null,
+        // Cart items for Uber Direct orderItems (stored in metadata during checkout)
+        cartItems: session.metadata?.cartItems
+          ? (JSON.parse(session.metadata.cartItems) as Array<{ name: string; price: number; quantity: number }>)
+          : [],
       };
     }),
 });
