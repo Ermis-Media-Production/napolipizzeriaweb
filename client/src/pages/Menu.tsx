@@ -117,6 +117,108 @@ function MultiSizeItemRow({ name, desc, prices, highlight, category }: {
   );
 }
 
+function BurgerRow({ item }: { item: { name: string; desc?: string; half: string; single: string } }) {
+  const { addItem, openCart } = useCart();
+
+  const handleAdd = (label: string, price: number) => {
+    addItem({
+      id: `burger-${item.name}-${label}-${Date.now()}`,
+      name: `${item.name} (${label})`,
+      price,
+      quantity: 1,
+      category: "burgers",
+      description: item.desc,
+    });
+    toast.success(`${item.name} (${label}) added to cart`, {
+      action: { label: "View Cart", onClick: openCart },
+    });
+  };
+
+  const halfPrice = parsePrice(item.half);
+  const singlePrice = parsePrice(item.single);
+
+  return (
+    <div
+      className="napoli-menu-item flex items-center gap-3 px-5 py-3 border-b last:border-b-0"
+      style={{ borderColor: "oklch(0.93 0.012 80)" }}
+    >
+      <div className="flex-1 min-w-0">
+        <span className="napoli-body text-sm font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
+        {item.desc && <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{item.desc}</p>}
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        {halfPrice && (
+          <button
+            onClick={() => handleAdd("½ lb", halfPrice)}
+            className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
+            style={{ background: "oklch(0.97 0.012 80)", color: "var(--napoli-red)", border: "1px solid oklch(0.88 0.015 80)" }}
+          >
+            <Plus size={11} />
+            <span>½ lb {item.half}</span>
+          </button>
+        )}
+        {singlePrice && (
+          <button
+            onClick={() => handleAdd("1 lb", singlePrice)}
+            className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
+            style={{ background: "var(--napoli-red)", color: "white" }}
+          >
+            <Plus size={11} />
+            <span>1 lb {item.single}</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AnytimeSpecialRow({ item }: { item: { num: number; name: string; price: string } }) {
+  const { addItem, openCart } = useCart();
+  const numericPrice = parsePrice(item.price);
+
+  const handleAdd = () => {
+    if (!numericPrice) return;
+    addItem({
+      id: `anytime-${item.num}-${Date.now()}`,
+      name: `#${item.num} ${item.name}`,
+      price: numericPrice,
+      quantity: 1,
+      category: "specials",
+    });
+    toast.success(`#${item.num} ${item.name} added to cart`, {
+      action: { label: "View Cart", onClick: openCart },
+    });
+  };
+
+  return (
+    <div
+      className="napoli-menu-item flex items-center gap-3 px-5 py-4 border-b"
+      style={{ borderColor: "oklch(0.93 0.012 80)" }}
+    >
+      <span
+        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 napoli-price"
+        style={{ background: "var(--napoli-green)", color: "white" }}
+      >
+        {item.num}
+      </span>
+      <div className="flex-1 min-w-0">
+        <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
+      </div>
+      <span className="napoli-price text-sm shrink-0" style={{ color: "var(--napoli-red)" }}>{item.price}</span>
+      {numericPrice && (
+        <button
+          onClick={handleAdd}
+          className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90 hover:opacity-90 shrink-0"
+          style={{ background: "var(--napoli-green)", color: "white" }}
+          title={`Add #${item.num} ${item.name} to cart`}
+        >
+          <Plus size={14} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 function LunchSpecialRow({ item, isLeft }: { item: { num: number; name: string; price: string }; isLeft: boolean }) {
   const { addItem, openCart } = useCart();
   const numericPrice = parsePrice(item.price);
@@ -565,28 +667,10 @@ export default function Menu() {
           <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
             <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{BURGERS.note}</p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ background: "oklch(0.97 0.012 80)" }}>
-                  <th className="text-left px-5 py-3 napoli-label text-xs" style={{ color: "oklch(0.52 0.03 30)" }}>Burger</th>
-                  <th className="text-center px-4 py-3 napoli-label text-xs" style={{ color: "oklch(0.52 0.03 30)" }}>½ lb Single</th>
-                  <th className="text-center px-4 py-3 napoli-label text-xs" style={{ color: "oklch(0.52 0.03 30)" }}>1 lb Single</th>
-                </tr>
-              </thead>
-              <tbody>
-                {BURGERS.items.map((item) => (
-                  <tr key={item.name} className="border-t" style={{ borderColor: "oklch(0.93 0.012 80)" }}>
-                    <td className="px-5 py-3">
-                      <div className="napoli-body font-semibold text-sm" style={{ color: "var(--napoli-dark)" }}>{item.name}</div>
-                      {item.desc && <div className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{item.desc}</div>}
-                    </td>
-                    <td className="text-center px-4 py-3 napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{item.half}</td>
-                    <td className="text-center px-4 py-3 napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{item.single}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="divide-y" style={{ borderColor: "oklch(0.93 0.012 80)" }}>
+            {BURGERS.items.map((item) => (
+              <BurgerRow key={item.name} item={item} />
+            ))}
           </div>
         </MenuCard>
 
@@ -678,23 +762,8 @@ export default function Menu() {
         <SectionHeader id="specials" title="Anytime Specials" emoji="⭐" />
         <MenuCard>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0">
-            {ANYTIME_SPECIALS.map((item, i) => (
-              <div
-                key={item.num}
-                className="napoli-menu-item flex items-start gap-3 px-5 py-4 border-b border-r"
-                style={{ borderColor: "oklch(0.93 0.012 80)" }}
-              >
-                <span
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 napoli-price"
-                  style={{ background: "var(--napoli-green)", color: "white" }}
-                >
-                  {item.num}
-                </span>
-                <div className="flex-1">
-                  <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
-                </div>
-                <span className="napoli-price text-sm shrink-0" style={{ color: "var(--napoli-red)" }}>{item.price}</span>
-              </div>
+            {ANYTIME_SPECIALS.map((item) => (
+              <AnytimeSpecialRow key={item.num} item={item} />
             ))}
           </div>
           <div className="px-5 py-3 border-t text-xs napoli-body" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)", color: "oklch(0.52 0.03 30)" }}>
