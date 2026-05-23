@@ -3,6 +3,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ============================================================
+   TRADEVAULT DESIGN SYSTEM — Merchant Heritage
+   Philosophy: Contemporary trade aesthetic, editorial authority
+   Colors: Navy (#0D2545), Warm White (#FAFAF8), Amber (#F5A623)
+   Typography: Libre Baskerville (display) + Nunito Sans (UI/body)
+   ============================================================ */
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -40,77 +47,52 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* TradeVault custom tokens */
+  --color-navy: oklch(0.22 0.06 248);
+  --color-navy-light: oklch(0.28 0.07 248);
+  --color-navy-dark: oklch(0.16 0.05 248);
+  --color-amber: oklch(0.75 0.16 65);
+  --color-amber-dark: oklch(0.65 0.16 65);
+  --color-amber-light: oklch(0.85 0.12 65);
+  --color-warm-white: oklch(0.99 0.003 90);
+  --color-warm-gray: oklch(0.96 0.004 90);
 }
 
 :root {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --radius: 0.65rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.235 0.015 65);
+  --radius: 0.5rem;
+  --background: oklch(0.99 0.003 90);
+  --foreground: oklch(0.18 0.04 248);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.235 0.015 65);
+  --card-foreground: oklch(0.18 0.04 248);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.235 0.015 65);
-  --secondary: oklch(0.98 0.001 286.375);
-  --secondary-foreground: oklch(0.4 0.015 65);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.141 0.005 285.823);
+  --popover-foreground: oklch(0.18 0.04 248);
+  --primary: oklch(0.22 0.06 248);
+  --primary-foreground: oklch(0.99 0.003 90);
+  --secondary: oklch(0.96 0.004 90);
+  --secondary-foreground: oklch(0.28 0.05 248);
+  --muted: oklch(0.96 0.004 90);
+  --muted-foreground: oklch(0.52 0.03 248);
+  --accent: oklch(0.75 0.16 65);
+  --accent-foreground: oklch(0.18 0.04 248);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.623 0.214 259.815);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.623 0.214 259.815);
-}
-
-.dark {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-500);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.85 0.005 65);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.85 0.005 65);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.85 0.005 65);
-  --secondary: oklch(0.24 0.006 286.033);
-  --secondary-foreground: oklch(0.7 0.005 65);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground:  oklch(0.92 0.005 65);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.85 0.005 65);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground:  oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.488 0.243 264.376);
+  --border: oklch(0.90 0.006 248);
+  --input: oklch(0.90 0.006 248);
+  --ring: oklch(0.75 0.16 65);
+  --chart-1: oklch(0.75 0.16 65);
+  --chart-2: oklch(0.22 0.06 248);
+  --chart-3: oklch(0.65 0.16 65);
+  --chart-4: oklch(0.28 0.07 248);
+  --chart-5: oklch(0.85 0.12 65);
+  --sidebar: oklch(0.22 0.06 248);
+  --sidebar-foreground: oklch(0.99 0.003 90);
+  --sidebar-primary: oklch(0.75 0.16 65);
+  --sidebar-primary-foreground: oklch(0.18 0.04 248);
+  --sidebar-accent: oklch(0.28 0.07 248);
+  --sidebar-accent-foreground: oklch(0.99 0.003 90);
+  --sidebar-border: oklch(0.30 0.07 248);
+  --sidebar-ring: oklch(0.75 0.16 65);
 }
 
 @layer base {
@@ -119,6 +101,10 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Nunito Sans', sans-serif;
+  }
+  h1, h2, h3 {
+    font-family: 'Libre Baskerville', serif;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -134,24 +120,11 @@
 }
 
 @layer components {
-  /**
-   * Custom container utility that centers content and adds responsive padding.
-   *
-   * This overrides Tailwind's default container behavior to:
-   * - Auto-center content (mx-auto)
-   * - Add responsive horizontal padding
-   * - Set max-width for large screens
-   *
-   * Usage: <div className="container">...</div>
-   *
-   * For custom widths, use max-w-* utilities directly:
-   * <div className="max-w-6xl mx-auto px-4">...</div>
-   */
   .container {
     width: 100%;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1rem; /* 16px - mobile padding */
+    padding-left: 1rem;
     padding-right: 1rem;
   }
 
@@ -162,16 +135,127 @@
 
   @media (min-width: 640px) {
     .container {
-      padding-left: 1.5rem; /* 24px - tablet padding */
+      padding-left: 1.5rem;
       padding-right: 1.5rem;
     }
   }
 
   @media (min-width: 1024px) {
     .container {
-      padding-left: 2rem; /* 32px - desktop padding */
+      padding-left: 2rem;
       padding-right: 2rem;
-      max-width: 1280px; /* Standard content width */
+      max-width: 1280px;
+    }
+  }
+
+  /* TradeVault custom components */
+  .tv-card-hover {
+    transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1),
+                box-shadow 150ms cubic-bezier(0.23, 1, 0.32, 1),
+                border-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .tv-card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px -8px rgba(13, 37, 69, 0.18);
+  }
+
+  .tv-amber-border-hover {
+    border-top: 3px solid transparent;
+    transition: border-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .tv-amber-border-hover:hover {
+    border-top-color: oklch(0.75 0.16 65);
+  }
+
+  .tv-btn-primary {
+    background: oklch(0.22 0.06 248);
+    color: oklch(0.99 0.003 90);
+    font-family: 'Nunito Sans', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    transition: background 150ms, transform 100ms;
+  }
+  .tv-btn-primary:hover {
+    background: oklch(0.28 0.07 248);
+  }
+  .tv-btn-primary:active {
+    transform: scale(0.97);
+  }
+
+  .tv-btn-amber {
+    background: oklch(0.75 0.16 65);
+    color: oklch(0.18 0.04 248);
+    font-family: 'Nunito Sans', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    transition: background 150ms, transform 100ms;
+  }
+  .tv-btn-amber:hover {
+    background: oklch(0.65 0.16 65);
+  }
+  .tv-btn-amber:active {
+    transform: scale(0.97);
+  }
+
+  .tv-section-navy {
+    background: oklch(0.22 0.06 248);
+    color: oklch(0.99 0.003 90);
+  }
+
+  .tv-badge-amber {
+    background: oklch(0.75 0.16 65);
+    color: oklch(0.18 0.04 248);
+    font-family: 'Nunito Sans', sans-serif;
+    font-weight: 700;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.6rem;
+    border-radius: 0.25rem;
+  }
+
+  .tv-badge-navy {
+    background: oklch(0.22 0.06 248);
+    color: oklch(0.99 0.003 90);
+    font-family: 'Nunito Sans', sans-serif;
+    font-weight: 700;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.6rem;
+    border-radius: 0.25rem;
+  }
+
+  .tv-display {
+    font-family: 'Libre Baskerville', serif;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
+  .tv-number {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .animate-fade-up {
+    animation: fadeUp 0.5s cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-up, .animate-fade-in {
+      animation: none;
     }
   }
 }
