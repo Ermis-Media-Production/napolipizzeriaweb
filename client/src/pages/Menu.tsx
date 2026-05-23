@@ -555,48 +555,50 @@ export default function Menu() {
             <span className="napoli-price text-lg" style={{ color: "var(--napoli-red)" }}>{DESSERTS.price}</span>
             <span className="text-xs napoli-body ml-2" style={{ color: "oklch(0.52 0.03 30)" }}>each</span>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-0">
+          <div className="flex flex-col">
             {DESSERTS.items.map((item) => (
-              <div
-                key={item}
-                className="napoli-menu-item px-5 py-3 border-b border-r"
-                style={{ borderColor: "oklch(0.93 0.012 80)" }}
-              >
-                <span className="text-sm napoli-body" style={{ color: "var(--napoli-dark)" }}>{item}</span>
-              </div>
+              <ItemRow key={item} name={item} price={DESSERTS.price} category="desserts" />
             ))}
           </div>
           {/* Children's Menu */}
-          <div className="px-5 py-4 border-t" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
-            <p className="napoli-label text-xs mb-2" style={{ color: "var(--napoli-red)" }}>Children's Menu — {CHILDRENS_MENU.price}</p>
-            <div className="flex flex-wrap gap-3">
+          <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
+            <div className="px-5 py-2" style={{ background: "oklch(0.97 0.012 80)" }}>
+              <p className="napoli-label text-xs" style={{ color: "var(--napoli-red)" }}>Children's Menu — {CHILDRENS_MENU.price} each</p>
+            </div>
+            <div className="flex flex-col">
               {CHILDRENS_MENU.items.map((item) => (
-                <div key={item} className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-napoli-green shrink-0" />
-                  <span className="text-xs napoli-body" style={{ color: "oklch(0.42 0.03 30)" }}>{item}</span>
-                </div>
+                <ItemRow key={item} name={item} price={CHILDRENS_MENU.price} category="childrens-menu" />
               ))}
             </div>
           </div>
           {/* Beverages */}
-          <div className="px-5 py-4 border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-            <p className="napoli-label text-xs mb-3" style={{ color: "var(--napoli-red)" }}>Beverages</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+          <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
+            <div className="px-5 py-2" style={{ background: "oklch(0.97 0.012 80)" }}>
+              <p className="napoli-label text-xs" style={{ color: "var(--napoli-red)" }}>Beverages</p>
+            </div>
+            <div className="flex flex-col">
               {BEVERAGES.map((bev) => (
-                <div key={bev.name} className="flex items-start justify-between gap-4 py-2 px-2 border-b" style={{ borderColor: "oklch(0.93 0.012 80)" }}>
-                  <div className="flex-1">
-                    <span className="text-xs napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{bev.name}</span>
-                    {(bev as any).note && <span className="text-xs napoli-body ml-1" style={{ color: "oklch(0.52 0.03 30)" }}>({(bev as any).note})</span>}
-                  </div>
-                  {(bev as any).price && <span className="napoli-price text-xs shrink-0" style={{ color: "var(--napoli-red)" }}>{(bev as any).price}</span>}
-                  {(bev as any).prices && (
-                    <div className="flex gap-2 shrink-0">
-                      {(bev as any).prices.map((p: any) => (
-                        <div key={p.size} className="text-right">
-                          <div className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{p.size}</div>
-                          <div className="napoli-price text-xs" style={{ color: "var(--napoli-red)" }}>{p.price}</div>
-                        </div>
-                      ))}
+                <div key={bev.name}>
+                  {(bev as any).price ? (
+                    <ItemRow
+                      name={bev.name + ((bev as any).size ? ` (${(bev as any).size})` : "")}
+                      price={(bev as any).price}
+                      desc={(bev as any).note ? `${(bev as any).note}` : undefined}
+                      category="beverages"
+                    />
+                  ) : (bev as any).prices ? (
+                    (bev as any).prices.map((p: any) => (
+                      <ItemRow
+                        key={p.size}
+                        name={`${bev.name} (${p.size})`}
+                        price={p.price}
+                        category="beverages"
+                      />
+                    ))
+                  ) : (
+                    <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: "oklch(0.93 0.012 80)" }}>
+                      <span className="napoli-body text-sm" style={{ color: "var(--napoli-dark)" }}>{bev.name}</span>
+                      {(bev as any).note && <span className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{(bev as any).note}</span>}
                     </div>
                   )}
                 </div>
