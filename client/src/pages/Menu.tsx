@@ -526,32 +526,36 @@ export default function Menu() {
         <MenuCard>
           <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
             <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{SUBS.note}</p>
-            <span className="napoli-price text-lg mt-1 block" style={{ color: "var(--napoli-red)" }}>{SUBS.price}</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
             <div>
               <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Served Cold</p>
-              {SUBS.cold.map((s) => <ItemRow key={s} name={s} />)}
+              {SUBS.cold.map((s) => (
+                <ItemRow key={s.name} name={s.name} price={s.price} category="subs" />
+              ))}
             </div>
             <div>
               <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Served Hot</p>
               {SUBS.hotDetailed.map((s) => (
-                <ItemRow key={s.name} name={s.name + (s.add ? ` +${s.add}` : "")} desc={(s as any).desc} />
+                <ItemRow
+                  key={s.name}
+                  name={s.name}
+                  desc={(s.add ? s.add + (s.desc ? " · " + s.desc : "") : s.desc)}
+                  price={s.price}
+                  category="subs"
+                />
               ))}
             </div>
           </div>
           {/* Triple Deckers */}
-          <div className="px-5 py-4 border-t" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
-            <p className="napoli-label text-xs mb-2" style={{ color: "var(--napoli-red)" }}>Triple Deckers <span className="napoli-badge-green ml-2">Gluten Free Bread Available</span></p>
-            <p className="text-xs napoli-body mb-3" style={{ color: "oklch(0.52 0.03 30)" }}>{TRIPLE_DECKERS.note}</p>
-            <div className="flex flex-wrap gap-4">
-              {TRIPLE_DECKERS.items.map((item) => (
-                <div key={item.name} className="flex items-center gap-2">
-                  <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
-                  <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{item.price}</span>
-                </div>
-              ))}
+          <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
+            <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
+              <p className="napoli-label text-xs" style={{ color: "var(--napoli-red)" }}>Triple Deckers <span className="napoli-badge-green ml-2">Gluten Free Bread Available</span></p>
+              <p className="text-xs napoli-body mt-1" style={{ color: "oklch(0.52 0.03 30)" }}>{TRIPLE_DECKERS.note}</p>
             </div>
+            {TRIPLE_DECKERS.items.map((item) => (
+              <ItemRow key={item.name} name={item.name} price={item.price} category="subs" />
+            ))}
           </div>
         </MenuCard>
 
