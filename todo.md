@@ -24,3 +24,16 @@
 - [x] Add to Cart (+) buttons on all menu items with price
 - [x] OrderSuccess page showing payment confirmation and order details
 - [x] Vitest tests for Stripe router (3 tests passing)
+
+## Authorize.net Payment Integration
+- [x] Install authorize-net Node.js SDK
+- [x] Create chargeCard server procedure (opaque data / Accept.js)
+- [x] Authorize.net payment form in CartDrawer with Accept.js
+- [x] Vitest tests for Authorize.net router (8 tests passing)
+
+## Uber Direct Delivery Integration
+- [x] Set Uber Direct credentials as project secrets (Customer ID, Client ID, Client Secret)
+- [x] Create uberDirectRouter with getQuote, createDelivery, getDelivery, cancelDelivery procedures
+- [x] Export _resetTokenCache helper for test isolation
+- [x] OrderSuccess page: show Uber Direct tracking card with real-time tracking URL when delivery_id & tracking_url present in URL params
+- [x] Vitest tests for Uber Direct router (11 tests passing)

@@ -4,6 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { stripeRouter } from "./stripe";
 import { authorizeNetRouter } from "./authorizenet";
+import { uberDirectRouter } from "./uberdirect";
 
 export const appRouter = router({
   system: systemRouter,
@@ -19,6 +20,7 @@ export const appRouter = router({
   }),
   stripe: stripeRouter,
   authorizenet: authorizeNetRouter,
+  uber: uberDirectRouter,
 });
 
 export type AppRouter = typeof appRouter;

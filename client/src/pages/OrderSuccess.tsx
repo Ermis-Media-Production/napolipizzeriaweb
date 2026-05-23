@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { CheckCircle, Phone, MapPin, Clock, ArrowRight, Loader2, Shield } from "lucide-react";
+import { CheckCircle, Phone, MapPin, Clock, ArrowRight, Loader2, Shield, Truck, ExternalLink } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
@@ -13,6 +13,8 @@ type OrderInfo = {
   customerName?: string;
   amountTotal?: number;
   orderType?: string;
+  deliveryId?: string;
+  trackingUrl?: string;
 };
 
 export default function OrderSuccess() {
@@ -37,6 +39,8 @@ export default function OrderSuccess() {
         customerName: params.get("name") ?? undefined,
         amountTotal: params.get("total") ? parseFloat(params.get("total")!) : undefined,
         orderType: params.get("type") ?? undefined,
+        deliveryId: params.get("delivery_id") ?? undefined,
+        trackingUrl: params.get("tracking_url") ? decodeURIComponent(params.get("tracking_url")!) : undefined,
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -55,10 +59,13 @@ export default function OrderSuccess() {
         customerName: stripeSession.customerName,
         amountTotal: stripeSession.amountTotal,
         orderType: stripeSession.orderType,
+        deliveryId: undefined as string | undefined,
+        trackingUrl: undefined as string | undefined,
       }
     : authNetOrder;
 
   const isAuthNet = orderData?.method === "authorizenet";
+  const hasDelivery = !!orderData?.trackingUrl;
 
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">
@@ -147,6 +154,57 @@ export default function OrderSuccess() {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Uber Direct Tracking Section */}
+            {hasDelivery && orderData?.trackingUrl && (
+              <div
+                className="rounded-lg p-4 border"
+                style={{ background: "oklch(0.96 0.015 220)", borderColor: "oklch(0.75 0.12 220)" }}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                    style={{ background: "oklch(0.40 0.15 220)" }}
+                  >
+                    <Truck size={16} className="text-white" />
+                  </div>
+                  <div>
+                    <p
+                      className="text-sm font-bold"
+                      style={{ color: "oklch(0.28 0.12 220)", fontFamily: "'Oswald', sans-serif" }}
+                    >
+                      Your Order is On Its Way!
+                    </p>
+                    <p className="text-xs" style={{ color: "oklch(0.45 0.10 220)" }}>
+                      Powered by Uber Direct · Real-time tracking available
+                    </p>
+                  </div>
+                </div>
+
+                {orderData.deliveryId && (
+                  <p className="text-xs mb-3" style={{ color: "oklch(0.50 0.08 220)" }}>
+                    Delivery ID: <span className="font-mono font-semibold">{orderData.deliveryId}</span>
+                  </p>
+                )}
+
+                <a
+                  href={orderData.trackingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                  style={{
+                    background: "oklch(0.40 0.15 220)",
+                    color: "white",
+                    fontFamily: "'Oswald', sans-serif",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  <Truck size={15} />
+                  Track Your Delivery (Uber Direct)
+                  <ExternalLink size={13} />
+                </a>
               </div>
             )}
 

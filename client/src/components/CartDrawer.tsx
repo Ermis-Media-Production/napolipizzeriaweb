@@ -1,5 +1,5 @@
 import { useCart } from "@/contexts/CartContext";
-import { X, Plus, Minus, Trash2, ShoppingCart, ChevronRight, Loader2, CreditCard, Lock } from "lucide-react";
+import { X, Plus, Minus, Trash2, ShoppingCart, ChevronRight, Loader2, CreditCard, Lock, Truck, MapPin } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -15,7 +15,10 @@ declare global {
           authData: { clientKey: string; apiLoginID: string };
           cardData: { cardNumber: string; month: string; year: string; cardCode: string };
         },
-        callback: (response: { opaqueData?: { dataDescriptor: string; dataValue: string }; messages?: { resultCode: string; message: Array<{ text: string }> } }) => void
+        callback: (response: {
+          opaqueData?: { dataDescriptor: string; dataValue: string };
+          messages?: { resultCode: string; message: Array<{ text: string }> };
+        }) => void
       ) => void;
     };
   }
@@ -29,6 +32,19 @@ export default function CartDrawer() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("stripe");
+
+  // Delivery address fields
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryCity, setDeliveryCity] = useState("North Las Vegas");
+  const [deliveryState, setDeliveryState] = useState("NV");
+  const [deliveryZip, setDeliveryZip] = useState("89032");
+  const [deliveryNotes, setDeliveryNotes] = useState("");
+
+  // Uber Direct quote state
+  const [uberQuoteId, setUberQuoteId] = useState<string | null>(null);
+  const [uberFee, setUberFee] = useState<number | null>(null);
+  const [uberEta, setUberEta] = useState<string | null>(null);
+  const [isFetchingQuote, setIsFetchingQuote] = useState(false);
 
   // Authorize.net card fields
   const [cardNumber, setCardNumber] = useState("");
@@ -56,7 +72,32 @@ export default function CartDrawer() {
     acceptJsLoaded.current = true;
   }, [paymentMethod, authnetConfig]);
 
-  // Stripe checkout
+  // Reset quote when order type changes away from delivery
+  useEffect(() => {
+    if (orderType !== "delivery") {
+      setUberQuoteId(null);
+      setUberFee(null);
+      setUberEta(null);
+    }
+  }, [orderType]);
+
+  // tRPC mutations
+  const getQuote = trpc.uber.getQuote.useMutation({
+    onSuccess: (data) => {
+      setUberQuoteId(data.quoteId);
+      setUberFee(data.fee);
+      setUberEta(data.dropoffEta);
+      setIsFetchingQuote(false);
+      toast.success(`Delivery available! Fee: $${(data.fee / 100).toFixed(2)} · ETA: ~${data.duration} min`);
+    },
+    onError: (err) => {
+      setIsFetchingQuote(false);
+      toast.error("Could not get delivery quote: " + err.message);
+    },
+  });
+
+  const createDelivery = trpc.uber.createDelivery.useMutation();
+
   const createCheckout = trpc.stripe.createCheckoutSession.useMutation({
     onSuccess: (data) => {
       if (data.url) window.location.href = data.url;
@@ -64,12 +105,44 @@ export default function CartDrawer() {
     onError: (err) => toast.error("Could not start checkout: " + err.message),
   });
 
-  // Authorize.net charge
   const chargeCard = trpc.authorizenet.chargeCard.useMutation({
-    onSuccess: (data) => {
-      clearCart();
-      closeCart();
-      navigate(`/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}`);
+    onSuccess: async (data) => {
+      // If delivery order, dispatch Uber Direct after payment
+      if (orderType === "delivery" && uberQuoteId) {
+        try {
+          const delivery = await createDelivery.mutateAsync({
+            quoteId: uberQuoteId,
+            dropoffAddress: deliveryAddress,
+            dropoffCity: deliveryCity,
+            dropoffState: deliveryState,
+            dropoffZip: deliveryZip,
+            dropoffName: customerName,
+            dropoffPhone: customerPhone || "+17025550000",
+            dropoffNotes: deliveryNotes || undefined,
+            orderItems: items.map((i) => ({ name: i.name, quantity: i.quantity })),
+            externalId: data.transactionId,
+          });
+          clearCart();
+          closeCart();
+          navigate(
+            `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}&delivery_id=${delivery.deliveryId}&tracking_url=${encodeURIComponent(delivery.trackingUrl)}`
+          );
+        } catch {
+          // Payment succeeded but delivery dispatch failed — still show success
+          clearCart();
+          closeCart();
+          navigate(
+            `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}`
+          );
+          toast.warning("Payment successful, but delivery dispatch failed. We'll contact you shortly.");
+        }
+      } else {
+        clearCart();
+        closeCart();
+        navigate(
+          `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}`
+        );
+      }
     },
     onError: (err) => {
       toast.error("Payment failed: " + err.message);
@@ -77,8 +150,26 @@ export default function CartDrawer() {
     },
   });
 
+  const handleGetQuote = () => {
+    if (!deliveryAddress.trim()) {
+      toast.error("Please enter your delivery address.");
+      return;
+    }
+    setIsFetchingQuote(true);
+    getQuote.mutate({
+      dropoffAddress: deliveryAddress,
+      dropoffCity: deliveryCity,
+      dropoffState: deliveryState,
+      dropoffZip: deliveryZip,
+    });
+  };
+
   const handleStripeCheckout = () => {
     if (items.length === 0) return;
+    if (orderType === "delivery" && !deliveryAddress.trim()) {
+      toast.error("Please enter your delivery address.");
+      return;
+    }
     createCheckout.mutate({
       items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category })),
       successUrl: `${window.location.origin}/order-success?session_id={CHECKOUT_SESSION_ID}`,
@@ -96,6 +187,14 @@ export default function CartDrawer() {
     }
     if (!customerName.trim()) {
       toast.error("Please enter your name.");
+      return;
+    }
+    if (orderType === "delivery" && !deliveryAddress.trim()) {
+      toast.error("Please enter your delivery address.");
+      return;
+    }
+    if (orderType === "delivery" && !uberQuoteId) {
+      toast.error("Please get a delivery quote first.");
       return;
     }
     if (!cardNumber || !cardExpiry || !cardCvc) {
@@ -118,7 +217,7 @@ export default function CartDrawer() {
 
     const secureData = {
       authData: {
-        clientKey: authnetConfig.apiLoginId, // Accept.js uses apiLoginId as client key
+        clientKey: authnetConfig.apiLoginId,
         apiLoginID: authnetConfig.apiLoginId,
       },
       cardData: {
@@ -159,13 +258,15 @@ export default function CartDrawer() {
     else handleAuthorizeNetCheckout();
   };
 
-  const isLoading = createCheckout.isPending || isProcessingAuthNet || chargeCard.isPending;
+  const isLoading =
+    createCheckout.isPending ||
+    isProcessingAuthNet ||
+    chargeCard.isPending ||
+    createDelivery.isPending;
 
-  // Format card number with spaces
   const formatCardNumber = (val: string) =>
     val.replace(/\D/g, "").replace(/(.{4})/g, "$1 ").trim().slice(0, 19);
 
-  // Format expiry MM/YY
   const formatExpiry = (val: string) => {
     const digits = val.replace(/\D/g, "").slice(0, 4);
     if (digits.length >= 3) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
@@ -187,7 +288,7 @@ export default function CartDrawer() {
       <div
         className="fixed top-0 right-0 h-full z-50 flex flex-col shadow-2xl overflow-hidden"
         style={{
-          width: "min(440px, 100vw)",
+          width: "min(460px, 100vw)",
           background: "var(--napoli-cream, #faf8f3)",
           transform: isOpen ? "translateX(0)" : "translateX(100%)",
           transition: "transform 280ms cubic-bezier(0.23, 1, 0.32, 1)",
@@ -301,8 +402,8 @@ export default function CartDrawer() {
         {/* Checkout panel */}
         {items.length > 0 && (
           <div
-            className="border-t px-4 py-4 space-y-3 shrink-0"
-            style={{ borderColor: "oklch(0.88 0.015 80)", background: "white" }}
+            className="border-t px-4 py-4 space-y-3 shrink-0 overflow-y-auto"
+            style={{ borderColor: "oklch(0.88 0.015 80)", background: "white", maxHeight: "70vh" }}
           >
             {/* Order type */}
             <div>
@@ -327,6 +428,108 @@ export default function CartDrawer() {
                 ))}
               </div>
             </div>
+
+            {/* Uber Direct Delivery Address — shown only when delivery is selected */}
+            {orderType === "delivery" && (
+              <div
+                className="space-y-2 p-3 rounded-lg border"
+                style={{ borderColor: "oklch(0.75 0.12 220)", background: "oklch(0.97 0.01 220)" }}
+              >
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Truck size={13} style={{ color: "oklch(0.40 0.15 220)" }} />
+                  <span className="text-xs font-semibold" style={{ color: "oklch(0.40 0.15 220)", fontFamily: "'Oswald', sans-serif" }}>
+                    Uber Direct Delivery
+                  </span>
+                  <span
+                    className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold"
+                    style={{ background: "oklch(0.40 0.15 220)", color: "white" }}
+                  >
+                    Powered by Uber
+                  </span>
+                </div>
+
+                <input
+                  type="text"
+                  placeholder="Street address *"
+                  value={deliveryAddress}
+                  onChange={(e) => { setDeliveryAddress(e.target.value); setUberQuoteId(null); setUberFee(null); }}
+                  className="w-full text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                  style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+                />
+                <div className="grid grid-cols-3 gap-2">
+                  <input
+                    type="text"
+                    placeholder="City"
+                    value={deliveryCity}
+                    onChange={(e) => { setDeliveryCity(e.target.value); setUberQuoteId(null); }}
+                    className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="State"
+                    value={deliveryState}
+                    onChange={(e) => { setDeliveryState(e.target.value); setUberQuoteId(null); }}
+                    className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="ZIP"
+                    value={deliveryZip}
+                    onChange={(e) => { setDeliveryZip(e.target.value); setUberQuoteId(null); }}
+                    className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+                  />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Delivery notes (apt #, gate code...)"
+                  value={deliveryNotes}
+                  onChange={(e) => setDeliveryNotes(e.target.value)}
+                  className="w-full text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                  style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+                />
+
+                {/* Quote result or button */}
+                {uberQuoteId && uberFee !== null ? (
+                  <div
+                    className="flex items-center justify-between px-3 py-2 rounded"
+                    style={{ background: "oklch(0.93 0.06 145)", border: "1px solid oklch(0.75 0.10 145)" }}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <MapPin size={12} style={{ color: "oklch(0.35 0.12 145)" }} />
+                      <span className="text-xs font-semibold" style={{ color: "oklch(0.30 0.10 145)", fontFamily: "'Oswald', sans-serif" }}>
+                        Delivery fee: ${(uberFee / 100).toFixed(2)}
+                      </span>
+                    </div>
+                    {uberEta && (
+                      <span className="text-xs" style={{ color: "oklch(0.40 0.08 145)" }}>
+                        ETA: {new Date(uberEta).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleGetQuote}
+                    disabled={isFetchingQuote || !deliveryAddress.trim()}
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded text-xs font-semibold border transition-all"
+                    style={{
+                      background: isFetchingQuote ? "transparent" : "oklch(0.40 0.15 220)",
+                      color: isFetchingQuote ? "oklch(0.40 0.15 220)" : "white",
+                      borderColor: "oklch(0.40 0.15 220)",
+                      fontFamily: "'Oswald', sans-serif",
+                    }}
+                  >
+                    {isFetchingQuote ? (
+                      <><Loader2 size={12} className="animate-spin" /> Getting quote...</>
+                    ) : (
+                      <><Truck size={12} /> Get Delivery Quote</>
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Customer info */}
             <div className="grid grid-cols-2 gap-2">
@@ -433,19 +636,31 @@ export default function CartDrawer() {
             )}
 
             {/* Total */}
-            <div className="flex items-center justify-between py-2 border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-              <span className="text-sm font-semibold" style={{ color: "oklch(0.35 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
-                Total ({totalItems} items)
-              </span>
+            <div
+              className="flex items-center justify-between py-2 border-t"
+              style={{ borderColor: "oklch(0.88 0.015 80)" }}
+            >
+              <div>
+                <span className="text-sm font-semibold" style={{ color: "oklch(0.35 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
+                  Total ({totalItems} items)
+                </span>
+                {orderType === "delivery" && uberFee !== null && (
+                  <p className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>
+                    + ${(uberFee / 100).toFixed(2)} delivery fee
+                  </p>
+                )}
+              </div>
               <span className="text-xl font-bold" style={{ color: "var(--napoli-red, #c0392b)", fontFamily: "'Oswald', sans-serif" }}>
-                ${totalPrice.toFixed(2)}
+                ${orderType === "delivery" && uberFee !== null
+                  ? (totalPrice + uberFee / 100).toFixed(2)
+                  : totalPrice.toFixed(2)}
               </span>
             </div>
 
             {/* Checkout button */}
             <button
               onClick={handleCheckout}
-              disabled={isLoading}
+              disabled={isLoading || (orderType === "delivery" && !uberQuoteId && paymentMethod === "authorizenet")}
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded font-bold text-sm transition-all active:scale-[0.98]"
               style={{
                 background: isLoading
@@ -456,12 +671,13 @@ export default function CartDrawer() {
                 color: "white",
                 fontFamily: "'Oswald', sans-serif",
                 letterSpacing: "0.05em",
+                opacity: orderType === "delivery" && !uberQuoteId && paymentMethod === "authorizenet" ? 0.6 : 1,
               }}
             >
               {isLoading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  {paymentMethod === "authorizenet" ? "Processing Payment..." : "Redirecting to Payment..."}
+                  {createDelivery.isPending ? "Dispatching Uber..." : paymentMethod === "authorizenet" ? "Processing Payment..." : "Redirecting to Payment..."}
                 </>
               ) : (
                 <>
@@ -473,7 +689,9 @@ export default function CartDrawer() {
             </button>
 
             <p className="text-center text-xs" style={{ color: "oklch(0.60 0.03 30)" }}>
-              {paymentMethod === "authorizenet"
+              {orderType === "delivery"
+                ? "Delivery powered by Uber Direct · " + (paymentMethod === "authorizenet" ? "Secured by Authorize.net" : "Secured by Stripe")
+                : paymentMethod === "authorizenet"
                 ? "Secured by Authorize.net · PCI Compliant · Taxes not included"
                 : "Secured by Stripe · Taxes not included"}
             </p>

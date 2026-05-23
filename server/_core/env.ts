@@ -16,6 +16,14 @@ export const AUTHNET_ENV = {
   isSandbox: process.env.AUTHORIZENET_SANDBOX !== "false", // default to sandbox
 };
 
+// Uber Direct
+export const UBER_ENV = {
+  clientId: process.env.UBER_CLIENT_ID ?? "",
+  clientSecret: process.env.UBER_CLIENT_SECRET ?? "",
+  customerId: process.env.UBER_CUSTOMER_ID ?? "",
+  isSandbox: process.env.UBER_IS_SANDBOX !== "false", // default to sandbox
+};
+
 // Stripe
 export const STRIPE_ENV = {
   secretKey: process.env.STRIPE_SECRET_KEY ?? "",
