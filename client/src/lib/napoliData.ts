@@ -383,5 +383,7 @@ export const MENU_CATEGORIES = [
   { id: "burgers", label: "Burgers", emoji: "🍔" },
   { id: "salads", label: "Salads", emoji: "🥗" },
   { id: "desserts", label: "Desserts", emoji: "🍰" },
+  { id: "childrens", label: "Children's Menu", emoji: "🧒" },
+  { id: "beverages", label: "Beverages", emoji: "🥤" },
   { id: "specials", label: "Anytime Specials", emoji: "⭐" },
 ];

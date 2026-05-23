@@ -560,50 +560,52 @@ export default function Menu() {
               <ItemRow key={item} name={item} price={DESSERTS.price} category="desserts" />
             ))}
           </div>
-          {/* Children's Menu */}
-          <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-            <div className="px-5 py-2" style={{ background: "oklch(0.97 0.012 80)" }}>
-              <p className="napoli-label text-xs" style={{ color: "var(--napoli-red)" }}>Children's Menu — {CHILDRENS_MENU.price} each</p>
-            </div>
-            <div className="flex flex-col">
-              {CHILDRENS_MENU.items.map((item) => (
-                <ItemRow key={item} name={item} price={CHILDRENS_MENU.price} category="childrens-menu" />
-              ))}
-            </div>
+        </MenuCard>
+
+        {/* ── CHILDREN'S MENU ────────────────────────────────────── */}
+        <SectionHeader id="childrens" title="Children's Menu" emoji="🧒" />
+        <MenuCard>
+          <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
+            <span className="napoli-price text-lg" style={{ color: "var(--napoli-red)" }}>{CHILDRENS_MENU.price}</span>
+            <span className="text-xs napoli-body ml-2" style={{ color: "oklch(0.52 0.03 30)" }}>each</span>
           </div>
-          {/* Beverages */}
-          <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-            <div className="px-5 py-2" style={{ background: "oklch(0.97 0.012 80)" }}>
-              <p className="napoli-label text-xs" style={{ color: "var(--napoli-red)" }}>Beverages</p>
-            </div>
-            <div className="flex flex-col">
-              {BEVERAGES.map((bev) => (
-                <div key={bev.name}>
-                  {(bev as any).price ? (
+          <div className="flex flex-col">
+            {CHILDRENS_MENU.items.map((item) => (
+              <ItemRow key={item} name={item} price={CHILDRENS_MENU.price} category="childrens-menu" />
+            ))}
+          </div>
+        </MenuCard>
+
+        {/* ── BEVERAGES ──────────────────────────────────────────────── */}
+        <SectionHeader id="beverages" title="Beverages" emoji="🥤" />
+        <MenuCard>
+          <div className="flex flex-col">
+            {BEVERAGES.map((bev) => (
+              <div key={bev.name}>
+                {(bev as any).price ? (
+                  <ItemRow
+                    name={bev.name + ((bev as any).size ? ` (${(bev as any).size})` : "")}
+                    price={(bev as any).price}
+                    desc={(bev as any).note ? `${(bev as any).note}` : undefined}
+                    category="beverages"
+                  />
+                ) : (bev as any).prices ? (
+                  (bev as any).prices.map((p: any) => (
                     <ItemRow
-                      name={bev.name + ((bev as any).size ? ` (${(bev as any).size})` : "")}
-                      price={(bev as any).price}
-                      desc={(bev as any).note ? `${(bev as any).note}` : undefined}
+                      key={p.size}
+                      name={`${bev.name} (${p.size})`}
+                      price={p.price}
                       category="beverages"
                     />
-                  ) : (bev as any).prices ? (
-                    (bev as any).prices.map((p: any) => (
-                      <ItemRow
-                        key={p.size}
-                        name={`${bev.name} (${p.size})`}
-                        price={p.price}
-                        category="beverages"
-                      />
-                    ))
-                  ) : (
-                    <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: "oklch(0.93 0.012 80)" }}>
-                      <span className="napoli-body text-sm" style={{ color: "var(--napoli-dark)" }}>{bev.name}</span>
-                      {(bev as any).note && <span className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{(bev as any).note}</span>}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                  ))
+                ) : (
+                  <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: "oklch(0.93 0.012 80)" }}>
+                    <span className="napoli-body text-sm" style={{ color: "var(--napoli-dark)" }}>{bev.name}</span>
+                    {(bev as any).note && <span className="text-xs napoli-body italic" style={{ color: "oklch(0.52 0.03 30)" }}>{(bev as any).note}</span>}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </MenuCard>
 

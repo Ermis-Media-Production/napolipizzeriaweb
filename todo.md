@@ -91,12 +91,16 @@
 - [x] All 62 Vitest tests still passing after changes
 
 ## Convenience Fee Settings Panel
-- [ ] Add `store_settings` table to drizzle schema (key, value, updatedAt)
-- [ ] Seed default row: convenience_fee_enabled=true, convenience_fee_percent=3
-- [ ] Run pnpm db:push to apply schema
-- [ ] Create settingsRouter: getConvenienceFee (public), updateConvenienceFee (admin-only)
-- [ ] Build admin Settings page (/admin/settings) with enable/disable toggle and % input
-- [ ] Add Settings nav item to admin sidebar
-- [ ] CartDrawer: fetch live fee config via trpc.settings.getConvenienceFee instead of hardcoded constant
-- [ ] CartDrawer: re-compute convenienceFee reactively when config loads
-- [ ] Vitest tests for settingsRouter
+- [x] Add `store_settings` table to drizzle schema (key, value, updatedAt)
+- [x] Seed default row: convenience_fee_enabled=true, convenience_fee_percent=3
+- [x] Run pnpm db:push to apply schema
+- [x] Create settingsRouter: getConvenienceFee (public), updateConvenienceFee (admin-only)
+- [x] Build admin Settings page (/admin/settings) with enable/disable toggle and % input
+- [x] Add Settings nav item to admin sidebar (AdminOrders header)
+- [x] CartDrawer: fetch live fee config via trpc.settings.getConvenienceFee instead of hardcoded constant
+- [x] CartDrawer: re-compute convenienceFee reactively when config loads
+- [x] All 62 Vitest tests still passing after changes
+
+## Delivery Simplification
+- [x] Remove DoorDash from CartDrawer — Uber Direct only
+- [x] Auto-trigger Uber Direct quote on address input (debounced 800ms, no button needed)

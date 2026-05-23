@@ -1,13 +1,12 @@
 import { useCart } from "@/contexts/CartContext";
-import { X, Plus, Minus, Trash2, ShoppingCart, ChevronRight, Loader2, CreditCard, Lock, Truck, MapPin } from "lucide-react";
+import { X, Plus, Minus, Trash2, ShoppingCart, ChevronRight, Loader2, CreditCard, Lock, Truck, MapPin, CheckCircle2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
-import { CONVENIENCE_FEE_RATE, NV_SALES_TAX_RATE } from "@shared/const";
+import { NV_SALES_TAX_RATE } from "@shared/const";
 
 type PaymentMethod = "stripe" | "authorizenet";
-type DeliveryProvider = "uber" | "doordash";
 
 declare global {
   interface Window {
@@ -41,20 +40,11 @@ export default function CartDrawer() {
   const [deliveryZip, setDeliveryZip] = useState("89032");
   const [deliveryNotes, setDeliveryNotes] = useState("");
 
-  // Delivery provider selection
-  const [deliveryProvider, setDeliveryProvider] = useState<DeliveryProvider>("uber");
-
   // Uber Direct quote state
   const [uberQuoteId, setUberQuoteId] = useState<string | null>(null);
   const [uberFee, setUberFee] = useState<number | null>(null);
   const [uberEta, setUberEta] = useState<string | null>(null);
   const [isFetchingUberQuote, setIsFetchingUberQuote] = useState(false);
-
-  // DoorDash quote state
-  const [ddExternalId, setDdExternalId] = useState<string | null>(null);
-  const [ddFee, setDdFee] = useState<number | null>(null);
-  const [ddEta, setDdEta] = useState<string | null>(null);
-  const [isFetchingDdQuote, setIsFetchingDdQuote] = useState(false);
 
   // Coupon / discount state
   const [couponCode, setCouponCode] = useState("");
@@ -66,6 +56,18 @@ export default function CartDrawer() {
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCvc, setCardCvc] = useState("");
   const [isProcessingAuthNet, setIsProcessingAuthNet] = useState(false);
+
+  // Live convenience fee config from DB
+  const { data: feeConfig, isLoading: feeConfigLoading } = trpc.settings.getConvenienceFee.useQuery();
+  // While loading, fall back to 3% so totals are never shown as $0 fee
+  const liveFeeRate = feeConfigLoading
+    ? 0.03
+    : feeConfig?.enabled
+    ? feeConfig.percent / 100
+    : 0;
+
+  // Debounce timer ref for auto-quote
+  const quoteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load Accept.js script when Authorize.net is selected
   const acceptJsLoaded = useRef(false);
@@ -91,19 +93,8 @@ export default function CartDrawer() {
   useEffect(() => {
     if (orderType !== "delivery") {
       setUberQuoteId(null); setUberFee(null); setUberEta(null);
-      setDdExternalId(null); setDdFee(null); setDdEta(null);
     }
   }, [orderType]);
-
-  // Reset quotes when address changes
-  const handleAddressChange = (field: "address" | "city" | "state" | "zip", value: string) => {
-    if (field === "address") setDeliveryAddress(value);
-    if (field === "city") setDeliveryCity(value);
-    if (field === "state") setDeliveryState(value);
-    if (field === "zip") setDeliveryZip(value);
-    setUberQuoteId(null); setUberFee(null); setUberEta(null);
-    setDdExternalId(null); setDdFee(null); setDdEta(null);
-  };
 
   // tRPC mutations
   const getUberQuote = trpc.uber.getQuote.useMutation({
@@ -115,26 +106,36 @@ export default function CartDrawer() {
     },
     onError: (err) => {
       setIsFetchingUberQuote(false);
-      toast.error("Uber Direct quote failed: " + err.message);
+      toast.error("Could not get delivery quote: " + err.message);
     },
   });
 
-  const getDdQuote = trpc.doordash.getQuote.useMutation({
-    onSuccess: (data) => {
-      setDdExternalId(data.externalDeliveryId);
-      setDdFee(data.fee);
-      setDdEta(data.dropoffTimeEstimated);
-      setIsFetchingDdQuote(false);
-    },
-    onError: (err) => {
-      setIsFetchingDdQuote(false);
-      toast.warning("DoorDash quote unavailable: " + err.message);
-    },
-  });
+  /** Trigger an Uber Direct quote — debounced so it fires 800ms after the user stops typing */
+  const triggerUberQuote = (address: string, city: string, state: string, zip: string) => {
+    if (quoteDebounceRef.current) clearTimeout(quoteDebounceRef.current);
+    // Reset previous quote immediately
+    setUberQuoteId(null); setUberFee(null); setUberEta(null);
+    if (!address.trim()) return;
+    quoteDebounceRef.current = setTimeout(() => {
+      setIsFetchingUberQuote(true);
+      getUberQuote.mutate({ dropoffAddress: address, dropoffCity: city, dropoffState: state, dropoffZip: zip });
+    }, 800);
+  };
+
+  // Handle address field changes — auto-trigger quote
+  const handleAddressChange = (field: "address" | "city" | "state" | "zip", value: string) => {
+    const newAddress = field === "address" ? value : deliveryAddress;
+    const newCity    = field === "city"    ? value : deliveryCity;
+    const newState   = field === "state"   ? value : deliveryState;
+    const newZip     = field === "zip"     ? value : deliveryZip;
+    if (field === "address") setDeliveryAddress(value);
+    if (field === "city")    setDeliveryCity(value);
+    if (field === "state")   setDeliveryState(value);
+    if (field === "zip")     setDeliveryZip(value);
+    triggerUberQuote(newAddress, newCity, newState, newZip);
+  };
 
   const createUberDelivery = trpc.uber.createDelivery.useMutation();
-  const createDdDelivery = trpc.doordash.createDelivery.useMutation();
-
   const redeemCoupon = trpc.coupon.redeem.useMutation();
 
   const utils = trpc.useUtils();
@@ -174,7 +175,7 @@ export default function CartDrawer() {
       }
       if (orderType === "delivery") {
         try {
-          if (deliveryProvider === "uber" && uberQuoteId) {
+          if (uberQuoteId) {
             const delivery = await createUberDelivery.mutateAsync({
               quoteId: uberQuoteId,
               dropoffAddress: deliveryAddress,
@@ -191,23 +192,6 @@ export default function CartDrawer() {
             closeCart();
             navigate(
               `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}&delivery_id=${encodeURIComponent(delivery.deliveryId)}&tracking_url=${encodeURIComponent(delivery.trackingUrl)}`
-            );
-          } else if (deliveryProvider === "doordash" && ddExternalId) {
-            const [firstName, ...rest] = customerName.trim().split(" ");
-            const delivery = await createDdDelivery.mutateAsync({
-              externalDeliveryId: ddExternalId,
-              dropoffAddress: `${deliveryAddress}, ${deliveryCity}, ${deliveryState} ${deliveryZip}`,
-              dropoffContactGivenName: firstName || customerName,
-              dropoffContactFamilyName: rest.join(" ") || undefined,
-              dropoffPhone: customerPhone || "+17025550000",
-              dropoffInstructions: deliveryNotes || undefined,
-              orderValue: Math.round(totalPrice * 100),
-              items: items.map((i) => ({ name: i.name, quantity: i.quantity, price: Math.round(i.price * 100) })),
-            });
-            clearCart();
-            closeCart();
-            navigate(
-              `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}&provider=doordash&delivery_id=${encodeURIComponent(delivery.deliveryId)}&tracking_url=${encodeURIComponent(delivery.trackingUrl)}`
             );
           } else {
             clearCart();
@@ -238,55 +222,19 @@ export default function CartDrawer() {
     },
   });
 
-  const handleGetQuotes = () => {
-    if (!deliveryAddress.trim()) {
-      toast.error("Please enter your delivery address.");
-      return;
-    }
-    const fullAddress = `${deliveryAddress}, ${deliveryCity}, ${deliveryState} ${deliveryZip}`;
-    const orderValueCents = Math.round(totalPrice * 100);
-    const ddId = `napoli-${Date.now()}`;
-
-    setIsFetchingUberQuote(true);
-    getUberQuote.mutate({
-      dropoffAddress: deliveryAddress,
-      dropoffCity: deliveryCity,
-      dropoffState: deliveryState,
-      dropoffZip: deliveryZip,
-    });
-
-    setIsFetchingDdQuote(true);
-    getDdQuote.mutate({
-      externalDeliveryId: ddId,
-      dropoffAddress: fullAddress,
-      dropoffContactName: customerName || "Customer",
-      dropoffPhone: customerPhone || "+17025550000",
-      orderValue: orderValueCents,
-      items: items.map((i) => ({
-        name: i.name,
-        quantity: i.quantity,
-        price: Math.round(i.price * 100),
-      })),
-    });
-  };
-
   const handleStripeCheckout = () => {
     if (items.length === 0) return;
     if (orderType === "delivery" && !deliveryAddress.trim()) {
       toast.error("Please enter your delivery address.");
       return;
     }
-    if (orderType === "delivery" && deliveryProvider === "uber" && !uberQuoteId) {
-      toast.error("Please get a delivery quote first.");
-      return;
-    }
-    if (orderType === "delivery" && deliveryProvider === "doordash" && !ddExternalId) {
-      toast.error("Please get a delivery quote first.");
+    if (orderType === "delivery" && !uberQuoteId) {
+      toast.error("Please wait for the delivery quote to load.");
       return;
     }
 
     const deliveryMeta =
-      orderType === "delivery" && deliveryProvider === "uber" && uberQuoteId
+      orderType === "delivery" && uberQuoteId
         ? {
             uberQuoteId,
             dropoffAddress: deliveryAddress,
@@ -294,16 +242,6 @@ export default function CartDrawer() {
             dropoffState: deliveryState,
             dropoffZip: deliveryZip,
             dropoffNotes: deliveryNotes || undefined,
-          }
-        : orderType === "delivery" && deliveryProvider === "doordash" && ddExternalId
-        ? {
-            doordashExternalId: ddExternalId,
-            dropoffAddress: deliveryAddress,
-            dropoffCity: deliveryCity,
-            dropoffState: deliveryState,
-            dropoffZip: deliveryZip,
-            dropoffNotes: deliveryNotes || undefined,
-            deliveryProvider: "doordash" as const,
           }
         : {};
 
@@ -316,7 +254,6 @@ export default function CartDrawer() {
       customerPhone: customerPhone || undefined,
       couponCode: appliedCoupon?.code || undefined,
       discountPercent: appliedCoupon?.discountPercent || undefined,
-      // Delivery fee, convenience fee, and sales tax as separate Stripe line items
       deliveryFeeCents: selectedDeliveryFee !== null ? selectedDeliveryFee : undefined,
       convenienceFeeCents: Math.round(convenienceFee * 100),
       salesTaxCents: Math.round(salesTax * 100),
@@ -337,12 +274,8 @@ export default function CartDrawer() {
       toast.error("Please enter your delivery address.");
       return;
     }
-    if (orderType === "delivery" && deliveryProvider === "uber" && !uberQuoteId) {
-      toast.error("Please get a delivery quote first.");
-      return;
-    }
-    if (orderType === "delivery" && deliveryProvider === "doordash" && !ddExternalId) {
-      toast.error("Please get a delivery quote first.");
+    if (orderType === "delivery" && !uberQuoteId) {
+      toast.error("Please wait for the delivery quote to load.");
       return;
     }
     if (!cardNumber || !cardExpiry || !cardCvc) {
@@ -391,7 +324,6 @@ export default function CartDrawer() {
         customerPhone: customerPhone || undefined,
         couponCode: appliedCoupon?.code || undefined,
         discountPercent: appliedCoupon?.discountPercent || undefined,
-        // Convenience fee and sales tax in cents
         convenienceFeeCents: Math.round(convenienceFee * 100),
         salesTaxCents: Math.round(salesTax * 100),
       });
@@ -408,32 +340,17 @@ export default function CartDrawer() {
     isProcessingAuthNet ||
     chargeCard.isPending ||
     createUberDelivery.isPending ||
-    createDdDelivery.isPending;
+    feeConfigLoading;
 
-  const isFetchingAnyQuote = isFetchingUberQuote || isFetchingDdQuote;
-  const hasAnyQuote = orderType === "delivery" && (uberQuoteId !== null || ddExternalId !== null);
-  const selectedDeliveryFee =
-    orderType === "delivery"
-      ? deliveryProvider === "uber" && uberFee !== null
-        ? uberFee
-        : deliveryProvider === "doordash" && ddFee !== null
-        ? ddFee
-        : null
-      : null;
+  const selectedDeliveryFee = orderType === "delivery" && uberFee !== null ? uberFee : null;
 
   // Pricing breakdown
-  // 1. Food subtotal (from cart)
   const subtotal = totalPrice;
-  // 2. Coupon discount applied to food subtotal
   const discountAmount = appliedCoupon ? (subtotal * appliedCoupon.discountPercent) / 100 : 0;
   const discountedSubtotal = subtotal - discountAmount;
-  // 3. Convenience Fee: 3% of discounted food subtotal (non-taxable)
-  const convenienceFee = Math.round(discountedSubtotal * CONVENIENCE_FEE_RATE * 100) / 100;
-  // 4. Nevada Sales Tax: 8.375% of discounted food subtotal only (fee & delivery are not taxed)
+  const convenienceFee = Math.round(discountedSubtotal * liveFeeRate * 100) / 100;
   const salesTax = Math.round(discountedSubtotal * NV_SALES_TAX_RATE * 100) / 100;
-  // 5. Delivery fee in dollars (quotes return cents)
   const deliveryFeeDollars = selectedDeliveryFee !== null ? selectedDeliveryFee / 100 : 0;
-  // 6. Grand total
   const grandTotal = discountedSubtotal + convenienceFee + salesTax + deliveryFeeDollars;
 
   const formatCardNumber = (val: string) =>
@@ -644,119 +561,51 @@ export default function CartDrawer() {
                   style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
                 />
 
-                {/* Get Quotes button — shown before quotes are fetched */}
-                {!hasAnyQuote && !isFetchingAnyQuote && (
-                  <button
-                    onClick={handleGetQuotes}
-                    disabled={!deliveryAddress.trim()}
-                    className="w-full flex items-center justify-center gap-2 py-2 rounded text-xs font-semibold border transition-all"
-                    style={{
-                      background: "var(--napoli-red, #c0392b)",
-                      color: "white",
-                      borderColor: "var(--napoli-red, #c0392b)",
-                      fontFamily: "'Oswald', sans-serif",
-                      opacity: !deliveryAddress.trim() ? 0.5 : 1,
-                    }}
-                  >
-                    <Truck size={12} /> Get Delivery Quotes
-                  </button>
-                )}
-
-                {/* Loading state */}
-                {isFetchingAnyQuote && (
-                  <div className="flex items-center justify-center gap-2 py-2 text-xs" style={{ color: "oklch(0.42 0.03 30)" }}>
-                    <Loader2 size={13} className="animate-spin" />
-                    Getting quotes from both providers...
+                {/* Delivery quote status */}
+                {isFetchingUberQuote && (
+                  <div className="flex items-center gap-2 py-2 text-xs" style={{ color: "oklch(0.42 0.03 30)" }}>
+                    <Loader2 size={13} className="animate-spin" style={{ color: "oklch(0.40 0.15 220)" }} />
+                    <span>Getting delivery quote...</span>
                   </div>
                 )}
 
-                {/* Provider cards — shown after at least one quote arrives */}
-                {hasAnyQuote && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
-                      CHOOSE DELIVERY PROVIDER
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {/* Uber Direct card */}
-                      <button
-                        onClick={() => uberQuoteId && setDeliveryProvider("uber")}
-                        disabled={!uberQuoteId}
-                        className="relative flex flex-col items-center gap-1 p-3 rounded-lg border-2 text-xs transition-all"
-                        style={{
-                          borderColor: deliveryProvider === "uber" && uberQuoteId ? "oklch(0.40 0.15 220)" : "oklch(0.82 0.015 80)",
-                          background: deliveryProvider === "uber" && uberQuoteId ? "oklch(0.95 0.04 220)" : !uberQuoteId ? "oklch(0.96 0.005 80)" : "white",
-                          opacity: !uberQuoteId ? 0.55 : 1,
-                        }}
-                      >
-                        <Truck size={16} style={{ color: uberQuoteId ? "oklch(0.40 0.15 220)" : "oklch(0.60 0.03 30)" }} />
-                        <span className="font-bold" style={{ color: "oklch(0.22 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
+                {!isFetchingUberQuote && uberFee !== null && uberQuoteId && (
+                  <div
+                    className="flex items-center justify-between px-3 py-2 rounded-lg border"
+                    style={{ borderColor: "oklch(0.70 0.15 220)", background: "oklch(0.95 0.04 220)" }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 size={14} style={{ color: "oklch(0.40 0.15 220)" }} />
+                      <div>
+                        <span className="text-xs font-bold" style={{ color: "oklch(0.25 0.10 220)", fontFamily: "'Oswald', sans-serif" }}>
                           Uber Direct
                         </span>
-                        {uberFee !== null ? (
-                          <>
-                            <span className="font-bold text-sm" style={{ color: "oklch(0.40 0.15 220)" }}>
-                              ${(uberFee / 100).toFixed(2)}
-                            </span>
-                            {uberEta && (
-                              <span style={{ color: "oklch(0.50 0.03 30)" }}>
-                                ETA {new Date(uberEta).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <span style={{ color: "oklch(0.60 0.03 30)" }}>Unavailable</span>
+                        {uberEta && (
+                          <span className="text-xs ml-2" style={{ color: "oklch(0.40 0.10 220)" }}>
+                            · ETA {new Date(uberEta).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
                         )}
-                        {deliveryProvider === "uber" && uberQuoteId && (
-                          <div className="absolute top-1.5 right-1.5 w-3 h-3 rounded-full" style={{ background: "oklch(0.40 0.15 220)" }} />
-                        )}
-                      </button>
-
-                      {/* DoorDash card */}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold" style={{ color: "oklch(0.30 0.15 220)" }}>
+                        ${(uberFee / 100).toFixed(2)}
+                      </span>
                       <button
-                        onClick={() => ddExternalId && setDeliveryProvider("doordash")}
-                        disabled={!ddExternalId}
-                        className="relative flex flex-col items-center gap-1 p-3 rounded-lg border-2 text-xs transition-all"
-                        style={{
-                          borderColor: deliveryProvider === "doordash" && ddExternalId ? "oklch(0.52 0.20 25)" : "oklch(0.82 0.015 80)",
-                          background: deliveryProvider === "doordash" && ddExternalId ? "oklch(0.97 0.04 25)" : !ddExternalId ? "oklch(0.96 0.005 80)" : "white",
-                          opacity: !ddExternalId ? 0.55 : 1,
-                        }}
+                        onClick={() => triggerUberQuote(deliveryAddress, deliveryCity, deliveryState, deliveryZip)}
+                        className="text-xs px-2 py-0.5 rounded border transition-colors"
+                        style={{ borderColor: "oklch(0.65 0.12 220)", color: "oklch(0.40 0.12 220)" }}
                       >
-                        <Truck size={16} style={{ color: ddExternalId ? "oklch(0.52 0.20 25)" : "oklch(0.60 0.03 30)" }} />
-                        <span className="font-bold" style={{ color: "oklch(0.22 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
-                          DoorDash
-                        </span>
-                        {ddFee !== null ? (
-                          <>
-                            <span className="font-bold text-sm" style={{ color: "oklch(0.52 0.20 25)" }}>
-                              ${(ddFee / 100).toFixed(2)}
-                            </span>
-                            {ddEta && (
-                              <span style={{ color: "oklch(0.50 0.03 30)" }}>
-                                ETA {new Date(ddEta).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <span style={{ color: "oklch(0.60 0.03 30)" }}>Unavailable</span>
-                        )}
-                        {deliveryProvider === "doordash" && ddExternalId && (
-                          <div className="absolute top-1.5 right-1.5 w-3 h-3 rounded-full" style={{ background: "oklch(0.52 0.20 25)" }} />
-                        )}
+                        Refresh
                       </button>
                     </div>
-                    <button
-                      onClick={() => {
-                        setUberQuoteId(null); setUberFee(null); setUberEta(null);
-                        setDdExternalId(null); setDdFee(null); setDdEta(null);
-                        setTimeout(handleGetQuotes, 0);
-                      }}
-                      className="w-full text-xs py-1 transition-colors"
-                      style={{ color: "oklch(0.55 0.03 30)" }}
-                    >
-                      Refresh quotes
-                    </button>
                   </div>
+                )}
+
+                {!isFetchingUberQuote && !uberFee && deliveryAddress.trim() && !getUberQuote.isPending && getUberQuote.isError && (
+                  <p className="text-xs px-2 py-1.5 rounded border" style={{ color: "oklch(0.45 0.18 25)", background: "oklch(0.97 0.04 25)", borderColor: "oklch(0.75 0.12 25)" }}>
+                    Delivery not available for this address. Please check the address or call us at 725-204-0379.
+                  </p>
                 )}
               </div>
             )}
@@ -916,18 +765,16 @@ export default function CartDrawer() {
               )}
             </div>
 
-            {/* Order Summary — full receipt breakdown */}
+            {/* Order Summary */}
             <div
               className="flex flex-col gap-1 py-2 border-t"
               style={{ borderColor: "oklch(0.88 0.015 80)" }}
             >
-              {/* Food subtotal */}
               <div className="flex items-center justify-between">
                 <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>Subtotal ({totalItems} item{totalItems !== 1 ? "s" : ""})</span>
                 <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>${subtotal.toFixed(2)}</span>
               </div>
 
-              {/* Coupon discount */}
               {appliedCoupon && (
                 <div className="flex items-center justify-between">
                   <span className="text-xs" style={{ color: "oklch(0.35 0.12 145)" }}>Discount ({appliedCoupon.discountPercent}% off — {appliedCoupon.code})</span>
@@ -935,31 +782,25 @@ export default function CartDrawer() {
                 </div>
               )}
 
-              {/* Convenience Fee */}
               <div className="flex items-center justify-between">
                 <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>
-                  Convenience Fee (3%)
+                  Convenience Fee ({feeConfigLoading ? "…" : feeConfig?.enabled ? (feeConfig.percent ?? 3) : 0}%)
                 </span>
                 <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>+${convenienceFee.toFixed(2)}</span>
               </div>
 
-              {/* Nevada Sales Tax */}
               <div className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>
-                  Sales Tax (NV 8.375%)
-                </span>
+                <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>Sales Tax (NV 8.375%)</span>
                 <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>+${salesTax.toFixed(2)}</span>
               </div>
 
-              {/* Delivery fee */}
               {selectedDeliveryFee !== null && (
                 <div className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>Delivery ({deliveryProvider === "uber" ? "Uber Direct" : "DoorDash Drive"})</span>
+                  <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>Delivery (Uber Direct)</span>
                   <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>+${deliveryFeeDollars.toFixed(2)}</span>
                 </div>
               )}
 
-              {/* Divider + Grand Total */}
               <div className="flex items-center justify-between pt-2 mt-1 border-t" style={{ borderColor: "oklch(0.82 0.015 80)" }}>
                 <span className="text-sm font-semibold" style={{ color: "oklch(0.35 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>Total</span>
                 <span className="text-xl font-bold" style={{ color: "var(--napoli-red, #c0392b)", fontFamily: "'Oswald', sans-serif" }}>
@@ -971,10 +812,10 @@ export default function CartDrawer() {
             {/* Checkout button */}
             <button
               onClick={handleCheckout}
-              disabled={isLoading}
+              disabled={isLoading || (orderType === "delivery" && isFetchingUberQuote)}
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded font-bold text-sm transition-all active:scale-[0.98]"
               style={{
-                background: isLoading
+                background: isLoading || (orderType === "delivery" && isFetchingUberQuote)
                   ? "oklch(0.55 0.03 30)"
                   : paymentMethod === "authorizenet"
                   ? "oklch(0.38 0.12 145)"
@@ -988,12 +829,15 @@ export default function CartDrawer() {
                 <>
                   <Loader2 size={16} className="animate-spin" />
                   {createUberDelivery.isPending
-                    ? "Dispatching Uber..."
-                    : createDdDelivery.isPending
-                    ? "Dispatching DoorDash..."
+                    ? "Dispatching Uber Direct..."
                     : paymentMethod === "authorizenet"
                     ? "Processing Payment..."
                     : "Redirecting to Payment..."}
+                </>
+              ) : orderType === "delivery" && isFetchingUberQuote ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Getting delivery quote...
                 </>
               ) : (
                 <>
@@ -1005,10 +849,10 @@ export default function CartDrawer() {
             </button>
             <p className="text-center text-xs" style={{ color: "oklch(0.60 0.03 30)" }}>
               {orderType === "delivery"
-                ? `Delivery by ${deliveryProvider === "uber" ? "Uber Direct" : "DoorDash Drive"} · ${paymentMethod === "authorizenet" ? "Secured by Authorize.net" : "Secured by Stripe"}`
+                ? `Delivery by Uber Direct · ${paymentMethod === "authorizenet" ? "Secured by Authorize.net" : "Secured by Stripe"}`
                 : paymentMethod === "authorizenet"
-                ? "Secured by Authorize.net · PCI Compliant · Taxes not included"
-                : "Secured by Stripe · Taxes not included"}
+                ? "Secured by Authorize.net · PCI Compliant"
+                : "Secured by Stripe"}
             </p>
           </div>
         )}

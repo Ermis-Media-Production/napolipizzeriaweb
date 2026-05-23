@@ -20,6 +20,7 @@ import {
   UtensilsCrossed,
   Package,
   ExternalLink,
+  Settings,
 } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -207,6 +208,15 @@ export default function AdminOrders() {
             <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
             Refresh
           </button>
+          <Link href="/admin/settings">
+            <button
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95"
+              style={{ background: "oklch(0.96 0.04 250)", color: "oklch(0.28 0.10 250)", border: "1px solid oklch(0.70 0.15 250)", fontFamily: "'Oswald', sans-serif" }}
+            >
+              <Settings size={13} />
+              Settings
+            </button>
+          </Link>
           <Link href="/admin/doordash-test">
             <button
               className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95"
