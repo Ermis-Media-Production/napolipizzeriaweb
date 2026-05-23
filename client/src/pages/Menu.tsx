@@ -244,32 +244,7 @@ export default function Menu() {
               )}
             </div>
           ))}
-          {/* Sides */}
-          <div className="px-5 py-3 border-t" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
-            <p className="napoli-label text-xs mb-2" style={{ color: "var(--napoli-red)" }}>Sides</p>
-            {SIDES.map((item) => (
-              (item as any).prices ? (
-                <MultiSizeItemRow
-                  key={item.name}
-                  name={item.name}
-                  prices={(item as any).prices}
-                  category="sides"
-                />
-              ) : (
-                <ItemRow key={item.name} name={item.name} price={(item as any).price} category="sides" />
-              )
-            ))}
-          </div>
-          {/* Soups */}
-          <div className="px-5 py-3 border-t" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
-            <p className="napoli-label text-xs mb-2" style={{ color: "var(--napoli-red)" }}>Soups</p>
-            {SOUPS.map((s) => (
-              <div key={s.name} className="flex justify-between items-center py-2">
-                <span className="text-sm napoli-body" style={{ color: "var(--napoli-dark)" }}>{s.name}</span>
-                <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{s.price}</span>
-              </div>
-            ))}
-          </div>
+
         </MenuCard>
 
         {/* ── LUNCH SPECIALS ─────────────────────────────────── */}
