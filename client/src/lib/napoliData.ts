@@ -263,7 +263,7 @@ export const PASTA = {
     { name: "Tortellini Ala Parma", price: "$19.99" },
     { name: "Tortellini Alfredo", price: "$20.49" },
     { name: "Ravioli Bolognese (Sauteed)", price: "$19.99" },
-    { name: "Alfredo, Chicken, Garlic & Broccoli", price: "$22.99" },
+    { name: "Alfredo, Chicken, Garlic & Broccoli", price: "$24.99" },
   ],
   parmigiana: [
     { name: "Eggplant Parmigiana", price: "$17.49" },
