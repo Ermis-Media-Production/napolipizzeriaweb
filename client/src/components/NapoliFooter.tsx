@@ -41,7 +41,7 @@ export default function NapoliFooter() {
                 {RESTAURANT_INFO.subtitle}
               </p>
               <div className="flex gap-3">
-                <a href="https://www.instagram.com/npizzeria/" target="_blank" rel="noopener noreferrer" className="p-2 rounded transition-colors hover:bg-napoli-red" style={{ color: "oklch(0.65 0.015 80)" }}>
+                <a href="https://www.instagram.com/napolipizzeriacraig" target="_blank" rel="noopener noreferrer" className="p-2 rounded transition-colors hover:bg-napoli-red" style={{ color: "oklch(0.65 0.015 80)" }}>
                   <Instagram size={16} />
                 </a>
                 <a href="https://www.facebook.com/napolipizzeriacraig" target="_blank" rel="noopener noreferrer" className="p-2 rounded transition-colors hover:bg-napoli-red" style={{ color: "oklch(0.65 0.015 80)" }}>
