@@ -396,7 +396,9 @@ export default function Menu() {
   const [activeCategory, setActiveCategory] = useState("appetizers");
   const [showAllToppings, setShowAllToppings] = useState(false);
   const [wingsSelection, setWingsSelection] = useState<WingsSelection | null>(null);
+  const [wingsModalKey, setWingsModalKey] = useState(0);
   const [pizzaSelection, setPizzaSelection] = useState<PizzaSelection | null>(null);
+  const [pizzaModalKey, setPizzaModalKey] = useState(0);
 
   const scrollTo = (id: string) => {
     setActiveCategory(id);
@@ -516,7 +518,7 @@ export default function Menu() {
                     ))}
                     <td className="px-3 py-3">
                       <button
-                        onClick={() => setPizzaSelection({ pizzaName: name, isSpecialty: false })}
+                        onClick={() => { setPizzaModalKey(k => k + 1); setPizzaSelection({ pizzaName: name, isSpecialty: false }); }}
                         className="flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all active:scale-95"
                         style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
                       >
@@ -580,7 +582,7 @@ export default function Menu() {
                     </div>
                   </div>
                   <button
-                    onClick={() => setPizzaSelection({ pizzaName: pizza.name, isSpecialty: true })}
+                    onClick={() => { setPizzaModalKey(k => k + 1); setPizzaSelection({ pizzaName: pizza.name, isSpecialty: true }); }}
                     className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all active:scale-95"
                     style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
                   >
@@ -655,12 +657,13 @@ export default function Menu() {
                 boneIn={row}
                 boneless={WINGS.boneless[i]}
                 fingers={WINGS.chickenFingers[i]}
-                onSelect={setWingsSelection}
+                onSelect={(sel) => { setWingsModalKey(k => k + 1); setWingsSelection(sel); }}
               />
             ))}
 
             {/* Wings Customizer Modal */}
             <WingsCustomizerModal
+              key={wingsModalKey}
               selection={wingsSelection}
               onClose={() => setWingsSelection(null)}
             />
@@ -669,6 +672,7 @@ export default function Menu() {
 
         {/* Pizza Customizer Modal — rendered at top level so it overlays everything */}
         <PizzaCustomizerModal
+          key={pizzaModalKey}
           selection={pizzaSelection}
           onClose={() => setPizzaSelection(null)}
         />
