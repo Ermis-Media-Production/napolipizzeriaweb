@@ -104,3 +104,16 @@
 ## Delivery Simplification
 - [x] Remove DoorDash from CartDrawer — Uber Direct only
 - [x] Auto-trigger Uber Direct quote on address input (debounced 800ms, no button needed)
+
+## Pizza Customizer Modal
+- [ ] Build PizzaCustomizerModal: Step 1 size (10"-36"), Step 2 crust (Regular/Thin/Stuffed), Step 3 toppings (+$1.50 each), Step 4 notes + add to cart
+- [ ] Wire modal into pizza section in Menu.tsx (specialty pizzas + build-your-own)
+- [ ] Show toppings count badge and total price update in real time
+
+## Children's Menu & Beverages Visual Redesign
+- [ ] Children's Menu: distinct blue/playful background with kid-friendly icons
+- [ ] Beverages: dark/cool background with drink icons, separated from food sections
+
+## Admin Orders — Order Details Visibility
+- [ ] Show item description (flavor, Half & Half, toppings, notes) under each line item in AdminOrders
+- [ ] Highlight special notes in a distinct color/badge so kitchen staff sees them clearly

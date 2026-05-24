@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
 import WingsCustomizerModal, { type WingsSelection } from "@/components/WingsCustomizerModal";
+import PizzaCustomizerModal, { type PizzaSelection } from "@/components/PizzaCustomizerModal";
 import {
   MENU_CATEGORIES, APPETIZERS, LUNCH_SPECIALS, PIZZA_SIZES, PIZZA_BASE_PRICES,
   PIZZA_SPECIALS, PIZZA_30_TOPPINGS, STUFFED_DOUGH, WINGS, PASTA, SUBS,
@@ -394,6 +395,7 @@ export default function Menu() {
   const [activeCategory, setActiveCategory] = useState("appetizers");
   const [showAllToppings, setShowAllToppings] = useState(false);
   const [wingsSelection, setWingsSelection] = useState<WingsSelection | null>(null);
+  const [pizzaSelection, setPizzaSelection] = useState<PizzaSelection | null>(null);
 
   const scrollTo = (id: string) => {
     setActiveCategory(id);
@@ -511,6 +513,15 @@ export default function Menu() {
                     {prices.map((p, i) => (
                       <td key={i} className="text-center px-2 py-3 napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{p}</td>
                     ))}
+                    <td className="px-3 py-3">
+                      <button
+                        onClick={() => setPizzaSelection({ pizzaName: name, isSpecialty: false })}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all active:scale-95"
+                        style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+                      >
+                        <Plus size={11} /> Order
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -557,14 +568,23 @@ export default function Menu() {
               {PIZZA_SPECIALS.map((pizza) => (
                 <div
                   key={pizza.name}
-                  className="napoli-menu-item flex items-start gap-3 py-3 px-3 border-b border-r"
+                  className="napoli-menu-item flex items-start justify-between gap-3 py-3 px-3 border-b border-r"
                   style={{ borderColor: "oklch(0.93 0.012 80)" }}
                 >
-                  <div className="w-2 h-2 rounded-full mt-1.5 shrink-0 bg-napoli-red" />
-                  <div>
-                    <span className="text-sm napoli-body font-bold" style={{ color: "var(--napoli-dark)" }}>{pizza.name}</span>
-                    <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{pizza.desc}</p>
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full mt-1.5 shrink-0 bg-napoli-red" />
+                    <div>
+                      <span className="text-sm napoli-body font-bold" style={{ color: "var(--napoli-dark)" }}>{pizza.name}</span>
+                      <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{pizza.desc}</p>
+                    </div>
                   </div>
+                  <button
+                    onClick={() => setPizzaSelection({ pizzaName: pizza.name, isSpecialty: true })}
+                    className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all active:scale-95"
+                    style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+                  >
+                    <Plus size={11} /> Order
+                  </button>
                 </div>
               ))}
             </div>
@@ -645,6 +665,12 @@ export default function Menu() {
             />
           </div>
         </MenuCard>
+
+        {/* Pizza Customizer Modal — rendered at top level so it overlays everything */}
+        <PizzaCustomizerModal
+          selection={pizzaSelection}
+          onClose={() => setPizzaSelection(null)}
+        />
 
         {/* ── PASTA ──────────────────────────────────────────── */}
         <SectionHeader id="pasta" title="Pasta" emoji="🍝" />
@@ -771,51 +797,139 @@ export default function Menu() {
         </MenuCard>
 
         {/* ── CHILDREN'S MENU ────────────────────────────────────── */}
-        <SectionHeader id="childrens" title="Children's Menu" emoji="🧒" />
-        <MenuCard>
-          <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
-            <span className="napoli-price text-lg" style={{ color: "var(--napoli-red)" }}>{CHILDRENS_MENU.price}</span>
-            <span className="text-xs napoli-body ml-2" style={{ color: "oklch(0.52 0.03 30)" }}>each</span>
+        {/* Custom header — sky blue theme for kids */}
+        <div
+          id="childrens"
+          className="flex items-center gap-3 py-3 px-5 rounded-t-md scroll-mt-24"
+          style={{ background: "oklch(0.55 0.18 240)" }}
+        >
+          <span className="text-xl">🧒</span>
+          <h2 className="napoli-label text-base text-white tracking-widest">Children's Menu</h2>
+        </div>
+        <div
+          className="rounded-b-md border border-t-0 mb-8 overflow-hidden"
+          style={{ borderColor: "oklch(0.75 0.12 240)", background: "oklch(0.97 0.03 240)" }}
+        >
+          {/* Banner */}
+          <div
+            className="px-5 py-3 border-b flex items-center gap-3"
+            style={{ borderColor: "oklch(0.85 0.08 240)", background: "oklch(0.93 0.06 240)" }}
+          >
+            <span className="text-lg">⭐</span>
+            <div>
+              <span className="napoli-price text-xl font-bold" style={{ color: "oklch(0.35 0.18 240)" }}>{CHILDRENS_MENU.price}</span>
+              <span className="text-xs napoli-body ml-2" style={{ color: "oklch(0.45 0.10 240)" }}>each · Includes drink & dessert</span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            {CHILDRENS_MENU.items.map((item) => (
-              <ItemRow key={item} name={item} price={CHILDRENS_MENU.price} category="childrens-menu" />
-            ))}
+          {/* Items grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-0">
+            {CHILDRENS_MENU.items.map((item, i) => {
+              const { addItem } = { addItem: useCart().addItem };
+              return (
+                <div
+                  key={item}
+                  className="flex items-center justify-between px-5 py-3 border-b border-r"
+                  style={{ borderColor: "oklch(0.87 0.07 240)" }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{["🍕","🍝","🍔","🐔","🧆","🥪","🥗","🍟"][i % 8]}</span>
+                    <span className="text-sm font-semibold napoli-body" style={{ color: "oklch(0.28 0.12 240)" }}>{item}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="napoli-price text-sm font-bold" style={{ color: "oklch(0.40 0.18 240)" }}>{CHILDRENS_MENU.price}</span>
+                    <button
+                      onClick={() => { addItem({ id: `kids-${item}-${Date.now()}`, name: item, price: parseFloat(CHILDRENS_MENU.price.replace("$","")), quantity: 1, category: "childrens-menu" }); toast.success(`${item} added to cart!`); }}
+                      className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90"
+                      style={{ background: "oklch(0.55 0.18 240)", color: "white" }}
+                    >
+                      <Plus size={13} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </MenuCard>
+        </div>
 
         {/* ── BEVERAGES ──────────────────────────────────────────────── */}
-        <SectionHeader id="beverages" title="Beverages" emoji="🥤" />
-        <MenuCard>
-          <div className="flex flex-col">
-            {BEVERAGES.map((bev) => (
-              <div key={bev.name}>
-                {(bev as any).price ? (
-                  <ItemRow
-                    name={bev.name + ((bev as any).size ? ` (${(bev as any).size})` : "")}
-                    price={(bev as any).price}
-                    desc={(bev as any).note ? `${(bev as any).note}` : undefined}
-                    category="beverages"
-                  />
-                ) : (bev as any).prices ? (
-                  (bev as any).prices.map((p: any) => (
-                    <ItemRow
-                      key={p.size}
-                      name={`${bev.name} (${p.size})`}
-                      price={p.price}
-                      category="beverages"
-                    />
-                  ))
-                ) : (
-                  <div className="flex items-center justify-between px-5 py-3 border-b" style={{ borderColor: "oklch(0.93 0.012 80)" }}>
-                    <span className="napoli-body text-sm" style={{ color: "var(--napoli-dark)" }}>{bev.name}</span>
-                    {(bev as any).note && <span className="text-xs napoli-body italic" style={{ color: "oklch(0.52 0.03 30)" }}>{(bev as any).note}</span>}
+        {/* Custom header — deep navy theme for drinks */}
+        <div
+          id="beverages"
+          className="flex items-center gap-3 py-3 px-5 rounded-t-md scroll-mt-24"
+          style={{ background: "oklch(0.28 0.08 255)" }}
+        >
+          <span className="text-xl">🥤</span>
+          <h2 className="napoli-label text-base text-white tracking-widest">Beverages</h2>
+        </div>
+        <div
+          className="rounded-b-md border border-t-0 mb-8 overflow-hidden"
+          style={{ borderColor: "oklch(0.45 0.06 255)", background: "oklch(0.96 0.02 255)" }}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-0">
+            {BEVERAGES.map((bev) => {
+              const { addItem } = { addItem: useCart().addItem };
+              if ((bev as any).prices) {
+                return (bev as any).prices.map((p: any) => (
+                  <div
+                    key={p.size}
+                    className="flex items-center justify-between px-5 py-3 border-b border-r"
+                    style={{ borderColor: "oklch(0.87 0.04 255)" }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">🥤</span>
+                      <span className="text-sm font-semibold napoli-body" style={{ color: "oklch(0.22 0.08 255)" }}>{bev.name} <span className="font-normal text-xs" style={{ color: "oklch(0.50 0.05 255)" }}>({p.size})</span></span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="napoli-price text-sm font-bold" style={{ color: "oklch(0.35 0.14 255)" }}>{p.price}</span>
+                      <button
+                        onClick={() => { const price = parseFloat(p.price.replace("$","")); addItem({ id: `bev-${bev.name}-${p.size}-${Date.now()}`, name: `${bev.name} (${p.size})`, price, quantity: 1, category: "beverages" }); toast.success(`${bev.name} (${p.size}) added to cart!`); }}
+                        className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90"
+                        style={{ background: "oklch(0.38 0.12 255)", color: "white" }}
+                      >
+                        <Plus size={13} />
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+                ));
+              }
+              if ((bev as any).price) {
+                const price = parseFloat(((bev as any).price as string).replace("$",""));
+                const label = bev.name + ((bev as any).size ? ` (${(bev as any).size})` : "");
+                return (
+                  <div
+                    key={bev.name}
+                    className="flex items-center justify-between px-5 py-3 border-b border-r"
+                    style={{ borderColor: "oklch(0.87 0.04 255)" }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">🍶</span>
+                      <div>
+                        <span className="text-sm font-semibold napoli-body" style={{ color: "oklch(0.22 0.08 255)" }}>{label}</span>
+                        {(bev as any).note && <p className="text-xs" style={{ color: "oklch(0.50 0.05 255)" }}>{(bev as any).note}</p>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="napoli-price text-sm font-bold" style={{ color: "oklch(0.35 0.14 255)" }}>{(bev as any).price}</span>
+                      <button
+                        onClick={() => { addItem({ id: `bev-${bev.name}-${Date.now()}`, name: label, price, quantity: 1, category: "beverages" }); toast.success(`${label} added to cart!`); }}
+                        className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90"
+                        style={{ background: "oklch(0.38 0.12 255)", color: "white" }}
+                      >
+                        <Plus size={13} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div key={bev.name} className="flex items-center justify-between px-5 py-3 border-b border-r" style={{ borderColor: "oklch(0.87 0.04 255)" }}>
+                  <span className="napoli-body text-sm" style={{ color: "oklch(0.22 0.08 255)" }}>{bev.name}</span>
+                  {(bev as any).note && <span className="text-xs napoli-body italic" style={{ color: "oklch(0.50 0.05 255)" }}>{(bev as any).note}</span>}
+                </div>
+              );
+            })}
           </div>
-        </MenuCard>
+        </div>
 
         {/* ── ANYTIME SPECIALS ───────────────────────────────── */}
         <SectionHeader id="specials" title="Anytime Specials" emoji="⭐" />

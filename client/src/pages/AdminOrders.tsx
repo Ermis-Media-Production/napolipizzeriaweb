@@ -7,7 +7,7 @@
  */
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import {
   RefreshCw,
@@ -127,6 +127,198 @@ function OrderTypeIcon({ type }: { type: ReturnType<typeof parseOrderType> }) {
       {icons[type]}
       {labels[type]}
     </span>
+  );
+}
+
+// ── OrderRows: expandable rows with line items & notes ───────────────────────
+
+type OrderData = {
+  cloverOrderId: string;
+  state: string;
+  total: number;
+  currency: string;
+  note?: string;
+  createdTime: number;
+  itemCount: number;
+  lineItems: Array<{ id: string; name: string; price: number }>;
+};
+
+function parseSpecialNotes(itemName: string): { baseName: string; notes: string[] } {
+  // Item names may contain notes encoded as: "Name | Flavor: X | Half&Half: X / Y | Notes: ..."
+  const parts = itemName.split(" | ");
+  const baseName = parts[0];
+  const notes = parts.slice(1).filter(Boolean);
+  return { baseName, notes };
+}
+
+function OrderRows({ orders }: { orders: OrderData[] }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  return (
+    <>
+      {orders.map((order, idx) => {
+        const customer = parseCustomerName(order.note);
+        const type = parseOrderType(order.note);
+        const isExpanded = expandedId === order.cloverOrderId;
+        const hasItems = order.lineItems && order.lineItems.length > 0;
+
+        // Extract delivery address from note if present
+        const addressMatch = order.note?.match(/Address:\s*([^|]+)/);
+        const address = addressMatch ? addressMatch[1].trim() : null;
+
+        return (
+          <>
+            <tr
+              key={order.cloverOrderId}
+              className="transition-colors cursor-pointer"
+              style={{
+                borderBottom: isExpanded ? "none" : (idx < orders.length - 1 ? "1px solid oklch(0.94 0.010 80)" : "none"),
+                background: isExpanded ? "oklch(0.98 0.015 80)" : undefined,
+              }}
+              onClick={() => setExpandedId(isExpanded ? null : order.cloverOrderId)}
+            >
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="text-xs"
+                    style={{ color: "oklch(0.60 0.04 30)", transform: isExpanded ? "rotate(90deg)" : "none", display: "inline-block", transition: "transform 150ms" }}
+                  >
+                    ▶
+                  </span>
+                  <span
+                    className="font-mono text-xs px-1.5 py-0.5 rounded"
+                    style={{ background: "oklch(0.95 0.012 80)", color: "oklch(0.40 0.04 30)" }}
+                  >
+                    {order.cloverOrderId.slice(0, 10)}…
+                  </span>
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <span className="text-xs font-medium" style={{ color: "oklch(0.30 0.04 30)", fontFamily: "'Lato', sans-serif" }}>
+                  {customer}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <OrderTypeIcon type={type} />
+              </td>
+              <td className="px-4 py-3">
+                <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+                  {order.itemCount} item{order.itemCount !== 1 ? "s" : ""}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="text-sm font-bold" style={{ color: "var(--napoli-red, #c0392b)", fontFamily: "'Oswald', sans-serif" }}>
+                  {formatCurrency(order.total ?? 0)}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <StateChip state={order.state} />
+              </td>
+              <td className="px-4 py-3">
+                <span className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+                  {formatTime(order.createdTime)}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <a
+                  href={`https://www.clover.com/r/${496603379884}/orders/${order.cloverOrderId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 text-xs transition-opacity hover:opacity-70"
+                  style={{ color: "oklch(0.45 0.12 250)", fontFamily: "'Lato', sans-serif" }}
+                >
+                  <ExternalLink size={12} />
+                  View
+                </a>
+              </td>
+            </tr>
+
+            {/* Expanded line items row */}
+            {isExpanded && (
+              <tr
+                key={`${order.cloverOrderId}-details`}
+                style={{ borderBottom: idx < orders.length - 1 ? "1px solid oklch(0.94 0.010 80)" : "none" }}
+              >
+                <td colSpan={8} className="px-6 pb-4 pt-0">
+                  <div
+                    className="rounded-lg border p-4"
+                    style={{ background: "white", borderColor: "oklch(0.88 0.015 80)" }}
+                  >
+                    {/* Delivery address if present */}
+                    {address && (
+                      <div className="flex items-center gap-2 mb-3 pb-3 border-b" style={{ borderColor: "oklch(0.92 0.012 80)" }}>
+                        <Truck size={13} style={{ color: "var(--napoli-red, #c0392b)", flexShrink: 0 }} />
+                        <span className="text-xs font-semibold" style={{ color: "oklch(0.35 0.04 30)", fontFamily: "'Lato', sans-serif" }}>
+                          Delivery to: {address}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Line items */}
+                    {hasItems ? (
+                      <div className="flex flex-col gap-2">
+                        {order.lineItems.map((li) => {
+                          const { baseName, notes } = parseSpecialNotes(li.name);
+                          return (
+                            <div key={li.id} className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <span className="text-sm font-semibold" style={{ color: "oklch(0.25 0.04 30)", fontFamily: "'Lato', sans-serif" }}>
+                                  {baseName}
+                                </span>
+                                {notes.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 mt-1">
+                                    {notes.map((note, ni) => {
+                                      const isHalf = note.toLowerCase().includes("half");
+                                      const isFlav = note.toLowerCase().includes("flavor");
+                                      const isSpecial = note.toLowerCase().includes("note") || note.toLowerCase().includes("instruction");
+                                      const bg = isHalf
+                                        ? "oklch(0.94 0.06 145)"
+                                        : isFlav
+                                        ? "oklch(0.94 0.06 27)"
+                                        : isSpecial
+                                        ? "oklch(0.94 0.06 80)"
+                                        : "oklch(0.94 0.02 80)";
+                                      const color = isHalf
+                                        ? "oklch(0.35 0.12 145)"
+                                        : isFlav
+                                        ? "oklch(0.35 0.12 27)"
+                                        : isSpecial
+                                        ? "oklch(0.40 0.10 80)"
+                                        : "oklch(0.45 0.04 30)";
+                                      return (
+                                        <span
+                                          key={ni}
+                                          className="inline-flex items-center px-2 py-0.5 rounded text-xs"
+                                          style={{ background: bg, color, fontFamily: "'Lato', sans-serif" }}
+                                        >
+                                          {note}
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="text-sm font-bold shrink-0" style={{ color: "var(--napoli-red, #c0392b)", fontFamily: "'Oswald', sans-serif" }}>
+                                {li.price > 0 ? formatCurrency(li.price) : "—"}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-xs italic" style={{ color: "oklch(0.60 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+                        No item details available — view in Clover for full breakdown.
+                      </p>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )}
+          </>
+        );
+      })}
+    </>
   );
 }
 
@@ -323,66 +515,7 @@ export default function AdminOrders() {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map((order, idx) => {
-                    const customer = parseCustomerName(order.note);
-                    const type = parseOrderType(order.note);
-                    return (
-                      <tr
-                        key={order.cloverOrderId}
-                        className="transition-colors hover:bg-[oklch(0.98_0.008_80)]"
-                        style={{
-                          borderBottom: idx < orders.length - 1 ? "1px solid oklch(0.94 0.010 80)" : "none",
-                        }}
-                      >
-                        <td className="px-4 py-3">
-                          <span
-                            className="font-mono text-xs px-1.5 py-0.5 rounded"
-                            style={{ background: "oklch(0.95 0.012 80)", color: "oklch(0.40 0.04 30)" }}
-                          >
-                            {order.cloverOrderId.slice(0, 10)}…
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="text-xs font-medium" style={{ color: "oklch(0.30 0.04 30)", fontFamily: "'Lato', sans-serif" }}>
-                            {customer}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <OrderTypeIcon type={type} />
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
-                            {order.itemCount} item{order.itemCount !== 1 ? "s" : ""}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="text-sm font-bold" style={{ color: "var(--napoli-red, #c0392b)", fontFamily: "'Oswald', sans-serif" }}>
-                            {formatCurrency(order.total ?? 0)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <StateChip state={order.state} />
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
-                            {formatTime(order.createdTime)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <a
-                            href={`https://www.clover.com/r/${496603379884}/orders/${order.cloverOrderId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs transition-opacity hover:opacity-70"
-                            style={{ color: "oklch(0.45 0.12 250)", fontFamily: "'Lato', sans-serif" }}
-                          >
-                            <ExternalLink size={12} />
-                            View
-                          </a>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  <OrderRows orders={orders} />
                 </tbody>
               </table>
             </div>

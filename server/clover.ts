@@ -143,6 +143,11 @@ export const cloverRouter = router({
         note: o.note,
         createdTime: o.createdTime,
         itemCount: o.lineItems?.elements?.length ?? 0,
+        lineItems: (o.lineItems?.elements ?? []).map((li) => ({
+          id: li.id,
+          name: li.name,
+          price: li.price,
+        })),
       }));
     }),
 });
