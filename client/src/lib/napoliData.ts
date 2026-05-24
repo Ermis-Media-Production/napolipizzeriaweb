@@ -296,6 +296,33 @@ export const SUBS = {
   ],
 };
 
+// ── BURGER CUSTOMIZER DATA ────────────────────────────────
+export const BURGER_SAUCES = [
+  { name: "Ketchup", price: 0 },
+  { name: "Mustard", price: 0 },
+  { name: "Mayo", price: 0 },
+  { name: "BBQ Sauce", price: 0 },
+  { name: "Ranch", price: 0 },
+  { name: "1000 Island", price: 0 },
+  { name: "Hot Sauce", price: 0 },
+  { name: "Chipotle Mayo", price: 0 },
+  { name: "Garlic Aioli", price: 0 },
+  { name: "No Sauce", price: 0 },
+];
+
+export const BURGER_FRIES = [
+  { size: "Small Fries", price: 3.49 },
+  { size: "Medium Fries", price: 4.99 },
+  { size: "Large Fries", price: 6.49 },
+];
+
+export const BURGER_EXTRAS = [
+  { name: "Add Cheese", price: 1.00 },
+  { name: "Add Bacon", price: 1.00 },
+  { name: "Add Avocado", price: 1.00 },
+  { name: "Gluten Free Bread", price: 1.50 },
+];
+
 // ── BURGERS ────────────────────────────────────────────────
 export const BURGERS = {
   note: "100% Angus Beef. Cheese, Lettuce, Tomatoes, Onions, Pickles & Mayo. Choice of 1 Side. Add Cheese $1, Add Bacon $1, Add Avocado $1. Gluten Free Bread Available.",

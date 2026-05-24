@@ -13,6 +13,7 @@ import PizzaCustomizerModal, { type PizzaSelection } from "@/components/PizzaCus
 import WrapCustomizerModal, { type WrapTrigger } from "@/components/WrapCustomizerModal";
 import SubsCustomizerModal, { type SubsTrigger } from "@/components/SubsCustomizerModal";
 import { CalzoneCustomizerModal, type CalzoneTrigger } from "@/components/CalzoneCustomizerModal";
+import BurgerCustomizerModal, { type BurgerTrigger } from "@/components/BurgerCustomizerModal";
 import {
   MENU_CATEGORIES, APPETIZERS, LUNCH_SPECIALS, PIZZA_SIZES, PIZZA_BASE_PRICES,
   PIZZA_SPECIALS, PIZZA_30_TOPPINGS, STUFFED_DOUGH, WINGS, PASTA, SUBS,
@@ -456,6 +457,8 @@ export default function Menu() {
   const [subsTrigger, setSubsTrigger] = useState<SubsTrigger | null>(null);
   const [subsModalKey, setSubsModalKey] = useState(0);
   const [calzoneTrigger, setCalzoneTrigger] = useState<CalzoneTrigger | null>(null);
+  const [burgerTrigger, setBurgerTrigger] = useState<BurgerTrigger | null>(null);
+  const [burgerModalKey, setBurgerModalKey] = useState(0);
   const [calzoneModalKey, setCalzoneModalKey] = useState(0);
 
   const scrollTo = (id: string) => {
@@ -888,6 +891,12 @@ export default function Menu() {
           modalKey={calzoneModalKey}
           onClose={() => setCalzoneTrigger(null)}
         />
+        {/* Burger Customizer Modal */}
+        <BurgerCustomizerModal
+          key={burgerModalKey}
+          trigger={burgerTrigger}
+          onClose={() => setBurgerTrigger(null)}
+        />
 
         {/* ── PASTA ──────────────────────────────────────────── */}
         <SectionHeader id="pasta" title="Pasta" emoji="🍝" />
@@ -1026,10 +1035,17 @@ export default function Menu() {
           <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
             <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{BURGERS.note}</p>
           </div>
-          <div className="divide-y" style={{ borderColor: "oklch(0.93 0.012 80)" }}>
-            {BURGERS.items.map((item) => (
-              <BurgerRow key={item.name} item={item} />
-            ))}
+          <div className="px-5 py-5 flex flex-col items-center gap-3">
+            <p className="text-sm napoli-body text-center" style={{ color: "oklch(0.52 0.03 30)" }}>
+              {BURGERS.items.length} burgers available · from ${parsePrice(BURGERS.items[0].half)?.toFixed(2)}
+            </p>
+            <button
+              onClick={() => { setBurgerModalKey(k => k + 1); setBurgerTrigger({ open: true }); }}
+              className="flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold napoli-label transition-all active:scale-95 hover:opacity-90"
+              style={{ background: "var(--napoli-red)", color: "white" }}
+            >
+              🍔 Order Burgers
+            </button>
           </div>
         </MenuCard>
 
