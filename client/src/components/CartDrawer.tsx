@@ -432,6 +432,11 @@ export default function CartDrawer() {
                   <p className="text-xs" style={{ color: "var(--napoli-red, #c0392b)" }}>
                     ${item.price.toFixed(2)} each
                   </p>
+                  {item.description && (
+                    <p className="text-xs mt-0.5 leading-snug" style={{ color: "oklch(0.52 0.03 30)" }}>
+                      {item.description}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5">
                   <button
