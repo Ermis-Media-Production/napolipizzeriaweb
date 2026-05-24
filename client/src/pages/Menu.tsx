@@ -8,6 +8,7 @@ import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
+import WingsCustomizerModal, { type WingsSelection } from "@/components/WingsCustomizerModal";
 import {
   MENU_CATEGORIES, APPETIZERS, LUNCH_SPECIALS, PIZZA_SIZES, PIZZA_BASE_PRICES,
   PIZZA_SPECIALS, PIZZA_30_TOPPINGS, STUFFED_DOUGH, WINGS, PASTA, SUBS,
@@ -122,30 +123,18 @@ function WingsRow({
   boneIn,
   boneless,
   fingers,
+  onSelect,
 }: {
   qty: string;
   boneIn: { qty: string; price: string; addFries: string };
   boneless: { qty: string; price: string; addFries: string };
   fingers: { qty: string; price: string; addFries: string };
+  onSelect: (sel: WingsSelection) => void;
 }) {
-  const { addItem, openCart } = useCart();
-
-  const handleAdd = (type: string, price: number, qty: string) => {
-    addItem({
-      id: `wings-${type}-${qty}-${Date.now()}`,
-      name: `${type} Wings (${qty})`,
-      price,
-      quantity: 1,
-      category: "wings",
-    });
-    toast.success(`${type} Wings (${qty}) added to cart`, {
-      action: { label: "View Cart", onClick: openCart },
-    });
-  };
-
   const boneInPrice = parsePrice(boneIn.price);
   const bonelessPrice = parsePrice(boneless.price);
   const fingersPrice = parsePrice(fingers.price);
+  const friesAddonPrice = parsePrice(boneIn.addFries) ?? 2;
 
   return (
     <div
@@ -163,7 +152,7 @@ function WingsRow({
       <div className="flex flex-wrap gap-2 flex-1">
         {boneInPrice && (
           <button
-            onClick={() => handleAdd("Bone-In", boneInPrice, boneIn.qty)}
+            onClick={() => onSelect({ type: "Bone-In", qty: boneIn.qty, basePrice: boneInPrice, friesAddonPrice })}
             className="flex items-center gap-1.5 px-3 py-2 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
             style={{ background: "var(--napoli-red)", color: "white" }}
           >
@@ -173,7 +162,7 @@ function WingsRow({
         )}
         {bonelessPrice && (
           <button
-            onClick={() => handleAdd("Boneless", bonelessPrice, boneless.qty)}
+            onClick={() => onSelect({ type: "Boneless", qty: boneless.qty, basePrice: bonelessPrice, friesAddonPrice })}
             className="flex items-center gap-1.5 px-3 py-2 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
             style={{ background: "oklch(0.97 0.012 80)", color: "var(--napoli-red)", border: "1px solid oklch(0.88 0.015 80)" }}
           >
@@ -183,7 +172,7 @@ function WingsRow({
         )}
         {fingersPrice && (
           <button
-            onClick={() => handleAdd("Chicken Fingers", fingersPrice, fingers.qty)}
+            onClick={() => onSelect({ type: "Chicken Fingers", qty: fingers.qty, basePrice: fingersPrice, friesAddonPrice })}
             className="flex items-center gap-1.5 px-3 py-2 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
             style={{ background: "oklch(0.26 0.10 145)", color: "white" }}
           >
@@ -404,6 +393,7 @@ function ItemRow({ name, desc, price, highlight, category }: { name: string; des
 export default function Menu() {
   const [activeCategory, setActiveCategory] = useState("appetizers");
   const [showAllToppings, setShowAllToppings] = useState(false);
+  const [wingsSelection, setWingsSelection] = useState<WingsSelection | null>(null);
 
   const scrollTo = (id: string) => {
     setActiveCategory(id);
@@ -644,8 +634,15 @@ export default function Menu() {
                 boneIn={row}
                 boneless={WINGS.boneless[i]}
                 fingers={WINGS.chickenFingers[i]}
+                onSelect={setWingsSelection}
               />
             ))}
+
+            {/* Wings Customizer Modal */}
+            <WingsCustomizerModal
+              selection={wingsSelection}
+              onClose={() => setWingsSelection(null)}
+            />
           </div>
         </MenuCard>
 
