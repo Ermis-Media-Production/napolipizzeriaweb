@@ -11,10 +11,16 @@ import {
 type Step = 1 | 2 | 3;
 
 export interface CalzoneTrigger {
-  itemType: "Calzone" | "Stromboli";
-  sizes: string[];
-  prices: string[];
-  /** For Calzone: 2 free toppings. For Stromboli: 4 free toppings */
+  itemType: "Calzone" | "Stromboli" | "Chicago Deep Dish" | "Sicilian";
+  /** For size-based items (Calzone / Stromboli) */
+  sizes?: string[];
+  prices?: string[];
+  /** For flat-price items (Chicago Deep Dish / Sicilian) */
+  flatPrice?: number;
+  flatPriceLabel?: string;
+  /** Extra topping price — flat for Chicago/Sicilian, per-size for Calzone/Stromboli */
+  flatExtraToppingPrice?: number;
+  /** Number of free toppings included */
   freeToppings: number;
   /** Base description shown in step 1 */
   baseDesc: string;
@@ -39,27 +45,35 @@ const FREE_BADGE_STYLE = {
 export function CalzoneCustomizerModal({ trigger, onClose }: Props) {
   const { addItem, openCart } = useCart();
 
-  const [step, setStep] = useState<Step>(1);
+  const isFlatPrice = trigger?.itemType === "Chicago Deep Dish" || trigger?.itemType === "Sicilian";
+
+  const [step, setStep] = useState<Step>(isFlatPrice ? 2 : 1);
   const [selectedSize, setSelectedSize] = useState("");
-  const [selectedPrice, setSelectedPrice] = useState(0);
+  const [selectedPrice, setSelectedPrice] = useState(
+    isFlatPrice && trigger?.flatPrice ? trigger.flatPrice : 0
+  );
   const [freeToppingsList, setFreeToppingsList] = useState<string[]>([]);
   const [extraToppingsList, setExtraToppingsList] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
 
   if (!trigger) return null;
 
-  const extraToppingPrice = selectedSize ? CALZONE_EXTRA_TOPPING_PRICES[selectedSize] ?? 2.0 : 0;
+  // Determine extra topping price based on item type
+  const extraToppingPrice = isFlatPrice
+    ? (trigger.flatExtraToppingPrice ?? 0)
+    : (selectedSize ? CALZONE_EXTRA_TOPPING_PRICES[selectedSize] ?? 2.0 : 0);
+
   const extraCost = extraToppingsList.length * extraToppingPrice;
   const totalPrice = selectedPrice + extraCost;
 
-  const step1Done = selectedSize !== "";
+  const step1Done = isFlatPrice ? true : selectedSize !== "";
   const step2Done = freeToppingsList.length === trigger.freeToppings;
 
   // ── Topping toggle helpers ───────────────────────────────
   const toggleFreeTopping = (t: string) => {
     setFreeToppingsList((prev) => {
       if (prev.includes(t)) return prev.filter((x) => x !== t);
-      if (prev.length >= trigger.freeToppings) return prev; // max reached
+      if (prev.length >= trigger.freeToppings) return prev;
       return [...prev, t];
     });
   };
@@ -73,7 +87,10 @@ export function CalzoneCustomizerModal({ trigger, onClose }: Props) {
   // ── Add to cart ──────────────────────────────────────────
   const handleAddToCart = () => {
     const parts: string[] = [];
-    parts.push(`Size: ${selectedSize}`);
+
+    if (!isFlatPrice && selectedSize) {
+      parts.push(`Size: ${selectedSize}`);
+    }
 
     if (trigger.itemType === "Calzone") {
       parts.push("Ricotta + Mozzarella");
@@ -91,16 +108,20 @@ export function CalzoneCustomizerModal({ trigger, onClose }: Props) {
 
     if (notes.trim()) parts.push(`Note: ${notes.trim()}`);
 
+    const itemName = isFlatPrice
+      ? trigger.itemType
+      : `${selectedSize} ${trigger.itemType}`;
+
     addItem({
-      id: `${trigger.itemType.toLowerCase()}-${selectedSize}-${Date.now()}`,
-      name: `${selectedSize} ${trigger.itemType}`,
+      id: `${trigger.itemType.toLowerCase().replace(/ /g, "-")}-${selectedSize || "flat"}-${Date.now()}`,
+      name: itemName,
       price: totalPrice,
       quantity: 1,
-      category: trigger.itemType.toLowerCase(),
+      category: trigger.itemType.toLowerCase().replace(/ /g, "-"),
       description: parts.join(" · "),
     });
 
-    toast.success(`${selectedSize} ${trigger.itemType} added to cart`, {
+    toast.success(`${itemName} added to cart`, {
       action: { label: "View Cart", onClick: openCart },
     });
 
@@ -108,11 +129,17 @@ export function CalzoneCustomizerModal({ trigger, onClose }: Props) {
   };
 
   // ── Step indicator ───────────────────────────────────────
-  const steps = [
-    { num: 1, label: "SIZE" },
-    { num: 2, label: "TOPPINGS" },
-    { num: 3, label: "EXTRAS" },
-  ];
+  // For flat-price items, skip step 1 (size) — show only steps 2 & 3
+  const steps = isFlatPrice
+    ? [
+        { num: 2, label: "TOPPINGS" },
+        { num: 3, label: "EXTRAS" },
+      ]
+    : [
+        { num: 1, label: "SIZE" },
+        { num: 2, label: "TOPPINGS" },
+        { num: 3, label: "EXTRAS" },
+      ];
 
   return (
     <div
@@ -137,6 +164,9 @@ export function CalzoneCustomizerModal({ trigger, onClose }: Props) {
               >
                 {trigger.itemType}
               </h2>
+              {isFlatPrice && trigger.flatPriceLabel && (
+                <p className="text-sm text-white/80 mt-0.5 napoli-body">{trigger.flatPriceLabel}</p>
+              )}
             </div>
             <button
               onClick={onClose}
@@ -150,7 +180,7 @@ export function CalzoneCustomizerModal({ trigger, onClose }: Props) {
           {/* Step pills */}
           <div className="flex items-center gap-1 mt-3">
             {steps.map((s, i) => {
-              const done = (s.num === 1 && step1Done) || (s.num === 2 && step2Done);
+              const done = (s.num === 1 && step1Done) || (s.num === 2 && step2Done && step > 2);
               const active = s.num === step;
               return (
                 <div key={s.num} className="flex items-center gap-1">
@@ -164,7 +194,7 @@ export function CalzoneCustomizerModal({ trigger, onClose }: Props) {
                         : { background: "rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.7)" }
                     }
                   >
-                    {done ? <Check size={10} /> : <span>{s.num}</span>}
+                    {done ? <Check size={10} /> : <span>{i + 1}</span>}
                     <span className="ml-0.5">{s.label}</span>
                   </div>
                   {i < steps.length - 1 && (
@@ -179,8 +209,8 @@ export function CalzoneCustomizerModal({ trigger, onClose }: Props) {
         {/* ── Scrollable body ── */}
         <div className="flex-1 overflow-y-auto">
 
-          {/* ── STEP 1: Size ── */}
-          {step === 1 && (
+          {/* ── STEP 1: Size (only for Calzone / Stromboli) ── */}
+          {step === 1 && !isFlatPrice && (
             <div className="px-5 py-5">
               <p className="napoli-label text-xs mb-0.5" style={{ color: "var(--napoli-red)", letterSpacing: "0.15em" }}>
                 CHOOSE YOUR SIZE *
@@ -200,8 +230,8 @@ export function CalzoneCustomizerModal({ trigger, onClose }: Props) {
               )}
 
               <div className="flex flex-col gap-2">
-                {trigger.sizes.map((size, i) => {
-                  const price = parsePrice(trigger.prices[i]);
+                {trigger.sizes!.map((size, i) => {
+                  const price = parsePrice(trigger.prices![i]);
                   const active = selectedSize === size;
                   return (
                     <button
@@ -219,7 +249,7 @@ export function CalzoneCustomizerModal({ trigger, onClose }: Props) {
                         className="napoli-price text-base"
                         style={{ color: active ? "rgba(255,255,255,0.9)" : "var(--napoli-red)" }}
                       >
-                        {trigger.prices[i]}
+                        {trigger.prices![i]}
                       </span>
                     </button>
                   );
@@ -265,12 +295,12 @@ export function CalzoneCustomizerModal({ trigger, onClose }: Props) {
 
               {/* Recap */}
               <div
-                className="flex items-center gap-2 px-3 py-2.5 rounded-lg mb-4"
+                className="flex flex-wrap items-center gap-2 px-3 py-2.5 rounded-lg mb-4"
                 style={{ background: "oklch(0.97 0.012 80)", border: "1px solid oklch(0.88 0.015 80)" }}
               >
                 <Check size={14} style={{ color: "var(--napoli-green)" }} />
                 <span className="text-xs napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>
-                  {selectedSize} {trigger.itemType}
+                  {isFlatPrice ? trigger.itemType : `${selectedSize} ${trigger.itemType}`}
                 </span>
                 {trigger.itemType === "Calzone" && (
                   <span
@@ -280,13 +310,15 @@ export function CalzoneCustomizerModal({ trigger, onClose }: Props) {
                     Ricotta + Mozzarella ✓
                   </span>
                 )}
-                <button
-                  onClick={() => setStep(1)}
-                  className="ml-auto text-xs napoli-label underline shrink-0"
-                  style={{ color: "oklch(0.52 0.03 30)" }}
-                >
-                  Change
-                </button>
+                {!isFlatPrice && (
+                  <button
+                    onClick={() => setStep(1)}
+                    className="ml-auto text-xs napoli-label underline shrink-0"
+                    style={{ color: "oklch(0.52 0.03 30)" }}
+                  >
+                    Change
+                  </button>
+                )}
               </div>
 
               {/* Counter */}
@@ -367,7 +399,11 @@ export function CalzoneCustomizerModal({ trigger, onClose }: Props) {
                 EXTRA TOPPINGS (OPTIONAL)
               </p>
               <p className="text-xs napoli-body mb-4" style={{ color: "oklch(0.52 0.03 30)" }}>
-                Each extra topping: <strong style={{ color: "var(--napoli-red)" }}>+${extraToppingPrice.toFixed(2)}</strong> for {selectedSize}.
+                Each extra topping:{" "}
+                <strong style={{ color: "var(--napoli-red)" }}>
+                  +${extraToppingPrice.toFixed(2)}
+                </strong>
+                {!isFlatPrice && selectedSize && ` for ${selectedSize}`}.
               </p>
 
               {/* Recap */}
@@ -377,7 +413,7 @@ export function CalzoneCustomizerModal({ trigger, onClose }: Props) {
               >
                 <Check size={14} style={{ color: "var(--napoli-green)" }} />
                 <span className="text-xs napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>
-                  {selectedSize} {trigger.itemType}
+                  {isFlatPrice ? trigger.itemType : `${selectedSize} ${trigger.itemType}`}
                 </span>
                 {freeToppingsList.map((t) => (
                   <span

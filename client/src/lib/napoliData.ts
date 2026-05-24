@@ -167,14 +167,35 @@ export const STUFFED_DOUGH = [
 ];
 
 // ── CALZONE & STROMBOLI — extra topping prices per size ───
+// Prices match the pizza "Add Topping" row for the same sizes
 export const CALZONE_SIZES = ["10\"", "14\"", "16\"", "18\"", "24\"", "28\""];
 export const CALZONE_EXTRA_TOPPING_PRICES: Record<string, number> = {
-  "10\"": 1.50,
-  "14\"": 2.00,
-  "16\"": 2.50,
-  "18\"": 3.00,
-  "24\"": 4.00,
-  "28\"": 5.00,
+  "10\"": 2.25,
+  "14\"": 2.75,
+  "16\"": 3.00,
+  "18\"": 3.50,
+  "24\"": 4.50,
+  "28\"": 5.50,
+};
+
+// ── CHICAGO DEEP DISH & SICILIAN — extra topping price (flat) ───
+export const CHICAGO_DEEP_DISH = {
+  name: "Stuffed Chicago Deep Dish",
+  desc: "Deep dish stuffed pizza — includes cheese. Choose your toppings.",
+  basePrice: 29.99,
+  baseLabel: "$29.99 each",
+  combo4Price: 43.99,
+  combo4Label: "4 Topping Combo $43.99",
+  extraToppingPrice: 6.50,
+  freeToppings: 4, // 4-topping combo included in base
+};
+export const SICILIAN_PIZZA = {
+  name: "Sicilian 12x8",
+  desc: "Thick square Sicilian-style pizza — includes cheese. Choose your toppings.",
+  basePrice: 37.99,
+  baseLabel: "4 Topping Combo $37.99",
+  extraToppingPrice: 3.50,
+  freeToppings: 4,
 };
 
 // ── WRAPS ──────────────────────────────────────────────────

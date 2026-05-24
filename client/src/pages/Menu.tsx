@@ -17,7 +17,7 @@ import {
   MENU_CATEGORIES, APPETIZERS, LUNCH_SPECIALS, PIZZA_SIZES, PIZZA_BASE_PRICES,
   PIZZA_SPECIALS, PIZZA_30_TOPPINGS, STUFFED_DOUGH, WINGS, PASTA, SUBS,
   BURGERS, TRIPLE_DECKERS, SALADS, DESSERTS, CHILDRENS_MENU, BEVERAGES,
-  ANYTIME_SPECIALS, SOUPS, WRAPS, SIDES,
+  ANYTIME_SPECIALS, SOUPS, WRAPS, SIDES, CHICAGO_DEEP_DISH, SICILIAN_PIZZA,
 } from "@/lib/napoliData";
 
 function SectionHeader({ id, title, emoji }: { id: string; title: string; emoji: string }) {
@@ -542,10 +542,69 @@ export default function Menu() {
             </table>
           </div>
 
-          {/* Gluten free note */}
-          <div className="px-5 py-2 border-t flex flex-wrap gap-4" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
-            <span className="napoli-badge-green text-xs">Gluten Free Pizza 14" — $12.75</span>
-            <span className="napoli-badge-red text-xs">Sicilian 12x8 — 4 Topping Combo $37.99 · Add Topping $3.50</span>
+          {/* Gluten free + Sicilian + Chicago Deep Dish */}
+          <div className="px-5 py-3 border-t" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
+            <span className="napoli-badge-green text-xs mr-2">Gluten Free Pizza 14" — $12.75</span>
+          </div>
+
+          {/* Sicilian */}
+          <div
+            className="napoli-menu-item flex items-center justify-between gap-4 px-5 py-4 border-t"
+            style={{ borderColor: "oklch(0.88 0.015 80)" }}
+          >
+            <div className="flex-1 min-w-0">
+              <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>Sicilian 12x8</span>
+              <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{SICILIAN_PIZZA.desc}</p>
+              <p className="napoli-price text-sm mt-1" style={{ color: "var(--napoli-red)" }}>{SICILIAN_PIZZA.baseLabel} · Add Topping ${SICILIAN_PIZZA.extraToppingPrice.toFixed(2)}</p>
+            </div>
+            <button
+              onClick={() => {
+                setCalzoneModalKey(k => k + 1);
+                setCalzoneTrigger({
+                  itemType: "Sicilian",
+                  flatPrice: SICILIAN_PIZZA.basePrice,
+                  flatPriceLabel: SICILIAN_PIZZA.baseLabel,
+                  flatExtraToppingPrice: SICILIAN_PIZZA.extraToppingPrice,
+                  freeToppings: SICILIAN_PIZZA.freeToppings,
+                  baseDesc: SICILIAN_PIZZA.desc,
+                });
+              }}
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
+              style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+            >
+              <Plus size={13} /> Order
+            </button>
+          </div>
+
+          {/* Chicago Deep Dish */}
+          <div
+            className="napoli-menu-item flex items-center justify-between gap-4 px-5 py-4 border-t"
+            style={{ borderColor: "oklch(0.88 0.015 80)" }}
+          >
+            <div className="flex-1 min-w-0">
+              <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>Stuffed Chicago Deep Dish</span>
+              <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{CHICAGO_DEEP_DISH.desc}</p>
+              <p className="napoli-price text-sm mt-1" style={{ color: "var(--napoli-red)" }}>
+                {CHICAGO_DEEP_DISH.combo4Label} · Add Topping ${CHICAGO_DEEP_DISH.extraToppingPrice.toFixed(2)}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setCalzoneModalKey(k => k + 1);
+                setCalzoneTrigger({
+                  itemType: "Chicago Deep Dish",
+                  flatPrice: CHICAGO_DEEP_DISH.combo4Price,
+                  flatPriceLabel: CHICAGO_DEEP_DISH.combo4Label,
+                  flatExtraToppingPrice: CHICAGO_DEEP_DISH.extraToppingPrice,
+                  freeToppings: CHICAGO_DEEP_DISH.freeToppings,
+                  baseDesc: CHICAGO_DEEP_DISH.desc,
+                });
+              }}
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
+              style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+            >
+              <Plus size={13} /> Order
+            </button>
           </div>
 
           {/* 30 Toppings */}
