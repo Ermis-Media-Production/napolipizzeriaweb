@@ -92,6 +92,11 @@ function StepDot({ active, done, num }: { active: boolean; done: boolean; num: n
 
 // ── Main Modal ─────────────────────────────────────────────────────────────
 export default function PizzaCustomizerModal({ selection, onClose }: Props) {
+  if (!selection) return null;
+  return <PizzaCustomizerInner selection={selection} onClose={onClose} />;
+}
+
+function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelection; onClose: () => void }) {
   const { addItem } = useCart();
 
   const [step, setStep] = useState(1);
@@ -99,8 +104,6 @@ export default function PizzaCustomizerModal({ selection, onClose }: Props) {
   const [selectedCrust, setSelectedCrust] = useState<string>("");
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
-
-  if (!selection) return null;
 
   const { pizzaName, isSpecialty } = selection;
 

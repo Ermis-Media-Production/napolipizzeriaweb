@@ -44,6 +44,11 @@ const SAUCE_OPTIONS: { id: SauceOption; label: string; extra: number }[] = [
 ];
 
 export default function WrapCustomizerModal({ trigger, onClose }: Props) {
+  if (!trigger) return null;
+  return <WrapCustomizerInner trigger={trigger} onClose={onClose} />;
+}
+
+function WrapCustomizerInner({ trigger, onClose }: { trigger: WrapTrigger; onClose: () => void }) {
   const { addItem, openCart } = useCart();
 
   const [step, setStep] = useState<Step>(1);
@@ -51,8 +56,6 @@ export default function WrapCustomizerModal({ trigger, onClose }: Props) {
   const [breadType, setBreadType] = useState("");
   const [sauce, setSauce]         = useState<SauceOption>("none");
   const [notes, setNotes]         = useState("");
-
-  if (!trigger) return null;
 
   const selectedSauce = SAUCE_OPTIONS.find(s => s.id === sauce)!;
   const totalPrice = trigger.basePrice + selectedSauce.extra;

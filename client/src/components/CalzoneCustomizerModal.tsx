@@ -43,20 +43,23 @@ const FREE_BADGE_STYLE = {
 };
 
 export function CalzoneCustomizerModal({ trigger, onClose }: Props) {
+  if (!trigger) return null;
+  return <CalzoneCustomizerInner trigger={trigger} onClose={onClose} />;
+}
+
+function CalzoneCustomizerInner({ trigger, onClose }: { trigger: CalzoneTrigger; onClose: () => void }) {
   const { addItem, openCart } = useCart();
 
-  const isFlatPrice = trigger?.itemType === "Chicago Deep Dish" || trigger?.itemType === "Sicilian";
+  const isFlatPrice = trigger.itemType === "Chicago Deep Dish" || trigger.itemType === "Sicilian";
 
   const [step, setStep] = useState<Step>(isFlatPrice ? 2 : 1);
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedPrice, setSelectedPrice] = useState(
-    isFlatPrice && trigger?.flatPrice ? trigger.flatPrice : 0
+    isFlatPrice && trigger.flatPrice ? trigger.flatPrice : 0
   );
   const [freeToppingsList, setFreeToppingsList] = useState<string[]>([]);
   const [extraToppingsList, setExtraToppingsList] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
-
-  if (!trigger) return null;
 
   // Determine extra topping price based on item type
   const extraToppingPrice = isFlatPrice

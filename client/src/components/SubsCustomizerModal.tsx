@@ -49,6 +49,11 @@ interface Props {
 type Step = 1 | 2 | 3;
 
 export default function SubsCustomizerModal({ trigger, onClose }: Props) {
+  if (!trigger) return null;
+  return <SubsCustomizerInner trigger={trigger} onClose={onClose} />;
+}
+
+function SubsCustomizerInner({ trigger, onClose }: { trigger: SubsTrigger; onClose: () => void }) {
   const { addItem, openCart } = useCart();
 
   const [step, setStep]         = useState<Step>(1);
@@ -56,8 +61,6 @@ export default function SubsCustomizerModal({ trigger, onClose }: Props) {
   const [side, setSide]           = useState("");
   const [addons, setAddons]       = useState<Set<string>>(new Set());
   const [notes, setNotes]         = useState("");
-
-  if (!trigger) return null;
 
   const showAddons = trigger.showAddons !== false;
 

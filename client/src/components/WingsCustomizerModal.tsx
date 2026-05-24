@@ -72,6 +72,11 @@ function FlavorButton({
 }
 
 export default function WingsCustomizerModal({ selection, onClose }: Props) {
+  if (!selection) return null;
+  return <WingsCustomizerInner selection={selection} onClose={onClose} />;
+}
+
+function WingsCustomizerInner({ selection, onClose }: { selection: WingsSelection; onClose: () => void }) {
   const { addItem, openCart } = useCart();
   const [step, setStep] = useState<2 | 3>(2);
 
@@ -85,8 +90,6 @@ export default function WingsCustomizerModal({ selection, onClose }: Props) {
   const [addFries, setAddFries] = useState(false);
   const [ranchSize, setRanchSize] = useState<"none" | "2oz" | "6oz">("none");
   const [notes, setNotes] = useState("");
-
-  if (!selection) return null;
 
   const qtyNum = parseQtyNumber(selection.qty);
   const halfHalfEligible = qtyNum >= 10;
