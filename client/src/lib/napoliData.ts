@@ -166,6 +166,17 @@ export const STUFFED_DOUGH = [
   },
 ];
 
+// ── CALZONE & STROMBOLI — extra topping prices per size ───
+export const CALZONE_SIZES = ["10\"", "14\"", "16\"", "18\"", "24\"", "28\""];
+export const CALZONE_EXTRA_TOPPING_PRICES: Record<string, number> = {
+  "10\"": 1.50,
+  "14\"": 2.00,
+  "16\"": 2.50,
+  "18\"": 3.00,
+  "24\"": 4.00,
+  "28\"": 5.00,
+};
+
 // ── WRAPS ──────────────────────────────────────────────────
 export const WRAPS = {
   note: "Choice of Flour or Wheat Bread w/ Lettuce, Tomatoes, Onions & Mayo. Gluten Free Bread Available.",

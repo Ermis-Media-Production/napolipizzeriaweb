@@ -12,6 +12,7 @@ import WingsCustomizerModal, { type WingsSelection } from "@/components/WingsCus
 import PizzaCustomizerModal, { type PizzaSelection } from "@/components/PizzaCustomizerModal";
 import WrapCustomizerModal, { type WrapTrigger } from "@/components/WrapCustomizerModal";
 import SubsCustomizerModal, { type SubsTrigger } from "@/components/SubsCustomizerModal";
+import { CalzoneCustomizerModal, type CalzoneTrigger } from "@/components/CalzoneCustomizerModal";
 import {
   MENU_CATEGORIES, APPETIZERS, LUNCH_SPECIALS, PIZZA_SIZES, PIZZA_BASE_PRICES,
   PIZZA_SPECIALS, PIZZA_30_TOPPINGS, STUFFED_DOUGH, WINGS, PASTA, SUBS,
@@ -407,6 +408,8 @@ export default function Menu() {
   const [wrapModalKey, setWrapModalKey] = useState(0);
   const [subsTrigger, setSubsTrigger] = useState<SubsTrigger | null>(null);
   const [subsModalKey, setSubsModalKey] = useState(0);
+  const [calzoneTrigger, setCalzoneTrigger] = useState<CalzoneTrigger | null>(null);
+  const [calzoneModalKey, setCalzoneModalKey] = useState(0);
 
   const scrollTo = (id: string) => {
     setActiveCategory(id);
@@ -601,32 +604,80 @@ export default function Menu() {
             </div>
           </div>
 
-          {/* Stuffed Dough */}
-          <div className="px-5 py-4 border-t" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
-            <p className="napoli-label text-xs mb-3" style={{ color: "var(--napoli-red)" }}>Stuffed Dough</p>
-            {STUFFED_DOUGH.map((item) => (
-              <div key={item.name} className="mb-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <span className="text-sm napoli-body font-bold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
-                    {item.desc && <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{item.desc}</p>}
+          {/* Stuffed Dough — Calzone & Stromboli with modal */}
+          <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
+            <div className="px-5 py-3" style={{ background: "oklch(0.97 0.012 80)" }}>
+              <p className="napoli-label text-xs" style={{ color: "var(--napoli-red)" }}>Stuffed Dough</p>
+            </div>
+
+            {/* Calzone */}
+            {(() => {
+              const calzone = STUFFED_DOUGH.find(i => i.name === "Calzone")!;
+              return (
+                <div
+                  className="napoli-menu-item flex items-center justify-between gap-4 px-5 py-4 border-b"
+                  style={{ borderColor: "oklch(0.93 0.012 80)" }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{calzone.name}</span>
+                    <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{calzone.desc}</p>
+                    <p className="napoli-price text-sm mt-1" style={{ color: "var(--napoli-red)" }}>
+                      From {(calzone as any).prices?.[0]}
+                    </p>
                   </div>
-                  {(item as any).price && (
-                    <span className="napoli-price text-sm shrink-0" style={{ color: "var(--napoli-red)" }}>{(item as any).price}</span>
-                  )}
+                  <button
+                    onClick={() => {
+                      setCalzoneModalKey(k => k + 1);
+                      setCalzoneTrigger({
+                        itemType: "Calzone",
+                        sizes: (calzone as any).sizes,
+                        prices: (calzone as any).prices,
+                        freeToppings: 2,
+                        baseDesc: calzone.desc ?? "",
+                      });
+                    }}
+                    className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
+                    style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+                  >
+                    <Plus size={13} /> Order
+                  </button>
                 </div>
-                {(item as any).sizes && (
-                  <div className="flex flex-wrap gap-3 mt-2">
-                    {(item as any).sizes.map((s: string, i: number) => (
-                      <div key={s} className="text-center">
-                        <div className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{s}</div>
-                        <div className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{(item as any).prices[i]}</div>
-                      </div>
-                    ))}
+              );
+            })()}
+
+            {/* Stromboli */}
+            {(() => {
+              const stromboli = STUFFED_DOUGH.find(i => i.name === "Stromboli")!;
+              return (
+                <div
+                  className="napoli-menu-item flex items-center justify-between gap-4 px-5 py-4"
+                >
+                  <div className="flex-1 min-w-0">
+                    <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{stromboli.name}</span>
+                    <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{stromboli.desc}</p>
+                    <p className="napoli-price text-sm mt-1" style={{ color: "var(--napoli-red)" }}>
+                      From {(stromboli as any).prices?.[0]}
+                    </p>
                   </div>
-                )}
-              </div>
-            ))}
+                  <button
+                    onClick={() => {
+                      setCalzoneModalKey(k => k + 1);
+                      setCalzoneTrigger({
+                        itemType: "Stromboli",
+                        sizes: (stromboli as any).sizes,
+                        prices: (stromboli as any).prices,
+                        freeToppings: 4,
+                        baseDesc: stromboli.desc ?? "",
+                      });
+                    }}
+                    className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
+                    style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+                  >
+                    <Plus size={13} /> Order
+                  </button>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Wraps — single entry button that opens the 3-step modal */}
@@ -705,6 +756,14 @@ export default function Menu() {
           key={subsModalKey}
           trigger={subsTrigger}
           onClose={() => setSubsTrigger(null)}
+        />
+
+        {/* Calzone & Stromboli Customizer Modal */}
+        <CalzoneCustomizerModal
+          key={calzoneModalKey}
+          trigger={calzoneTrigger}
+          modalKey={calzoneModalKey}
+          onClose={() => setCalzoneTrigger(null)}
         />
 
         {/* ── PASTA ──────────────────────────────────────────── */}
