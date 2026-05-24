@@ -396,6 +396,53 @@ function ItemRow({ name, desc, price, highlight, category }: { name: string; des
 
 
 
+function WholeLottaPastaRow() {
+  const { addItem, openCart } = useCart();
+  const numericPrice = parsePrice(PASTA.wholeLottaPrice);
+
+  const handleAdd = () => {
+    if (!numericPrice) return;
+    addItem({
+      id: `whole-lotta-pasta-${Date.now()}`,
+      name: "Napoli's Whole Lotta Pasta",
+      price: numericPrice,
+      quantity: 1,
+      category: "pasta",
+      description: PASTA.wholeLottaItems.join(", "),
+    });
+    toast.success("Napoli's Whole Lotta Pasta added to cart", {
+      action: { label: "View Cart", onClick: openCart },
+    });
+  };
+
+  return (
+    <div className="px-5 py-4 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.99 0.02 65 / 0.3)" }}>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <span className="napoli-badge-gold mb-1 inline-block">Best Value</span>
+          <h4 className="napoli-heading text-base" style={{ color: "var(--napoli-dark)" }}>Napoli's Whole Lotta Pasta</h4>
+          <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>
+            {PASTA.wholeLottaItems.join(", ")}
+          </p>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="napoli-price text-xl" style={{ color: "var(--napoli-red)" }}>{PASTA.wholeLottaPrice}</span>
+          {numericPrice && (
+            <button
+              onClick={handleAdd}
+              className="w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 hover:opacity-90"
+              style={{ background: "var(--napoli-red)", color: "white" }}
+              title="Add Napoli's Whole Lotta Pasta to cart"
+            >
+              <Plus size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Menu() {
   const { addItem } = useCart();
   const [activeCategory, setActiveCategory] = useState("appetizers");
@@ -849,18 +896,7 @@ export default function Menu() {
             <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>Served w/ Garlic Bread & House Salad</p>
           </div>
           {/* Whole Lotta Pasta */}
-          <div className="px-5 py-4 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.99 0.02 65 / 0.3)" }}>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <span className="napoli-badge-gold mb-1 inline-block">Best Value</span>
-                <h4 className="napoli-heading text-base" style={{ color: "var(--napoli-dark)" }}>Napoli's Whole Lotta Pasta</h4>
-                <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>
-                  {PASTA.wholeLottaItems.join(", ")}
-                </p>
-              </div>
-              <span className="napoli-price text-xl shrink-0" style={{ color: "var(--napoli-red)" }}>{PASTA.wholeLottaPrice}</span>
-            </div>
-          </div>
+          <WholeLottaPastaRow />
           <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
             <div>
               <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Classic Pasta</p>
