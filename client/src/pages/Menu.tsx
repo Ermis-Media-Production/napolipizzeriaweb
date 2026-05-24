@@ -629,44 +629,27 @@ export default function Menu() {
             ))}
           </div>
 
-          {/* Wraps */}
+          {/* Wraps — single entry button that opens the 3-step modal */}
           <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-            {/* Header */}
-            <div className="px-5 py-3" style={{ background: "oklch(0.97 0.012 80)" }}>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="napoli-label text-xs" style={{ color: "var(--napoli-red)" }}>Wraps</span>
-                <span className="napoli-badge-green">Gluten Free Bread Available</span>
-              </div>
-              <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{WRAPS.note}</p>
-            </div>
-            {/* One row per wrap — clicking opens the 3-step modal */}
-            {WRAPS.items.map((wrapName) => {
-              const basePrice = parsePrice(WRAPS.price) ?? 0;
-              return (
-                <div
-                  key={wrapName}
-                  className="napoli-menu-item flex items-center justify-between gap-4 px-5 py-4 border-b last:border-b-0"
-                  style={{ borderColor: "oklch(0.93 0.012 80)" }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full shrink-0 bg-napoli-red" />
-                    <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{wrapName}</span>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>
-                      ${basePrice.toFixed(2)}
-                    </span>
-                    <button
-                      onClick={() => { setWrapModalKey(k => k + 1); setWrapTrigger({ basePrice }); }}
-                      className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all active:scale-95"
-                      style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
-                    >
-                      <Plus size={11} /> Order
-                    </button>
-                  </div>
+            <div className="px-5 py-4 flex items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="napoli-label text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>Wraps</span>
+                  <span className="napoli-badge-green">Gluten Free Bread Available</span>
                 </div>
-              );
-            })}
+                <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{WRAPS.note}</p>
+                <p className="napoli-price text-sm mt-1" style={{ color: "var(--napoli-red)" }}>
+                  From ${(parsePrice(WRAPS.price) ?? 0).toFixed(2)}
+                </p>
+              </div>
+              <button
+                onClick={() => { setWrapModalKey(k => k + 1); setWrapTrigger({ basePrice: parsePrice(WRAPS.price) ?? 0 }); }}
+                className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
+                style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+              >
+                <Plus size={13} /> Order Wraps
+              </button>
+            </div>
           </div>
         </MenuCard>
 
