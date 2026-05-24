@@ -20,6 +20,7 @@ import {
   BURGERS, TRIPLE_DECKERS, SALADS, DESSERTS, CHILDRENS_MENU, BEVERAGES,
   ANYTIME_SPECIALS, SOUPS, WRAPS, SIDES, CHICAGO_DEEP_DISH, SICILIAN_PIZZA,
 } from "@/lib/napoliData";
+import { getMenuPhoto } from "@/lib/napoliPhotos";
 
 function SectionHeader({ id, title, emoji, photo }: { id: string; title: string; emoji: string; photo?: string }) {
   if (photo) {
@@ -105,14 +106,26 @@ function MultiSizeItemRow({ name, desc, prices, highlight, category }: {
     });
   };
 
+  const photo = getMenuPhoto(name);
+
   return (
     <div
-      className="napoli-menu-item flex items-start justify-between gap-4 px-5 py-3 border-b last:border-b-0"
+      className="napoli-menu-item flex items-start gap-3 px-4 py-3 border-b last:border-b-0"
       style={{
         borderColor: "oklch(0.93 0.012 80)",
         background: highlight ? "oklch(0.99 0.02 65 / 0.4)" : "transparent",
       }}
     >
+      {photo && (
+        <div className="shrink-0 rounded overflow-hidden" style={{ width: 64, height: 64 }}>
+          <img
+            src={photo}
+            alt={name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{name}</span>
         {desc && <p className="text-xs napoli-body mt-0.5 leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>{desc}</p>}
@@ -219,6 +232,7 @@ function WingsRow({
 
 function BurgerRow({ item }: { item: { name: string; desc?: string; half: string; single: string } }) {
   const { addItem, openCart } = useCart();
+  const photo = getMenuPhoto(item.name);
 
   const handleAdd = (label: string, price: number) => {
     addItem({
@@ -239,9 +253,14 @@ function BurgerRow({ item }: { item: { name: string; desc?: string; half: string
 
   return (
     <div
-      className="napoli-menu-item flex items-center gap-3 px-5 py-3 border-b last:border-b-0"
+      className="napoli-menu-item flex items-center gap-3 px-4 py-3 border-b last:border-b-0"
       style={{ borderColor: "oklch(0.93 0.012 80)" }}
     >
+      {photo && (
+        <div className="shrink-0 rounded overflow-hidden" style={{ width: 64, height: 64 }}>
+          <img src={photo} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <span className="napoli-body text-sm font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
         {item.desc && <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{item.desc}</p>}
@@ -372,6 +391,7 @@ function LunchSpecialRow({ item, isLeft }: { item: { num: number; name: string; 
 function ItemRow({ name, desc, price, highlight, category }: { name: string; desc?: string; price?: string; highlight?: boolean; category?: string }) {
   const { addItem, openCart } = useCart();
   const numericPrice = parsePrice(price);
+  const photo = getMenuPhoto(name);
 
   const handleAdd = () => {
     if (!numericPrice) return;
@@ -390,12 +410,22 @@ function ItemRow({ name, desc, price, highlight, category }: { name: string; des
 
   return (
     <div
-      className="napoli-menu-item flex items-start justify-between gap-4 px-5 py-3 border-b last:border-b-0"
+      className="napoli-menu-item flex items-start gap-3 px-4 py-3 border-b last:border-b-0"
       style={{
         borderColor: "oklch(0.93 0.012 80)",
         background: highlight ? "oklch(0.99 0.02 65 / 0.4)" : "transparent",
       }}
     >
+      {photo && (
+        <div className="shrink-0 rounded overflow-hidden" style={{ width: 64, height: 64 }}>
+          <img
+            src={photo}
+            alt={name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{name}</span>
         {desc && <p className="text-xs napoli-body mt-0.5 leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>{desc}</p>}
@@ -735,14 +765,22 @@ export default function Menu() {
             </div>
             <div className="px-5 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
-              {PIZZA_SPECIALS.map((pizza) => (
+              {PIZZA_SPECIALS.map((pizza) => {
+                const pizzaPhoto = getMenuPhoto(pizza.name);
+                return (
                 <div
                   key={pizza.name}
                   className="napoli-menu-item flex items-start justify-between gap-3 py-3 px-3 border-b border-r"
                   style={{ borderColor: "oklch(0.93 0.012 80)" }}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full mt-1.5 shrink-0 bg-napoli-red" />
+                    {pizzaPhoto ? (
+                      <div className="shrink-0 rounded overflow-hidden" style={{ width: 56, height: 56 }}>
+                        <img src={pizzaPhoto} alt={pizza.name} className="w-full h-full object-cover" loading="lazy" />
+                      </div>
+                    ) : (
+                      <div className="w-2 h-2 rounded-full mt-1.5 shrink-0 bg-napoli-red" />
+                    )}
                     <div>
                       <span className="text-sm napoli-body font-bold" style={{ color: "var(--napoli-dark)" }}>{pizza.name}</span>
                       <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{pizza.desc}</p>
@@ -756,7 +794,8 @@ export default function Menu() {
                     <Plus size={11} /> Order
                   </button>
                 </div>
-              ))}
+                );
+              })}
             </div>
             </div>
           </div>
@@ -967,14 +1006,19 @@ export default function Menu() {
             <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Served Cold</p>
             {SUBS.cold.map((s) => {
               const basePrice = parsePrice(s.price) ?? 0;
+              const subPhoto = getMenuPhoto(s.name);
               return (
                 <div
                   key={s.name}
-                  className="napoli-menu-item flex items-center justify-between gap-4 px-5 py-4 border-b last:border-b-0"
+                  className="napoli-menu-item flex items-center gap-3 px-4 py-3 border-b last:border-b-0"
                   style={{ borderColor: "oklch(0.93 0.012 80)" }}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full shrink-0 bg-napoli-red" />
+                  {subPhoto && (
+                    <div className="shrink-0 rounded overflow-hidden" style={{ width: 56, height: 56 }}>
+                      <img src={subPhoto} alt={s.name} className="w-full h-full object-cover" loading="lazy" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
                     <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{s.name}</span>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
@@ -998,18 +1042,21 @@ export default function Menu() {
             {SUBS.hotDetailed.map((s) => {
               const basePrice = parsePrice(s.price) ?? 0;
               const addNote = s.add ? s.add + (s.desc ? " · " + s.desc : "") : s.desc;
+              const hotSubPhoto = getMenuPhoto(s.name);
               return (
                 <div
                   key={s.name}
-                  className="napoli-menu-item flex items-center justify-between gap-4 px-5 py-4 border-b last:border-b-0"
+                  className="napoli-menu-item flex items-center gap-3 px-4 py-3 border-b last:border-b-0"
                   style={{ borderColor: "oklch(0.93 0.012 80)" }}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full shrink-0 bg-napoli-red" />
-                    <div>
-                      <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{s.name}</span>
-                      {addNote && <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{addNote}</p>}
+                  {hotSubPhoto && (
+                    <div className="shrink-0 rounded overflow-hidden" style={{ width: 56, height: 56 }}>
+                      <img src={hotSubPhoto} alt={s.name} className="w-full h-full object-cover" loading="lazy" />
                     </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{s.name}</span>
+                    {addNote && <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{addNote}</p>}
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>${basePrice.toFixed(2)}</span>
@@ -1034,14 +1081,19 @@ export default function Menu() {
             </div>
             {TRIPLE_DECKERS.items.map((item) => {
               const basePrice = parsePrice(item.price) ?? 0;
+              const triplePhoto = getMenuPhoto(item.name);
               return (
                 <div
                   key={item.name}
-                  className="napoli-menu-item flex items-center justify-between gap-4 px-5 py-4 border-b last:border-b-0"
+                  className="napoli-menu-item flex items-center gap-3 px-4 py-3 border-b last:border-b-0"
                   style={{ borderColor: "oklch(0.93 0.012 80)" }}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full shrink-0 bg-napoli-red" />
+                  {triplePhoto && (
+                    <div className="shrink-0 rounded overflow-hidden" style={{ width: 56, height: 56 }}>
+                      <img src={triplePhoto} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
                     <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
@@ -1187,18 +1239,23 @@ export default function Menu() {
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-0">
             {BEVERAGES.map((bev) => {
+              const bevPhoto = getMenuPhoto(bev.name);
               if ((bev as any).prices) {
                 return (bev as any).prices.map((p: any) => (
                   <div
                     key={p.size}
-                    className="flex items-center justify-between px-5 py-3 border-b border-r"
+                    className="flex items-center gap-3 px-4 py-3 border-b border-r"
                     style={{ borderColor: "oklch(0.87 0.04 255)" }}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">🥤</span>
+                    {bevPhoto ? (
+                      <div className="shrink-0 rounded overflow-hidden" style={{ width: 44, height: 44 }}>
+                        <img src={bevPhoto} alt={bev.name} className="w-full h-full object-cover" loading="lazy" />
+                      </div>
+                    ) : <span className="text-base">🥤</span>}
+                    <div className="flex-1 min-w-0">
                       <span className="text-sm font-semibold napoli-body" style={{ color: "oklch(0.22 0.08 255)" }}>{bev.name} <span className="font-normal text-xs" style={{ color: "oklch(0.50 0.05 255)" }}>({p.size})</span></span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <span className="napoli-price text-sm font-bold" style={{ color: "oklch(0.35 0.14 255)" }}>{p.price}</span>
                       <button
                         onClick={() => { const price = parseFloat(p.price.replace("$","")); addItem({ id: `bev-${bev.name}-${p.size}-${Date.now()}`, name: `${bev.name} (${p.size})`, price, quantity: 1, category: "beverages" }); toast.success(`${bev.name} (${p.size}) added to cart!`); }}
@@ -1217,17 +1274,19 @@ export default function Menu() {
                 return (
                   <div
                     key={bev.name}
-                    className="flex items-center justify-between px-5 py-3 border-b border-r"
+                    className="flex items-center gap-3 px-4 py-3 border-b border-r"
                     style={{ borderColor: "oklch(0.87 0.04 255)" }}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">🍶</span>
-                      <div>
-                        <span className="text-sm font-semibold napoli-body" style={{ color: "oklch(0.22 0.08 255)" }}>{label}</span>
-                        {(bev as any).note && <p className="text-xs" style={{ color: "oklch(0.50 0.05 255)" }}>{(bev as any).note}</p>}
+                    {bevPhoto ? (
+                      <div className="shrink-0 rounded overflow-hidden" style={{ width: 44, height: 44 }}>
+                        <img src={bevPhoto} alt={bev.name} className="w-full h-full object-cover" loading="lazy" />
                       </div>
+                    ) : <span className="text-base">🍶</span>}
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-semibold napoli-body" style={{ color: "oklch(0.22 0.08 255)" }}>{label}</span>
+                      {(bev as any).note && <p className="text-xs" style={{ color: "oklch(0.50 0.05 255)" }}>{(bev as any).note}</p>}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <span className="napoli-price text-sm font-bold" style={{ color: "oklch(0.35 0.14 255)" }}>{(bev as any).price}</span>
                       <button
                         onClick={() => { addItem({ id: `bev-${bev.name}-${Date.now()}`, name: label, price, quantity: 1, category: "beverages" }); toast.success(`${label} added to cart!`); }}
@@ -1241,8 +1300,13 @@ export default function Menu() {
                 );
               }
               return (
-                <div key={bev.name} className="flex items-center justify-between px-5 py-3 border-b border-r" style={{ borderColor: "oklch(0.87 0.04 255)" }}>
-                  <span className="napoli-body text-sm" style={{ color: "oklch(0.22 0.08 255)" }}>{bev.name}</span>
+                <div key={bev.name} className="flex items-center gap-3 px-4 py-3 border-b border-r" style={{ borderColor: "oklch(0.87 0.04 255)" }}>
+                  {bevPhoto ? (
+                    <div className="shrink-0 rounded overflow-hidden" style={{ width: 44, height: 44 }}>
+                      <img src={bevPhoto} alt={bev.name} className="w-full h-full object-cover" loading="lazy" />
+                    </div>
+                  ) : <span className="text-base">🥤</span>}
+                  <span className="napoli-body text-sm flex-1" style={{ color: "oklch(0.22 0.08 255)" }}>{bev.name}</span>
                   {(bev as any).note && <span className="text-xs napoli-body italic" style={{ color: "oklch(0.50 0.05 255)" }}>{(bev as any).note}</span>}
                 </div>
               );
