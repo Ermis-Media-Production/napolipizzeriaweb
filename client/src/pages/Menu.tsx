@@ -633,10 +633,26 @@ export default function Menu() {
           </div>
 
           {/* Specialty pizzas */}
-          <div className="px-5 py-4 border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-            <p className="napoli-label text-xs mb-4" style={{ color: "var(--napoli-red)" }}>
-              Napoli's Special Creations — Available in 10" · 14" · 16" · 18" · 24" · 28" · 30" · 36"
-            </p>
+          <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
+            {/* Sub-section header — same dark/red style as SectionHeader */}
+            <div
+              id="specialty-pizzas"
+              className="flex items-center gap-3 px-5 py-3 scroll-mt-24"
+              style={{ background: "oklch(0.13 0.04 27)", borderBottom: "3px solid var(--napoli-red)" }}
+            >
+              <span className="text-xl">⭐</span>
+              <div>
+                <h3
+                  className="napoli-label text-base text-white tracking-widest"
+                >
+                  Napoli's Special Creations
+                </h3>
+                <p className="text-xs mt-0.5" style={{ color: "oklch(0.72 0.04 80)", fontFamily: "'Lato', sans-serif" }}>
+                  Available in 10" · 14" · 16" · 18" · 24" · 28" · 30" · 36"
+                </p>
+              </div>
+            </div>
+            <div className="px-5 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
               {PIZZA_SPECIALS.map((pizza) => (
                 <div
@@ -660,6 +676,7 @@ export default function Menu() {
                   </button>
                 </div>
               ))}
+            </div>
             </div>
           </div>
 
