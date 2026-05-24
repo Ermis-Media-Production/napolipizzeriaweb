@@ -11,6 +11,7 @@ import NapoliFooter from "@/components/NapoliFooter";
 import WingsCustomizerModal, { type WingsSelection } from "@/components/WingsCustomizerModal";
 import PizzaCustomizerModal, { type PizzaSelection } from "@/components/PizzaCustomizerModal";
 import WrapCustomizerModal, { type WrapTrigger } from "@/components/WrapCustomizerModal";
+import SubsCustomizerModal, { type SubsTrigger } from "@/components/SubsCustomizerModal";
 import {
   MENU_CATEGORIES, APPETIZERS, LUNCH_SPECIALS, PIZZA_SIZES, PIZZA_BASE_PRICES,
   PIZZA_SPECIALS, PIZZA_30_TOPPINGS, STUFFED_DOUGH, WINGS, PASTA, SUBS,
@@ -404,6 +405,8 @@ export default function Menu() {
   const [pizzaModalKey, setPizzaModalKey] = useState(0);
   const [wrapTrigger, setWrapTrigger] = useState<WrapTrigger | null>(null);
   const [wrapModalKey, setWrapModalKey] = useState(0);
+  const [subsTrigger, setSubsTrigger] = useState<SubsTrigger | null>(null);
+  const [subsModalKey, setSubsModalKey] = useState(0);
 
   const scrollTo = (id: string) => {
     setActiveCategory(id);
@@ -714,6 +717,13 @@ export default function Menu() {
           onClose={() => setWrapTrigger(null)}
         />
 
+        {/* Subs Customizer Modal */}
+        <SubsCustomizerModal
+          key={subsModalKey}
+          trigger={subsTrigger}
+          onClose={() => setSubsTrigger(null)}
+        />
+
         {/* ── PASTA ──────────────────────────────────────────── */}
         <SectionHeader id="pasta" title="Pasta" emoji="🍝" />
         <MenuCard>
@@ -753,38 +763,106 @@ export default function Menu() {
         {/* ── SUBS & SANDWICHES ──────────────────────────────── */}
         <SectionHeader id="subs" title="Sub Sandwiches" emoji="🥖" />
         <MenuCard>
+          {/* Note */}
           <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
             <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{SUBS.note}</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-            <div>
-              <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Served Cold</p>
-              {SUBS.cold.map((s) => (
-                <ItemRow key={s.name} name={s.name} price={s.price} category="subs" />
-              ))}
-            </div>
-            <div>
-              <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Served Hot</p>
-              {SUBS.hotDetailed.map((s) => (
-                <ItemRow
+
+          {/* Cold Subs */}
+          <div>
+            <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Served Cold</p>
+            {SUBS.cold.map((s) => {
+              const basePrice = parsePrice(s.price) ?? 0;
+              return (
+                <div
                   key={s.name}
-                  name={s.name}
-                  desc={(s.add ? s.add + (s.desc ? " · " + s.desc : "") : s.desc)}
-                  price={s.price}
-                  category="subs"
-                />
-              ))}
-            </div>
+                  className="napoli-menu-item flex items-center justify-between gap-4 px-5 py-4 border-b last:border-b-0"
+                  style={{ borderColor: "oklch(0.93 0.012 80)" }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full shrink-0 bg-napoli-red" />
+                    <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{s.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>${basePrice.toFixed(2)}</span>
+                    <button
+                      onClick={() => { setSubsModalKey(k => k + 1); setSubsTrigger({ subName: s.name, basePrice, showAddons: true }); }}
+                      className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all active:scale-95"
+                      style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+                    >
+                      <Plus size={11} /> Order
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
+
+          {/* Hot Subs */}
+          <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
+            <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Served Hot</p>
+            {SUBS.hotDetailed.map((s) => {
+              const basePrice = parsePrice(s.price) ?? 0;
+              const addNote = s.add ? s.add + (s.desc ? " · " + s.desc : "") : s.desc;
+              return (
+                <div
+                  key={s.name}
+                  className="napoli-menu-item flex items-center justify-between gap-4 px-5 py-4 border-b last:border-b-0"
+                  style={{ borderColor: "oklch(0.93 0.012 80)" }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full shrink-0 bg-napoli-red" />
+                    <div>
+                      <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{s.name}</span>
+                      {addNote && <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{addNote}</p>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>${basePrice.toFixed(2)}</span>
+                    <button
+                      onClick={() => { setSubsModalKey(k => k + 1); setSubsTrigger({ subName: s.name, basePrice, addNote, showAddons: true }); }}
+                      className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all active:scale-95"
+                      style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+                    >
+                      <Plus size={11} /> Order
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
           {/* Triple Deckers */}
           <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
             <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
               <p className="napoli-label text-xs" style={{ color: "var(--napoli-red)" }}>Triple Deckers <span className="napoli-badge-green ml-2">Gluten Free Bread Available</span></p>
               <p className="text-xs napoli-body mt-1" style={{ color: "oklch(0.52 0.03 30)" }}>{TRIPLE_DECKERS.note}</p>
             </div>
-            {TRIPLE_DECKERS.items.map((item) => (
-              <ItemRow key={item.name} name={item.name} price={item.price} category="subs" />
-            ))}
+            {TRIPLE_DECKERS.items.map((item) => {
+              const basePrice = parsePrice(item.price) ?? 0;
+              return (
+                <div
+                  key={item.name}
+                  className="napoli-menu-item flex items-center justify-between gap-4 px-5 py-4 border-b last:border-b-0"
+                  style={{ borderColor: "oklch(0.93 0.012 80)" }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full shrink-0 bg-napoli-red" />
+                    <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>${basePrice.toFixed(2)}</span>
+                    <button
+                      onClick={() => { setSubsModalKey(k => k + 1); setSubsTrigger({ subName: item.name, basePrice, showAddons: false }); }}
+                      className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all active:scale-95"
+                      style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+                    >
+                      <Plus size={11} /> Order
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </MenuCard>
 

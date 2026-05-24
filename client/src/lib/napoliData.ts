@@ -170,7 +170,7 @@ export const STUFFED_DOUGH = [
 export const WRAPS = {
   note: "Choice of Flour or Wheat Bread w/ Lettuce, Tomatoes, Onions & Mayo. Gluten Free Bread Available.",
   price: "$12.49",
-  items: ["Grilled Chicken Caesar", "Crispy Chicken", "Buffalo Chicken"],
+  items: ["Grilled Chicken Caesar", "Crispy Chicken", "Buffalo Chicken", "Veggie", "Steak"],
 };
 
 // ── WINGS ──────────────────────────────────────────────────
