@@ -10,6 +10,7 @@ import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
 import WingsCustomizerModal, { type WingsSelection } from "@/components/WingsCustomizerModal";
 import PizzaCustomizerModal, { type PizzaSelection } from "@/components/PizzaCustomizerModal";
+import WrapCustomizerModal, { type WrapTrigger } from "@/components/WrapCustomizerModal";
 import {
   MENU_CATEGORIES, APPETIZERS, LUNCH_SPECIALS, PIZZA_SIZES, PIZZA_BASE_PRICES,
   PIZZA_SPECIALS, PIZZA_30_TOPPINGS, STUFFED_DOUGH, WINGS, PASTA, SUBS,
@@ -391,100 +392,7 @@ function ItemRow({ name, desc, price, highlight, category }: { name: string; des
   );
 }
 
-/** Wrap item row with add-to-cart + optional Ranch/Blue Cheese side */
-function WrapRow({ name, price }: { name: string; price: string }) {
-  const { addItem, openCart } = useCart();
-  const numericPrice = parsePrice(price) ?? 0;
-  const [sauce, setSauce] = useState<"none" | "ranch-2oz" | "ranch-6oz" | "bluecheese-2oz" | "bluecheese-6oz">("none");
 
-  const sauceOptions: { id: typeof sauce; label: string; extra: number }[] = [
-    { id: "none",           label: "No Sauce",        extra: 0 },
-    { id: "ranch-2oz",      label: "Ranch 2oz",       extra: 1.49 },
-    { id: "ranch-6oz",      label: "Ranch 6oz",       extra: 2.49 },
-    { id: "bluecheese-2oz", label: "Blue Cheese 2oz", extra: 1.49 },
-    { id: "bluecheese-6oz", label: "Blue Cheese 6oz", extra: 2.49 },
-  ];
-
-  const selectedSauce = sauceOptions.find(s => s.id === sauce)!;
-  const total = numericPrice + selectedSauce.extra;
-
-  const handleAdd = () => {
-    const sauceSuffix = sauce !== "none" ? ` + ${selectedSauce.label}` : "";
-    addItem({
-      id: `wrap-${name}-${sauce}-${Date.now()}`,
-      name: `${name} Wrap${sauceSuffix}`,
-      price: total,
-      quantity: 1,
-      category: "wraps",
-    });
-    toast.success(`${name} Wrap added to cart`, {
-      action: { label: "View Cart", onClick: openCart },
-    });
-  };
-
-  return (
-    <div
-      className="napoli-menu-item px-5 py-4 border-b last:border-b-0"
-      style={{ borderColor: "oklch(0.93 0.012 80)" }}
-    >
-      {/* Name + price row */}
-      <div className="flex items-center justify-between gap-4 mb-3">
-        <div>
-          <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{name}</span>
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>
-            ${total.toFixed(2)}
-          </span>
-          <button
-            onClick={handleAdd}
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90 hover:opacity-90"
-            style={{ background: "var(--napoli-red)", color: "white" }}
-            title={`Add ${name} Wrap to cart`}
-          >
-            <Plus size={14} />
-          </button>
-        </div>
-      </div>
-      {/* Sauce selector */}
-      <div className="flex flex-wrap gap-2">
-        {sauceOptions.map((opt) => (
-          <button
-            key={opt.id}
-            onClick={() => setSauce(opt.id)}
-            className="px-2.5 py-1 rounded text-xs font-semibold napoli-body transition-all active:scale-95"
-            style={
-              sauce === opt.id
-                ? { background: "var(--napoli-red)", color: "white", border: "2px solid var(--napoli-red)" }
-                : { background: "white", color: "oklch(0.42 0.03 30)", border: "2px solid oklch(0.88 0.015 80)" }
-            }
-          >
-            {opt.id === "none" ? opt.label : `+${opt.label} +$${opt.extra.toFixed(2)}`}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function WrapSection() {
-  return (
-    <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-      {/* Header */}
-      <div className="px-5 py-3" style={{ background: "oklch(0.97 0.012 80)" }}>
-        <div className="flex items-center gap-2 mb-1">
-          <span className="napoli-label text-xs" style={{ color: "var(--napoli-red)" }}>Wraps</span>
-          <span className="napoli-badge-green">Gluten Free Bread Available</span>
-        </div>
-        <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{WRAPS.note}</p>
-      </div>
-      {/* Wrap rows */}
-      {WRAPS.items.map((w) => (
-        <WrapRow key={w} name={w} price={WRAPS.price} />
-      ))}
-    </div>
-  );
-}
 
 export default function Menu() {
   const { addItem } = useCart();
@@ -494,6 +402,8 @@ export default function Menu() {
   const [wingsModalKey, setWingsModalKey] = useState(0);
   const [pizzaSelection, setPizzaSelection] = useState<PizzaSelection | null>(null);
   const [pizzaModalKey, setPizzaModalKey] = useState(0);
+  const [wrapTrigger, setWrapTrigger] = useState<WrapTrigger | null>(null);
+  const [wrapModalKey, setWrapModalKey] = useState(0);
 
   const scrollTo = (id: string) => {
     setActiveCategory(id);
@@ -717,7 +627,44 @@ export default function Menu() {
           </div>
 
           {/* Wraps */}
-          <WrapSection />
+          <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
+            {/* Header */}
+            <div className="px-5 py-3" style={{ background: "oklch(0.97 0.012 80)" }}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="napoli-label text-xs" style={{ color: "var(--napoli-red)" }}>Wraps</span>
+                <span className="napoli-badge-green">Gluten Free Bread Available</span>
+              </div>
+              <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{WRAPS.note}</p>
+            </div>
+            {/* One row per wrap — clicking opens the 3-step modal */}
+            {WRAPS.items.map((wrapName) => {
+              const basePrice = parsePrice(WRAPS.price) ?? 0;
+              return (
+                <div
+                  key={wrapName}
+                  className="napoli-menu-item flex items-center justify-between gap-4 px-5 py-4 border-b last:border-b-0"
+                  style={{ borderColor: "oklch(0.93 0.012 80)" }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full shrink-0 bg-napoli-red" />
+                    <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{wrapName}</span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>
+                      ${basePrice.toFixed(2)}
+                    </span>
+                    <button
+                      onClick={() => { setWrapModalKey(k => k + 1); setWrapTrigger({ basePrice }); }}
+                      className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all active:scale-95"
+                      style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+                    >
+                      <Plus size={11} /> Order
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </MenuCard>
 
         {/* ── WINGS ──────────────────────────────────────────── */}
@@ -758,6 +705,13 @@ export default function Menu() {
           key={pizzaModalKey}
           selection={pizzaSelection}
           onClose={() => setPizzaSelection(null)}
+        />
+
+        {/* Wrap Customizer Modal */}
+        <WrapCustomizerModal
+          key={wrapModalKey}
+          trigger={wrapTrigger}
+          onClose={() => setWrapTrigger(null)}
         />
 
         {/* ── PASTA ──────────────────────────────────────────── */}
