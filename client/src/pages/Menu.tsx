@@ -15,6 +15,8 @@ import SubsCustomizerModal, { type SubsTrigger } from "@/components/SubsCustomiz
 import { CalzoneCustomizerModal, type CalzoneTrigger } from "@/components/CalzoneCustomizerModal";
 import BurgerCustomizerModal, { type BurgerTrigger } from "@/components/BurgerCustomizerModal";
 import AppetizersCustomizerModal, { type AppetizersModalTrigger, APPETIZER_MODAL_ITEMS } from "@/components/AppetizersCustomizerModal";
+import SaladsCustomizerModal, { type SaladsModalTrigger, SALAD_MODAL_ITEMS } from "@/components/SaladsCustomizerModal";
+import PastaCustomizerModal, { type PastaModalTrigger, PASTA_MODAL_ITEMS } from "@/components/PastaCustomizerModal";
 import {
   MENU_CATEGORIES, APPETIZERS, LUNCH_SPECIALS, PIZZA_SIZES, PIZZA_BASE_PRICES,
   PIZZA_SPECIALS, PIZZA_30_TOPPINGS, STUFFED_DOUGH, WINGS, PASTA, SUBS,
@@ -566,6 +568,8 @@ export default function Menu() {
   const [burgerModalKey, setBurgerModalKey] = useState(0);
   const [calzoneModalKey, setCalzoneModalKey] = useState(0);
   const [appetizersModalTrigger, setAppetizersModalTrigger] = useState<AppetizersModalTrigger | null>(null);
+  const [saladsModalTrigger, setSaladsModalTrigger] = useState<SaladsModalTrigger | null>(null);
+  const [pastaModalTrigger, setPastaModalTrigger] = useState<PastaModalTrigger | null>(null);
 
   const scrollTo = (id: string) => {
     setActiveCategory(id);
@@ -1026,6 +1030,18 @@ export default function Menu() {
           onClose={() => setAppetizersModalTrigger(null)}
         />
 
+        {/* Salads Customizer Modal */}
+        <SaladsCustomizerModal
+          trigger={saladsModalTrigger}
+          onClose={() => setSaladsModalTrigger(null)}
+        />
+
+        {/* Pasta Customizer Modal */}
+        <PastaCustomizerModal
+          trigger={pastaModalTrigger}
+          onClose={() => setPastaModalTrigger(null)}
+        />
+
         {/* ── PASTA ──────────────────────────────────────────── */}
         <SectionHeader id="pasta" title="Pasta" emoji="🍝" photo="/manus-storage/napoli-lunch_94df386a.jpg" />
         <MenuCard>
@@ -1037,16 +1053,32 @@ export default function Menu() {
           <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
             <div>
               <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Classic Pasta</p>
-              {PASTA.classic.map((item) => <ItemRow key={item.name} name={item.name} price={item.price} />)}
+              {PASTA.classic.map((item) => PASTA_MODAL_ITEMS.includes(item.name) ? (
+                <AppetizersItemRow key={item.name} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
+              ) : (
+                <ItemRow key={item.name} name={item.name} price={item.price} />
+              ))}
             </div>
             <div>
               <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Ravioli</p>
-              {PASTA.ravioli.map((item) => <ItemRow key={item.name} name={item.name} price={item.price} />)}
+              {PASTA.ravioli.map((item) => PASTA_MODAL_ITEMS.includes(item.name) ? (
+                <AppetizersItemRow key={item.name} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
+              ) : (
+                <ItemRow key={item.name} name={item.name} price={item.price} />
+              ))}
             </div>
             <div>
               <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Tortellini & Parmigiana</p>
-              {PASTA.tortellini.map((item) => <ItemRow key={item.name} name={item.name} price={item.price} />)}
-              {PASTA.parmigiana.map((item) => <ItemRow key={item.name} name={item.name} price={item.price} />)}
+              {PASTA.tortellini.map((item) => PASTA_MODAL_ITEMS.includes(item.name) ? (
+                <AppetizersItemRow key={item.name} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
+              ) : (
+                <ItemRow key={item.name} name={item.name} price={item.price} />
+              ))}
+              {PASTA.parmigiana.map((item) => PASTA_MODAL_ITEMS.includes(item.name) ? (
+                <AppetizersItemRow key={item.name} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
+              ) : (
+                <ItemRow key={item.name} name={item.name} price={item.price} />
+              ))}
             </div>
           </div>
         </MenuCard>
@@ -1198,13 +1230,13 @@ export default function Menu() {
           </div>
           {SALADS.map((item) => (
             <div key={item.name}>
-              {(item as any).prices ? (
-                <MultiSizeItemRow
+              {SALAD_MODAL_ITEMS.includes(item.name) ? (
+                <AppetizersItemRow
                   name={item.name}
                   desc={item.desc}
-                  prices={(item as any).prices}
+                  price={(item as any).price ?? ((item as any).prices?.[0]?.price)}
                   highlight={(item as any).highlight}
-                  category="salads"
+                  onOpen={() => setSaladsModalTrigger({ itemName: item.name })}
                 />
               ) : (
                 <ItemRow name={item.name} desc={item.desc} price={(item as any).price} highlight={(item as any).highlight} category="salads" />
