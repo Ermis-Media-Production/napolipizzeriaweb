@@ -44,13 +44,13 @@ export default function Home() {
             {/* Eyebrow */}
             <div className="flex items-center gap-2 mb-4 animate-fade-up">
               <span className="napoli-badge-gold">North Las Vegas, NV</span>
-              <span className="napoli-badge-green">Est. Original</span>
+              <span className="napoli-badge-green">Best Pizzeria</span>
             </div>
 
             {/* Headline */}
             <div className="animate-fade-up" style={{ animationDelay: "60ms" }}>
               <p className="napoli-label text-sm mb-1" style={{ color: "oklch(0.80 0.015 80)", letterSpacing: "0.2em" }}>
-                The Original
+                3131 W Craig Rd
               </p>
               <h1 className="napoli-display text-5xl md:text-6xl mb-2" style={{ color: "oklch(0.99 0.015 80)" }}>
                 Napoli

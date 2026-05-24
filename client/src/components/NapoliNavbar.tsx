@@ -75,7 +75,7 @@ export default function NapoliNavbar() {
                   className="napoli-label text-xs"
                   style={{ color: "var(--napoli-green)", letterSpacing: "0.15em" }}
                 >
-                  The Original
+                  North Las Vegas
                 </div>
                 <div
                   className="napoli-display text-xl leading-tight"
