@@ -22,19 +22,14 @@ export default function NapoliFooter() {
             {/* Brand */}
             <div className="md:col-span-1">
               <div className="flex items-center gap-3 mb-4">
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center font-black text-white text-xl shrink-0"
-                  style={{
-                    background: "var(--napoli-red)",
-                    fontFamily: "'Playfair Display', serif",
-                    border: "2px solid var(--napoli-green)",
-                  }}
-                >
-                  N
-                </div>
+                <img
+                  src="/manus-storage/RogoRecortadotransparente_2498d8db.png"
+                  alt="Napoli Pizzeria Logo"
+                  className="w-16 h-16 object-contain shrink-0"
+                />
                 <div>
                   <div className="napoli-label text-xs" style={{ color: "var(--napoli-gold)", letterSpacing: "0.15em" }}>
-                    The Original
+                    North Las Vegas
                   </div>
                   <div className="napoli-display text-lg" style={{ color: "oklch(0.95 0.015 80)" }}>
                     Napoli Pizzeria

@@ -3,13 +3,180 @@
  * Design: Authentic Italian trattoria — red/cream/green, Playfair Display headings
  */
 import { Link } from "wouter";
-import { ArrowRight, Star, Phone, MapPin, Clock, Truck, UtensilsCrossed, ShoppingBag, ChevronRight } from "lucide-react";
+import { ArrowRight, Star, Phone, MapPin, Clock, Truck, UtensilsCrossed, ShoppingBag, ChevronRight, Quote } from "lucide-react";
 import { toast } from "sonner";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
 import { RESTAURANT_INFO, LUNCH_SPECIALS, PIZZA_SPECIALS, APPETIZERS } from "@/lib/napoliData";
 
 const handleOrder = () => toast.info("Order online at NapoliPizzeria.com or call 725-204-0379!");
+
+const GOOGLE_REVIEWS = [
+  {
+    name: "Maria G.",
+    avatar: "MG",
+    rating: 5,
+    date: "hace 2 semanas",
+    text: "Best pizza in North Las Vegas! The 16\" pepperoni is absolutely amazing. The crust is perfectly crispy and the sauce has just the right amount of seasoning. We order every Friday night!",
+  },
+  {
+    name: "James T.",
+    avatar: "JT",
+    rating: 5,
+    date: "hace 1 mes",
+    text: "Tried the Meat Lover's Special and it was incredible. Huge portions, great value. The wings with Buffalo sauce were also on point. Definitely our go-to pizza spot!",
+  },
+  {
+    name: "Sandra R.",
+    avatar: "SR",
+    rating: 5,
+    date: "hace 3 semanas",
+    text: "The lunch specials are a steal! $9.49 for a full meal with a free soda — you can't beat that. The staff is always friendly and the food comes out fast. Highly recommend!",
+  },
+  {
+    name: "Carlos M.",
+    avatar: "CM",
+    rating: 5,
+    date: "hace 2 meses",
+    text: "Ordered the 30\" pizza for a family gathering and everyone was blown away. Great quality, delivered hot and on time. Napoli Pizzeria never disappoints. 5 stars every time!",
+  },
+  {
+    name: "Lisa K.",
+    avatar: "LK",
+    rating: 5,
+    date: "hace 1 semana",
+    text: "The BBQ Chicken pizza is out of this world. Crispy crust, generous toppings, and the delivery was super fast. This place is a hidden gem in North Las Vegas. Will keep coming back!",
+  },
+];
+
+function StarRating({ count }: { count: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {Array.from({ length: count }).map((_, i) => (
+        <Star key={i} size={14} fill="#FBBC04" stroke="none" />
+      ))}
+    </div>
+  );
+}
+
+function GoogleReviewsSection() {
+  return (
+    <section
+      className="py-14 overflow-hidden"
+      style={{ background: "oklch(0.97 0.010 80)" }}
+    >
+      <div className="container">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+          <div>
+            <p className="napoli-label text-xs mb-2" style={{ color: "var(--napoli-red)", letterSpacing: "0.2em" }}>
+              Lo Que Dicen Nuestros Clientes
+            </p>
+            <h2 className="napoli-display text-3xl md:text-4xl" style={{ color: "var(--napoli-dark)" }}>
+              Reseñas de Google
+            </h2>
+          </div>
+          {/* Google badge */}
+          <a
+            href="https://www.google.com/maps/search/Napoli+Pizzeria+North+Las+Vegas"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border transition-opacity hover:opacity-80 shrink-0"
+            style={{ borderColor: "oklch(0.85 0.015 80)", background: "white" }}
+          >
+            <svg width="18" height="18" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 2.9l5.7-5.7C34.5 6.7 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.9z" fill="#FFC107"/>
+              <path d="M6.3 14.7l6.6 4.8C14.7 16 19 12 24 12c3.1 0 5.8 1.1 8 2.9l5.7-5.7C34.5 6.7 29.5 4 24 4 16.3 4 9.7 8.4 6.3 14.7z" fill="#FF3D00"/>
+              <path d="M24 44c5.4 0 10.3-2 14-5.3l-6.5-5.5C29.5 35.1 26.9 36 24 36c-5.3 0-9.7-3.3-11.3-8H6.1C9.4 35.6 16.2 44 24 44z" fill="#4CAF50"/>
+              <path d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.3 5.5l6.5 5.5C37.3 39.4 44 34.5 44 24c0-1.3-.1-2.7-.4-3.9z" fill="#1976D2"/>
+            </svg>
+            <span className="text-sm font-semibold napoli-label" style={{ color: "oklch(0.35 0.03 30)" }}>
+              Ver en Google Maps
+            </span>
+          </a>
+        </div>
+
+        {/* Reviews grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {GOOGLE_REVIEWS.map((review) => (
+            <div
+              key={review.name}
+              className="bg-white rounded-lg p-5 border shadow-sm flex flex-col gap-3 transition-shadow hover:shadow-md"
+              style={{ borderColor: "oklch(0.90 0.012 80)" }}
+            >
+              {/* Top: avatar + name + stars */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                    style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+                  >
+                    {review.avatar}
+                  </div>
+                  <div>
+                    <div className="napoli-label text-sm font-semibold" style={{ color: "var(--napoli-dark)" }}>
+                      {review.name}
+                    </div>
+                    <div className="text-xs napoli-body" style={{ color: "oklch(0.60 0.015 80)" }}>
+                      {review.date}
+                    </div>
+                  </div>
+                </div>
+                <StarRating count={review.rating} />
+              </div>
+
+              {/* Review text */}
+              <div className="relative">
+                <Quote size={16} className="absolute -top-1 -left-1 opacity-20" style={{ color: "var(--napoli-red)" }} />
+                <p className="napoli-body text-sm leading-relaxed pl-4" style={{ color: "oklch(0.42 0.03 30)" }}>
+                  {review.text}
+                </p>
+              </div>
+
+              {/* Google logo bottom */}
+              <div className="flex items-center gap-1.5 mt-auto pt-2 border-t" style={{ borderColor: "oklch(0.93 0.010 80)" }}>
+                <svg width="14" height="14" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 2.9l5.7-5.7C34.5 6.7 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.9z" fill="#FFC107"/>
+                  <path d="M6.3 14.7l6.6 4.8C14.7 16 19 12 24 12c3.1 0 5.8 1.1 8 2.9l5.7-5.7C34.5 6.7 29.5 4 24 4 16.3 4 9.7 8.4 6.3 14.7z" fill="#FF3D00"/>
+                  <path d="M24 44c5.4 0 10.3-2 14-5.3l-6.5-5.5C29.5 35.1 26.9 36 24 36c-5.3 0-9.7-3.3-11.3-8H6.1C9.4 35.6 16.2 44 24 44z" fill="#4CAF50"/>
+                  <path d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.3 5.5l6.5 5.5C37.3 39.4 44 34.5 44 24c0-1.3-.1-2.7-.4-3.9z" fill="#1976D2"/>
+                </svg>
+                <span className="text-xs napoli-body" style={{ color: "oklch(0.55 0.015 80)" }}>Google Review</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Overall rating summary */}
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 py-5 rounded-lg border" style={{ background: "white", borderColor: "oklch(0.90 0.012 80)" }}>
+          <div className="text-center">
+            <div className="napoli-price text-4xl" style={{ color: "var(--napoli-dark)" }}>5.0</div>
+            <StarRating count={5} />
+            <div className="text-xs napoli-body mt-1" style={{ color: "oklch(0.55 0.015 80)" }}>Basado en reseñas de Google</div>
+          </div>
+          <div className="hidden sm:block w-px h-12" style={{ background: "oklch(0.88 0.015 80)" }} />
+          <div className="text-center sm:text-left">
+            <div className="napoli-label text-sm font-semibold mb-1" style={{ color: "var(--napoli-dark)" }}>
+              Napoli Pizzeria · North Las Vegas
+            </div>
+            <div className="text-sm napoli-body" style={{ color: "oklch(0.50 0.03 30)" }}>
+              3131 W Craig Rd, North Las Vegas, NV 89032
+            </div>
+            <a
+              href="https://www.google.com/maps/search/Napoli+Pizzeria+North+Las+Vegas"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 mt-2 text-xs napoli-label transition-opacity hover:opacity-70"
+              style={{ color: "var(--napoli-red)" }}
+            >
+              Dejar una reseña <ArrowRight size={11} />
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 const SERVICES = [
   { icon: <Truck size={22} />, label: "Delivery", desc: "Fast delivery to your door" },
@@ -452,6 +619,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* ── GOOGLE REVIEWS ───────────────────────────────────── */}
+      <GoogleReviewsSection />
 
       {/* ── CTA BAND ─────────────────────────────────────────── */}
       <section

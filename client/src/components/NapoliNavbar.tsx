@@ -60,16 +60,11 @@ export default function NapoliNavbar() {
           {/* Logo */}
           <Link href="/">
             <div className="flex items-center gap-3 cursor-pointer">
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center font-black text-white text-lg shrink-0"
-                style={{
-                  background: "var(--napoli-red)",
-                  fontFamily: "'Playfair Display', serif",
-                  border: "2px solid var(--napoli-green)",
-                }}
-              >
-                N
-              </div>
+              <img
+                src="/manus-storage/RogoRecortadotransparente_2498d8db.png"
+                alt="Napoli Pizzeria Logo"
+                className="w-14 h-14 object-contain shrink-0"
+              />
               <div>
                 <div
                   className="napoli-label text-xs"
