@@ -8,7 +8,7 @@ import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
 import { ANYTIME_SPECIALS, LUNCH_SPECIALS, RESTAURANT_INFO } from "@/lib/napoliData";
 
-const handleOrder = () => toast.info("Order online at NapoliPizzeria.com or call 725-204-0379!");
+const handleOrder = () => toast.info("Order online at napolipizzerianorthlasvegas.com or call 725-204-0379!");
 
 export default function Specials() {
   return (

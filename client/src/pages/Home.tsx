@@ -9,7 +9,7 @@ import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
 import { RESTAURANT_INFO, LUNCH_SPECIALS, PIZZA_SPECIALS, APPETIZERS } from "@/lib/napoliData";
 
-const handleOrder = () => toast.info("Order online at NapoliPizzeria.com or call 725-204-0379!");
+const handleOrder = () => toast.info("Order online at napolipizzerianorthlasvegas.com or call 725-204-0379!");
 
 const GOOGLE_REVIEWS = [
   {
