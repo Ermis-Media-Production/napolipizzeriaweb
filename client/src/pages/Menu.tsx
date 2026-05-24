@@ -21,7 +21,31 @@ import {
   ANYTIME_SPECIALS, SOUPS, WRAPS, SIDES, CHICAGO_DEEP_DISH, SICILIAN_PIZZA,
 } from "@/lib/napoliData";
 
-function SectionHeader({ id, title, emoji }: { id: string; title: string; emoji: string }) {
+function SectionHeader({ id, title, emoji, photo }: { id: string; title: string; emoji: string; photo?: string }) {
+  if (photo) {
+    return (
+      <div
+        id={id}
+        className="relative overflow-hidden rounded-t-md scroll-mt-24"
+        style={{ height: "140px" }}
+      >
+        <img
+          src={photo}
+          alt={title}
+          className="absolute inset-0 w-full h-full object-cover"
+          loading="lazy"
+        />
+        <div
+          className="absolute inset-0"
+          style={{ background: "linear-gradient(to right, rgba(180,20,20,0.88) 0%, rgba(180,20,20,0.55) 60%, rgba(0,0,0,0.25) 100%)" }}
+        />
+        <div className="relative flex items-center gap-3 h-full px-5">
+          <span className="text-3xl drop-shadow">{emoji}</span>
+          <h2 className="napoli-label text-xl text-white tracking-widest drop-shadow-md">{title}</h2>
+        </div>
+      </div>
+    );
+  }
   return (
     <div
       id={id}
@@ -471,19 +495,26 @@ export default function Menu() {
     <div className="min-h-screen flex flex-col bg-napoli-cream">
       <NapoliNavbar />
 
-      {/* Page header */}
-      <div
-        className="py-10 border-b"
-        style={{ background: "var(--napoli-dark)", borderColor: "oklch(0.28 0.04 30)" }}
-      >
-        <div className="container text-center">
+      {/* Menu Hero Banner */}
+      <div className="relative overflow-hidden" style={{ minHeight: "260px" }}>
+        <img
+          src="/manus-storage/napoli-hero_d5bd2478.jpg"
+          alt="Napoli Pizzeria — Our Menu"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ objectPosition: "center 40%" }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{ background: "linear-gradient(110deg, oklch(0.14 0.03 27 / 0.92) 0%, oklch(0.14 0.03 27 / 0.72) 55%, oklch(0.14 0.03 27 / 0.30) 100%)" }}
+        />
+        <div className="relative container py-14 md:py-20">
           <p className="napoli-label text-xs mb-2" style={{ color: "var(--napoli-gold)", letterSpacing: "0.2em" }}>
             The Original Napoli Pizzeria
           </p>
           <h1 className="napoli-display text-4xl md:text-5xl mb-2" style={{ color: "oklch(0.99 0.015 80)" }}>
             Our Menu
           </h1>
-          <p className="napoli-body text-sm" style={{ color: "oklch(0.65 0.015 80)" }}>
+          <p className="napoli-body text-sm" style={{ color: "oklch(0.72 0.015 80)" }}>
             Taxes not included · Prices subject to change without notice
           </p>
         </div>
@@ -517,7 +548,7 @@ export default function Menu() {
 
       <div className="container py-8 flex-1">
         {/* ── APPETIZERS ─────────────────────────────────────── */}
-        <SectionHeader id="appetizers" title="Appetizers" emoji="🧅" />
+        <SectionHeader id="appetizers" title="Appetizers" emoji="🧅" photo="/manus-storage/napoli-appetizers_dc37c73d.jpg" />
         <MenuCard>
           {APPETIZERS.map((item) => (
             <div key={item.name}>
@@ -538,7 +569,7 @@ export default function Menu() {
         </MenuCard>
 
         {/* ── LUNCH SPECIALS ─────────────────────────────────── */}
-        <SectionHeader id="lunch" title="Lunch Specials" emoji="🕙" />
+        <SectionHeader id="lunch" title="Lunch Specials" emoji="🕙" photo="/manus-storage/napoli-lunch_94df386a.jpg" />
         <MenuCard>
           <div
             className="px-5 py-3 border-b flex flex-col md:flex-row items-start md:items-center gap-2"
@@ -557,7 +588,7 @@ export default function Menu() {
         </MenuCard>
 
         {/* ── PIZZERIA ───────────────────────────────────────── */}
-        <SectionHeader id="pizza" title="Pizzeria — Hand Tossed New York Style" emoji="🍕" />
+        <SectionHeader id="pizza" title="Pizzeria — Hand Tossed New York Style" emoji="🍕" photo="/manus-storage/napoli-pizza-hero_66a71a97.jpg" />
         <MenuCard>
           {/* Size/price table */}
           <div className="overflow-x-auto">
@@ -831,7 +862,7 @@ export default function Menu() {
         </MenuCard>
 
         {/* ── WINGS ──────────────────────────────────────────── */}
-        <SectionHeader id="wings" title="Wings, Wing Dings & Fingers" emoji="🍗" />
+        <SectionHeader id="wings" title="Wings, Wing Dings & Fingers" emoji="🍗" photo="/manus-storage/napoli-wings_5305444c.jpg" />
         <MenuCard>
           <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
             <p className="text-xs napoli-body mb-1" style={{ color: "oklch(0.52 0.03 30)" }}>{WINGS.note}</p>
@@ -899,7 +930,7 @@ export default function Menu() {
         />
 
         {/* ── PASTA ──────────────────────────────────────────── */}
-        <SectionHeader id="pasta" title="Pasta" emoji="🍝" />
+        <SectionHeader id="pasta" title="Pasta" emoji="🍝" photo="/manus-storage/napoli-lunch_94df386a.jpg" />
         <MenuCard>
           <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
             <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>Served w/ Garlic Bread & House Salad</p>
@@ -924,7 +955,7 @@ export default function Menu() {
         </MenuCard>
 
         {/* ── SUBS & SANDWICHES ──────────────────────────────── */}
-        <SectionHeader id="subs" title="Sub Sandwiches" emoji="🥖" />
+        <SectionHeader id="subs" title="Sub Sandwiches" emoji="🥖" photo="/manus-storage/napoli-subs_cb6cce6c.jpg" />
         <MenuCard>
           {/* Note */}
           <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
@@ -1030,7 +1061,7 @@ export default function Menu() {
         </MenuCard>
 
         {/* ── BURGERS ────────────────────────────────────────── */}
-        <SectionHeader id="burgers" title="100% Angus Beef Burgers" emoji="🍔" />
+        <SectionHeader id="burgers" title="100% Angus Beef Burgers" emoji="🍔" photo="/manus-storage/napoli-burger_bea110a3.png" />
         <MenuCard>
           <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
             <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{BURGERS.note}</p>
@@ -1050,7 +1081,7 @@ export default function Menu() {
         </MenuCard>
 
         {/* ── SALADS ─────────────────────────────────────────── */}
-        <SectionHeader id="salads" title="Salads" emoji="🥗" />
+        <SectionHeader id="salads" title="Salads" emoji="🥗" photo="/manus-storage/napoli-salads_7d324c51.jpg" />
         <MenuCard>
           <div className="px-5 py-2 border-b text-xs napoli-body" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)", color: "oklch(0.52 0.03 30)" }}>
             Add Chicken $7.49 or Steak $9.49
@@ -1073,7 +1104,7 @@ export default function Menu() {
         </MenuCard>
 
         {/* ── DESSERTS ───────────────────────────────────────── */}
-        <SectionHeader id="desserts" title="Desserts" emoji="🍰" />
+        <SectionHeader id="desserts" title="Desserts" emoji="🍰" photo="/manus-storage/napoli-desserts_fba7c0ae.png" />
         <MenuCard>
           <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
             <span className="napoli-price text-lg" style={{ color: "var(--napoli-red)" }}>{DESSERTS.price}</span>
