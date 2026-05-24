@@ -18,7 +18,6 @@ export default function NapoliNavbar() {
     { href: "/menu", label: "Menu" },
     { href: "/specials", label: "Specials" },
     { href: "/catering", label: "Catering" },
-    { href: "/order", label: "Order Online" },
   ];
 
   return (
