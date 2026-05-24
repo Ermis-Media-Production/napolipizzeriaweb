@@ -14,6 +14,7 @@ import WrapCustomizerModal, { type WrapTrigger } from "@/components/WrapCustomiz
 import SubsCustomizerModal, { type SubsTrigger } from "@/components/SubsCustomizerModal";
 import { CalzoneCustomizerModal, type CalzoneTrigger } from "@/components/CalzoneCustomizerModal";
 import BurgerCustomizerModal, { type BurgerTrigger } from "@/components/BurgerCustomizerModal";
+import GarlicBreadModal, { type GarlicBreadTrigger } from "@/components/GarlicBreadModal";
 import {
   MENU_CATEGORIES, APPETIZERS, LUNCH_SPECIALS, PIZZA_SIZES, PIZZA_BASE_PRICES,
   PIZZA_SPECIALS, PIZZA_30_TOPPINGS, STUFFED_DOUGH, WINGS, PASTA, SUBS,
@@ -498,6 +499,37 @@ function WholeLottaPastaRow() {
   );
 }
 
+function GarlicBreadRow({ onOpen }: { onOpen: () => void }) {
+  const photo = getMenuPhoto("Garlic Bread");
+  return (
+    <div
+      className="napoli-menu-item flex items-start gap-3 px-4 py-3 border-b last:border-b-0"
+      style={{ borderColor: "oklch(0.93 0.012 80)" }}
+    >
+      {photo && (
+        <div className="shrink-0 rounded overflow-hidden" style={{ width: 64, height: 64 }}>
+          <img src={photo} alt="Garlic Bread" className="w-full h-full object-cover" loading="lazy" />
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>Garlic Bread</span>
+        <p className="text-xs napoli-body mt-0.5 leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>Add Cheese +$2.00</p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>$3.49</span>
+        <button
+          onClick={onOpen}
+          className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90 hover:opacity-90"
+          style={{ background: "var(--napoli-red)", color: "white" }}
+          title="Customize Garlic Bread"
+        >
+          <Plus size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Menu() {
   const { addItem } = useCart();
   const [activeCategory, setActiveCategory] = useState("appetizers");
@@ -514,6 +546,7 @@ export default function Menu() {
   const [burgerTrigger, setBurgerTrigger] = useState<BurgerTrigger | null>(null);
   const [burgerModalKey, setBurgerModalKey] = useState(0);
   const [calzoneModalKey, setCalzoneModalKey] = useState(0);
+  const [garlicBreadTrigger, setGarlicBreadTrigger] = useState<GarlicBreadTrigger | null>(null);
 
   const scrollTo = (id: string) => {
     setActiveCategory(id);
@@ -582,7 +615,9 @@ export default function Menu() {
         <MenuCard>
           {APPETIZERS.map((item) => (
             <div key={item.name}>
-              {(item as any).prices ? (
+              {item.name === "Garlic Bread" ? (
+                <GarlicBreadRow onOpen={() => setGarlicBreadTrigger({ open: true })} />
+              ) : (item as any).prices ? (
                 <MultiSizeItemRow
                   name={item.name}
                   desc={item.desc}
@@ -966,6 +1001,12 @@ export default function Menu() {
           key={burgerModalKey}
           trigger={burgerTrigger}
           onClose={() => setBurgerTrigger(null)}
+        />
+
+        {/* Garlic Bread Customizer Modal */}
+        <GarlicBreadModal
+          trigger={garlicBreadTrigger}
+          onClose={() => setGarlicBreadTrigger(null)}
         />
 
         {/* ── PASTA ──────────────────────────────────────────── */}

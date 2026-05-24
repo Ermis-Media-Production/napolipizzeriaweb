@@ -13,7 +13,7 @@ export const MENU_PHOTOS: Record<string, string> = {
   // ── APPETIZERS ──────────────────────────────────────────────
   "Napoli's Combo Platter":         S + "napoli-combo-platter_82ee98cd.jpg",
   "French Fries":                   S + "napoli-french-fries-photo_19374293.jpg",
-  "Garlic Bread":                   C + "HFVDXB816MJB2.jpeg",
+  "Garlic Bread":                   "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/napoli-garlic-bread-BGUR6YGQLqbBXawWuDkbem.webp",
   "Bread Sticks (12)":              C + "KQXZYE71T0EME.jpeg",
   "Curly Fries":                    C + "DVVRX7FH10MQ4.jpeg",
   "Garlic Balls w/ Cheese (20)":    C + "HFVDXB816MJB2.jpeg",
