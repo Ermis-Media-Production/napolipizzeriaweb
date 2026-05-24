@@ -12,7 +12,7 @@ const S = "/manus-storage/";
 export const MENU_PHOTOS: Record<string, string> = {
   // ── APPETIZERS ──────────────────────────────────────────────
   "Napoli's Combo Platter":         S + "napoli-combo-platter_82ee98cd.jpg",
-  "French Fries":                   C + "DVVRX7FH10MQ4.jpeg",
+  "French Fries":                   S + "napoli-french-fries-photo_19374293.jpg",
   "Garlic Bread":                   C + "HFVDXB816MJB2.jpeg",
   "Bread Sticks (12)":              C + "KQXZYE71T0EME.jpeg",
   "Curly Fries":                    C + "DVVRX7FH10MQ4.jpeg",
@@ -53,19 +53,19 @@ export const MENU_PHOTOS: Record<string, string> = {
   "Italian":                        C + "082CDPWK0FS0G.jpeg",
   "Meat Lover":                     C + "ECXJ2YTAJ2JYW.jpeg?v=1779393721741",
   "Mexican Style":                  C + "2YQ7DP539SPQM.jpeg",
-  "Napoli's Special":               C + "Q5P394HBCYWV6.jpeg",
-  "Pesto Chicken":                  C + "VEDECN2MXP29R.jpeg?v=1779391850463",
+  "Napoli's Special":               S + "napoli-special-pizza-photo_0b03c1c6.jpg",
+  "Pesto Chicken":                  S + "napoli-pesto-chicken-pizza-photo_9f4073f0.jpg",
   "Ranch":                          C + "T6GATR3640CSW.jpeg",
-  "Southwestern Chicken":           C + "07MP7NNRHKKGR.jpeg",
+  "Southwestern Chicken":           S + "napoli-southwestern-pizza-photo_015a851c.jpg",
   "Supreme":                        C + "TK54KSEM9MQ0C.jpeg?v=1778152442519",
-  "Taco":                           C + "E9NJ6PGTFJN9Y.jpeg",
-  "Vegetarian":                     C + "S7J1CFNP6795J.jpeg?v=1777003730735",
+  "Taco":                           S + "napoli-taco-pizza-photo_73fd48e4.jpg",
+  "Vegetarian":                     S + "napoli-vegetarian-pizza-photo_533eada6.jpg",
   "White Pizza":                    C + "H9JY5SKG4R53T.jpeg",
 
   // ── STUFFED DOUGH ───────────────────────────────────────────
-  "Stuffed Chicago Deep Dish":      C + "5MV92S88WZ36M.jpeg",
-  "Calzone":                        C + "5MV92S88WZ36M.jpeg",
-  "Stromboli":                      C + "3C8TA6EP2E4EM.jpeg",
+  "Stuffed Chicago Deep Dish":      S + "napoli-deep-dish-photo_1967e276.jpg",
+  "Calzone":                        S + "napoli-calzone-photo_a2c79f74.jpg",
+  "Stromboli":                      S + "napoli-stromboli-photo_0a321b0b.jpg",
 
   // ── WRAPS ────────────────────────────────────────────────────
   "Grilled Chicken Caesar":         C + "DAQMPQ8ERBF68.jpeg?v=1779391946506",
@@ -167,8 +167,8 @@ export const MENU_PHOTOS: Record<string, string> = {
   // ── BEVERAGES ────────────────────────────────────────────────
   "Soda Can":                       C + "DVVRX7FH10MQ4.jpeg",
   "Glass Bottle Soda":              C + "DVVRX7FH10MQ4.jpeg",
-  "Perrier (11.5oz)":               S + "napoli-bottled-water.jpg",
-  "Bottled Water":                  S + "napoli-bottled-water.jpg",
+  "Perrier (11.5oz)":               C + "DVVRX7FH10MQ4.jpeg",
+  "Bottled Water":                  C + "DVVRX7FH10MQ4.jpeg",
   "2 Liter (Coke, Diet Coke, Coke Zero, Dr. Pepper, Sprite, Root Beer, Orange Fanta, Ginger Ale)": C + "44A95MHJWMCHG.jpeg",
   "Gold Peak Iced Tea (Green Tea, Raspberry, Black Sweetened or Unsweetened)": C + "DVVRX7FH10MQ4.jpeg",
   "Root Beer Float – Over 100 Flavors": S + "napoli-root-beer-float_d5e5e6dc.jpg",
