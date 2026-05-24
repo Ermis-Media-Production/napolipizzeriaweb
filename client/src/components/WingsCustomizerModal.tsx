@@ -43,6 +43,7 @@ export default function WingsCustomizerModal({ selection, onClose }: Props) {
   const [flavor, setFlavor] = useState<string>("");
   const [addFries, setAddFries] = useState(false);
   const [ranchSize, setRanchSize] = useState<"none" | "2oz" | "6oz">("none");
+  const [notes, setNotes] = useState("");
 
   if (!selection) return null;
 
@@ -59,6 +60,7 @@ export default function WingsCustomizerModal({ selection, onClose }: Props) {
     if (flavor && flavor !== "Plain") addons.push(`${flavor} sauce`);
     if (addFries) addons.push(`+Fries ($${selection.friesAddonPrice.toFixed(2)})`);
     if (ranchSize !== "none") addons.push(`Ranch ${ranchSize} ($${ranchPrice.toFixed(2)})`);
+    if (notes.trim()) addons.push(`Note: ${notes.trim()}`);
 
     const description =
       addons.length > 0 ? addons.join(" · ") : flavor === "Plain" ? "Plain — no sauce" : undefined;
@@ -286,6 +288,32 @@ export default function WingsCustomizerModal({ selection, onClose }: Props) {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Special notes */}
+            <div className="mt-4">
+              <label
+                className="block text-xs napoli-label mb-1.5"
+                style={{ color: "oklch(0.42 0.03 30)", letterSpacing: "0.1em" }}
+              >
+                📝 NOTAS ESPECIALES (OPCIONAL)
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Ej: extra crispy, sin cebolla, salsa aparte..."
+                maxLength={200}
+                rows={2}
+                className="w-full px-3 py-2 rounded-lg text-sm napoli-body resize-none transition-all outline-none"
+                style={{
+                  border: notes ? "2px solid var(--napoli-red)" : "2px solid oklch(0.88 0.015 80)",
+                  color: "var(--napoli-dark)",
+                  background: "white",
+                }}
+              />
+              <p className="text-right text-xs mt-0.5" style={{ color: "oklch(0.65 0.015 80)" }}>
+                {notes.length}/200
+              </p>
             </div>
 
             {/* Total + Add to Cart */}
