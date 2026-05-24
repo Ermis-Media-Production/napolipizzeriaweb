@@ -1,10 +1,11 @@
 /**
  * PizzaCustomizerModal
- * 4-step interactive pizza builder:
+ * 5-step interactive pizza builder:
  *  Step 1 — Choose size (10"–36")
  *  Step 2 — Choose crust type (Regular / Thin / Stuffed / Gluten Free)
- *  Step 3 — Add toppings (+$1.50 each, up to 10)
- *  Step 4 — Special notes + confirm add to cart
+ *  Step 3 — Choose cut type (Square / Triangle / Strips / Uncut)
+ *  Step 4 — Add toppings (+$1.50 each, up to 10)
+ *  Step 5 — Special notes + confirm add to cart
  */
 import { useState, useMemo } from "react";
 import { X, ChevronLeft, ChevronRight, Check, ShoppingCart, Plus, Minus } from "lucide-react";
@@ -32,7 +33,15 @@ const CRUST_OPTIONS = [
   { id: "regular", label: "Regular", desc: "Classic hand-tossed New York style" },
   { id: "thin", label: "Thin Crust", desc: "Light and crispy" },
   { id: "stuffed", label: "Stuffed Dough", desc: "Cheese-filled crust edges" },
-  { id: "gluten-free", label: "Gluten Free", desc: "14\" only — $12.75 base" },
+  { id: "gluten-free", label: "Gluten Free", desc: '14" only — $12.75 base' },
+];
+
+// ── Cut options ────────────────────────────────────────────────────────────
+const CUT_OPTIONS = [
+  { id: "triangle", label: "Triangle Cut", desc: "Classic pizza slices", emoji: "🍕" },
+  { id: "square", label: "Square Cut", desc: "Party-style squares", emoji: "⬛" },
+  { id: "strips", label: "Strips", desc: "Long rectangular strips", emoji: "📏" },
+  { id: "uncut", label: "Uncut", desc: "We leave the cutting to you", emoji: "⭕" },
 ];
 
 // Gluten free is only available in 14"
@@ -41,12 +50,12 @@ const GLUTEN_FREE_SIZE = '14"';
 // Topping price per topping
 const TOPPING_PRICE = 1.50;
 const MAX_TOPPINGS = 10;
+const TOTAL_STEPS = 5;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function getBasePrice(pizzaName: string, size: string, crust: string): number {
   if (crust === "gluten-free") return 12.75;
 
-  // Look up base price from PIZZA_BASE_PRICES
   const sizeIndex = PIZZA_SIZES.indexOf(size);
   if (sizeIndex === -1) return 0;
 
@@ -102,6 +111,7 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
   const [step, setStep] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [selectedCrust, setSelectedCrust] = useState<string>("");
+  const [selectedCut, setSelectedCut] = useState<string>("");
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
 
@@ -134,8 +144,17 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
   function canAdvance() {
     if (step === 1) return effectiveSize !== "";
     if (step === 2) return selectedCrust !== "";
-    if (step === 3) return true; // toppings optional
+    if (step === 3) return selectedCut !== "";
+    if (step === 4) return true; // toppings optional
     return false;
+  }
+
+  function stepLabel(n: number) {
+    if (n === 1) return "Size";
+    if (n === 2) return "Crust";
+    if (n === 3) return "Cut";
+    if (n === 4) return "Toppings";
+    return "Review";
   }
 
   function handleAddToCart() {
@@ -144,15 +163,17 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
         ? `Toppings: ${selectedToppings.join(", ")}`
         : "Plain (no extra toppings)";
     const crustLabel = CRUST_OPTIONS.find((c) => c.id === selectedCrust)?.label ?? selectedCrust;
+    const cutLabel = CUT_OPTIONS.find((c) => c.id === selectedCut)?.label ?? selectedCut;
     const descParts = [
       `Size: ${effectiveSize}`,
       `Crust: ${crustLabel}`,
+      `Cut: ${cutLabel}`,
       toppingStr,
     ];
     if (notes.trim()) descParts.push(`Note: ${notes.trim()}`);
 
     addItem({
-      id: `pizza-${pizzaName}-${effectiveSize}-${selectedCrust}-${Date.now()}`,
+      id: `pizza-${pizzaName}-${effectiveSize}-${selectedCrust}-${selectedCut}-${Date.now()}`,
       name: `${pizzaName} Pizza (${effectiveSize})`,
       price: grandTotal,
       quantity: 1,
@@ -198,17 +219,17 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
         </div>
 
         {/* ── Step Indicator ── */}
-        <div className="flex items-center justify-center gap-2 px-5 py-3 shrink-0" style={{ background: "oklch(0.97 0.012 80)", borderBottom: "1px solid oklch(0.90 0.012 80)" }}>
-          {[1, 2, 3, 4].map((n, i) => (
-            <div key={n} className="flex items-center gap-2">
+        <div className="flex items-center justify-center gap-1.5 px-4 py-3 shrink-0" style={{ background: "oklch(0.97 0.012 80)", borderBottom: "1px solid oklch(0.90 0.012 80)" }}>
+          {[1, 2, 3, 4, 5].map((n, i) => (
+            <div key={n} className="flex items-center gap-1.5">
               <StepDot active={step === n} done={step > n} num={n} />
-              {i < 3 && (
-                <div className="w-8 h-0.5 rounded" style={{ background: step > n + 1 ? "var(--napoli-green)" : step > n ? "var(--napoli-red)" : "oklch(0.88 0.015 80)" }} />
+              {i < TOTAL_STEPS - 1 && (
+                <div className="w-5 h-0.5 rounded" style={{ background: step > n ? "var(--napoli-red)" : "oklch(0.88 0.015 80)" }} />
               )}
             </div>
           ))}
-          <span className="ml-3 text-xs font-semibold" style={{ color: "oklch(0.45 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
-            {step === 1 ? "Choose Size" : step === 2 ? "Choose Crust" : step === 3 ? "Add Toppings" : "Review & Add"}
+          <span className="ml-2 text-xs font-semibold" style={{ color: "oklch(0.45 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
+            {stepLabel(step)}
           </span>
         </div>
 
@@ -224,7 +245,6 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
               <div className="grid grid-cols-4 gap-2">
                 {PIZZA_SIZES.map((size) => {
                   const sizeIndex = PIZZA_SIZES.indexOf(size);
-                  // Get price for this size from Plain Cheese as reference
                   const prices = PIZZA_BASE_PRICES["Plain Cheese"];
                   const priceStr = prices?.[sizeIndex] ?? "";
                   const isSelected = selectedSize === size;
@@ -259,7 +279,7 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
             </div>
           )}
 
-          {/* STEP 2 — Crust */}
+          {/* STEP 2 — Crust Type */}
           {step === 2 && (
             <div>
               <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>
@@ -278,11 +298,13 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
                         }
                         setSelectedCrust(crust.id);
                       }}
+                      disabled={isGFDisabled}
                       className="flex items-center gap-3 px-4 py-3 rounded-lg border-2 text-left transition-all active:scale-[0.99]"
                       style={{
                         borderColor: isSelected ? "var(--napoli-red)" : "oklch(0.88 0.015 80)",
                         background: isSelected ? "oklch(0.97 0.04 27)" : "white",
                         opacity: isGFDisabled ? 0.5 : 1,
+                        cursor: isGFDisabled ? "not-allowed" : "pointer",
                       }}
                     >
                       <div
@@ -306,8 +328,49 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
             </div>
           )}
 
-          {/* STEP 3 — Toppings */}
+          {/* STEP 3 — Cut Type */}
           {step === 3 && (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>
+                Select Cut Type
+              </p>
+              <div className="flex flex-col gap-2">
+                {CUT_OPTIONS.map((cut) => {
+                  const isSelected = selectedCut === cut.id;
+                  return (
+                    <button
+                      key={cut.id}
+                      onClick={() => setSelectedCut(cut.id)}
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg border-2 text-left transition-all active:scale-[0.99]"
+                      style={{
+                        borderColor: isSelected ? "var(--napoli-red)" : "oklch(0.88 0.015 80)",
+                        background: isSelected ? "oklch(0.97 0.04 27)" : "white",
+                      }}
+                    >
+                      <div
+                        className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
+                        style={{ borderColor: isSelected ? "var(--napoli-red)" : "oklch(0.75 0.015 80)" }}
+                      >
+                        {isSelected && <div className="w-2.5 h-2.5 rounded-full" style={{ background: "var(--napoli-red)" }} />}
+                      </div>
+                      <span className="text-xl">{cut.emoji}</span>
+                      <div>
+                        <div className="text-sm font-semibold" style={{ color: "oklch(0.25 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
+                          {cut.label}
+                        </div>
+                        <div className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+                          {cut.desc}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4 — Toppings */}
+          {step === 4 && (
             <div>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>
@@ -351,8 +414,8 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
             </div>
           )}
 
-          {/* STEP 4 — Review & Notes */}
-          {step === 4 && (
+          {/* STEP 5 — Review & Notes */}
+          {step === 5 && (
             <div>
               {/* Summary */}
               <div className="rounded-lg p-4 mb-4" style={{ background: "oklch(0.97 0.012 80)", border: "1px solid oklch(0.90 0.012 80)" }}>
@@ -372,6 +435,12 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
                     <span style={{ color: "oklch(0.45 0.03 30)" }}>Crust</span>
                     <span className="font-semibold" style={{ color: "oklch(0.25 0.04 30)" }}>
                       {CRUST_OPTIONS.find((c) => c.id === selectedCrust)?.label}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span style={{ color: "oklch(0.45 0.03 30)" }}>Cut</span>
+                    <span className="font-semibold" style={{ color: "oklch(0.25 0.04 30)" }}>
+                      {CUT_OPTIONS.find((c) => c.id === selectedCut)?.label}
                     </span>
                   </div>
                   {selectedToppings.length > 0 && (
@@ -452,7 +521,7 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
           )}
 
           {/* Next / Add to Cart */}
-          {step < 4 ? (
+          {step < TOTAL_STEPS ? (
             <button
               onClick={() => setStep((s) => s + 1)}
               disabled={!canAdvance()}
