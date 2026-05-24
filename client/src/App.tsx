@@ -14,6 +14,7 @@ import OrderSuccess from "./pages/OrderSuccess";
 import AdminOrders from "./pages/AdminOrders";
 import AdminDoorDashTest from "./pages/AdminDoorDashTest";
 import AdminSettings from "./pages/AdminSettings";
+import Catering from "./pages/Catering";
 
 function Router() {
   return (
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/menu" component={Menu} />
       <Route path="/specials" component={Specials} />
+      <Route path="/catering" component={Catering} />
       <Route path="/order" component={Order} />
       <Route path="/order-success" component={OrderSuccess} />
       <Route path="/admin/orders" component={AdminOrders} />

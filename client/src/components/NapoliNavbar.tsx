@@ -17,6 +17,7 @@ export default function NapoliNavbar() {
     { href: "/", label: "Home" },
     { href: "/menu", label: "Menu" },
     { href: "/specials", label: "Specials" },
+    { href: "/catering", label: "Catering" },
     { href: "/order", label: "Order Online" },
   ];
 
@@ -93,18 +94,22 @@ export default function NapoliNavbar() {
             {navLinks.map((link) => {
               const isActive = location === link.href;
               const isOrder = link.href === "/order";
+              const isCatering = link.href === "/catering";
               return (
                 <Link key={link.href} href={link.href}>
                   <span
                     className={`px-4 py-2 rounded text-sm font-semibold napoli-label transition-colors ${
                       isOrder
                         ? "napoli-btn-red px-5 py-2 rounded"
+                        : isCatering
+                        ? "px-5 py-2 rounded"
                         : isActive
                         ? "bg-napoli-red text-white"
                         : "hover:bg-napoli-cream-dark"
                     }`}
                     style={{
-                      color: isOrder ? "white" : isActive ? "white" : "var(--napoli-dark)",
+                      color: isOrder ? "white" : isCatering ? "white" : isActive ? "white" : "var(--napoli-dark)",
+                      background: isCatering ? "oklch(0.45 0.15 145)" : undefined,
                       fontFamily: "'Oswald', sans-serif",
                       fontSize: "0.8rem",
                     }}
@@ -174,8 +179,8 @@ export default function NapoliNavbar() {
                     className="block px-4 py-3 rounded text-sm font-semibold napoli-label"
                     style={{
                       fontFamily: "'Oswald', sans-serif",
-                      color: link.href === "/order" ? "white" : "var(--napoli-dark)",
-                      background: link.href === "/order" ? "var(--napoli-red)" : "transparent",
+                      color: link.href === "/order" || link.href === "/catering" ? "white" : "var(--napoli-dark)",
+                      background: link.href === "/order" ? "var(--napoli-red)" : link.href === "/catering" ? "oklch(0.45 0.15 145)" : "transparent",
                     }}
                     onClick={() => setOpen(false)}
                   >

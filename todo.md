@@ -117,3 +117,10 @@
 ## Admin Orders — Order Details Visibility
 - [x] Show item description (flavor, Half & Half, toppings, notes) under each line item in AdminOrders
 - [x] Highlight special notes in a distinct color/badge so kitchen staff sees them clearly
+
+## Catering Page
+- [x] Research Las Vegas catering market — 3 niches identified: Corporate, Private Events, Sports/Game Day
+- [x] Create cateringRouter with submitInquiry procedure (notifyOwner + email to info@napolipizzeria.net)
+- [x] Build Catering.tsx page with hero, market stats, 3 packages, contact form, and Why Napoli section
+- [x] Add /catering route in App.tsx
+- [x] Add "Catering" nav link in NapoliNavbar (green button, between Specials and Order Online)
