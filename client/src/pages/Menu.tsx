@@ -392,6 +392,7 @@ function ItemRow({ name, desc, price, highlight, category }: { name: string; des
 }
 
 export default function Menu() {
+  const { addItem } = useCart();
   const [activeCategory, setActiveCategory] = useState("appetizers");
   const [showAllToppings, setShowAllToppings] = useState(false);
   const [wingsSelection, setWingsSelection] = useState<WingsSelection | null>(null);
@@ -824,7 +825,6 @@ export default function Menu() {
           {/* Items grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-0">
             {CHILDRENS_MENU.items.map((item, i) => {
-              const { addItem } = { addItem: useCart().addItem };
               return (
                 <div
                   key={item}
@@ -867,7 +867,6 @@ export default function Menu() {
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-0">
             {BEVERAGES.map((bev) => {
-              const { addItem } = { addItem: useCart().addItem };
               if ((bev as any).prices) {
                 return (bev as any).prices.map((p: any) => (
                   <div
