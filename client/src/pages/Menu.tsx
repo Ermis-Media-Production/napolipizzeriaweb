@@ -391,6 +391,101 @@ function ItemRow({ name, desc, price, highlight, category }: { name: string; des
   );
 }
 
+/** Wrap item row with add-to-cart + optional Ranch/Blue Cheese side */
+function WrapRow({ name, price }: { name: string; price: string }) {
+  const { addItem, openCart } = useCart();
+  const numericPrice = parsePrice(price) ?? 0;
+  const [sauce, setSauce] = useState<"none" | "ranch-2oz" | "ranch-6oz" | "bluecheese-2oz" | "bluecheese-6oz">("none");
+
+  const sauceOptions: { id: typeof sauce; label: string; extra: number }[] = [
+    { id: "none",           label: "No Sauce",        extra: 0 },
+    { id: "ranch-2oz",      label: "Ranch 2oz",       extra: 1.49 },
+    { id: "ranch-6oz",      label: "Ranch 6oz",       extra: 2.49 },
+    { id: "bluecheese-2oz", label: "Blue Cheese 2oz", extra: 1.49 },
+    { id: "bluecheese-6oz", label: "Blue Cheese 6oz", extra: 2.49 },
+  ];
+
+  const selectedSauce = sauceOptions.find(s => s.id === sauce)!;
+  const total = numericPrice + selectedSauce.extra;
+
+  const handleAdd = () => {
+    const sauceSuffix = sauce !== "none" ? ` + ${selectedSauce.label}` : "";
+    addItem({
+      id: `wrap-${name}-${sauce}-${Date.now()}`,
+      name: `${name} Wrap${sauceSuffix}`,
+      price: total,
+      quantity: 1,
+      category: "wraps",
+    });
+    toast.success(`${name} Wrap added to cart`, {
+      action: { label: "View Cart", onClick: openCart },
+    });
+  };
+
+  return (
+    <div
+      className="napoli-menu-item px-5 py-4 border-b last:border-b-0"
+      style={{ borderColor: "oklch(0.93 0.012 80)" }}
+    >
+      {/* Name + price row */}
+      <div className="flex items-center justify-between gap-4 mb-3">
+        <div>
+          <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{name}</span>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>
+            ${total.toFixed(2)}
+          </span>
+          <button
+            onClick={handleAdd}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90 hover:opacity-90"
+            style={{ background: "var(--napoli-red)", color: "white" }}
+            title={`Add ${name} Wrap to cart`}
+          >
+            <Plus size={14} />
+          </button>
+        </div>
+      </div>
+      {/* Sauce selector */}
+      <div className="flex flex-wrap gap-2">
+        {sauceOptions.map((opt) => (
+          <button
+            key={opt.id}
+            onClick={() => setSauce(opt.id)}
+            className="px-2.5 py-1 rounded text-xs font-semibold napoli-body transition-all active:scale-95"
+            style={
+              sauce === opt.id
+                ? { background: "var(--napoli-red)", color: "white", border: "2px solid var(--napoli-red)" }
+                : { background: "white", color: "oklch(0.42 0.03 30)", border: "2px solid oklch(0.88 0.015 80)" }
+            }
+          >
+            {opt.id === "none" ? opt.label : `+${opt.label} +$${opt.extra.toFixed(2)}`}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WrapSection() {
+  return (
+    <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
+      {/* Header */}
+      <div className="px-5 py-3" style={{ background: "oklch(0.97 0.012 80)" }}>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="napoli-label text-xs" style={{ color: "var(--napoli-red)" }}>Wraps</span>
+          <span className="napoli-badge-green">Gluten Free Bread Available</span>
+        </div>
+        <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{WRAPS.note}</p>
+      </div>
+      {/* Wrap rows */}
+      {WRAPS.items.map((w) => (
+        <WrapRow key={w} name={w} price={WRAPS.price} />
+      ))}
+    </div>
+  );
+}
+
 export default function Menu() {
   const { addItem } = useCart();
   const [activeCategory, setActiveCategory] = useState("appetizers");
@@ -622,19 +717,7 @@ export default function Menu() {
           </div>
 
           {/* Wraps */}
-          <div className="px-5 py-4 border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-            <p className="napoli-label text-xs mb-2" style={{ color: "var(--napoli-red)" }}>Wraps <span className="napoli-badge-green ml-2">Gluten Free Bread Available</span></p>
-            <p className="text-xs napoli-body mb-3" style={{ color: "oklch(0.52 0.03 30)" }}>{WRAPS.note}</p>
-            <div className="flex flex-wrap gap-3">
-              {WRAPS.items.map((w) => (
-                <div key={w} className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-napoli-red" />
-                  <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{w}</span>
-                  <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{WRAPS.price}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <WrapSection />
         </MenuCard>
 
         {/* ── WINGS ──────────────────────────────────────────── */}
