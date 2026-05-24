@@ -34,10 +34,16 @@ export default function NapoliNavbar() {
               <Phone size={11} style={{ color: "var(--napoli-gold)" }} />
               {RESTAURANT_INFO.phone}
             </a>
-            <span className="flex items-center gap-1.5 text-xs napoli-body" style={{ color: "oklch(0.85 0.015 80)" }}>
+            <a
+              href="https://www.google.com/maps/search/3131+W+Craig+Rd+North+Las+Vegas+NV+89032"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs napoli-body hover:opacity-75 transition-opacity"
+              style={{ color: "oklch(0.85 0.015 80)" }}
+            >
               <MapPin size={11} style={{ color: "var(--napoli-gold)" }} />
               {RESTAURANT_INFO.address}, {RESTAURANT_INFO.city}
-            </span>
+            </a>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             {RESTAURANT_INFO.hours.map((h) => (

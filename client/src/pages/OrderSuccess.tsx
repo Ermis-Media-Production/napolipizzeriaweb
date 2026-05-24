@@ -351,10 +351,16 @@ export default function OrderSuccess() {
 
             {/* Restaurant info */}
             <div className="space-y-2.5 text-sm">
-              <div className="flex items-center gap-3" style={{ color: "oklch(0.42 0.03 30)" }}>
+              <a
+                href="https://www.google.com/maps/search/3131+W+Craig+Rd+North+Las+Vegas+NV+89032"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 hover:opacity-75 transition-opacity"
+                style={{ color: "oklch(0.42 0.03 30)" }}
+              >
                 <MapPin size={16} style={{ color: "var(--napoli-red)", flexShrink: 0 }} />
                 <span>{RESTAURANT_INFO.address}, {RESTAURANT_INFO.city}</span>
-              </div>
+              </a>
               <div className="flex items-center gap-3" style={{ color: "oklch(0.42 0.03 30)" }}>
                 <Phone size={16} style={{ color: "var(--napoli-red)", flexShrink: 0 }} />
                 <a href={`tel:${RESTAURANT_INFO.phone}`} className="hover:underline font-semibold">

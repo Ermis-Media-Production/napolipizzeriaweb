@@ -318,10 +318,16 @@ export default function Home() {
             <Phone size={14} />
             <strong>{RESTAURANT_INFO.phone}</strong>
           </a>
-          <span className="flex items-center gap-2 napoli-body" style={{ color: "oklch(0.75 0.015 80)" }}>
+          <a
+            href="https://www.google.com/maps/search/3131+W+Craig+Rd+North+Las+Vegas+NV+89032"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 napoli-body hover:opacity-75 transition-opacity"
+            style={{ color: "oklch(0.75 0.015 80)" }}
+          >
             <MapPin size={14} style={{ color: "var(--napoli-gold)" }} />
             {RESTAURANT_INFO.address}, {RESTAURANT_INFO.city}
-          </span>
+          </a>
           {RESTAURANT_INFO.hours.map((h) => (
             <span key={h.days} className="flex items-center gap-2 napoli-body" style={{ color: "oklch(0.75 0.015 80)" }}>
               <Clock size={14} style={{ color: "var(--napoli-gold)" }} />

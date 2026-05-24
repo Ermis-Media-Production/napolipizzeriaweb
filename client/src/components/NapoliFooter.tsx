@@ -110,17 +110,22 @@ export default function NapoliFooter() {
                     {RESTAURANT_INFO.phone}
                   </span>
                 </a>
-                <div className="flex items-start gap-2.5">
+                <a
+                  href="https://www.google.com/maps/search/3131+W+Craig+Rd+North+Las+Vegas+NV+89032"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-2.5 group"
+                >
                   <MapPin size={14} className="mt-0.5 shrink-0" style={{ color: "var(--napoli-gold)" }} />
                   <div>
-                    <div className="text-sm napoli-body" style={{ color: "oklch(0.75 0.015 80)" }}>
+                    <div className="text-sm napoli-body group-hover:text-napoli-red transition-colors" style={{ color: "oklch(0.75 0.015 80)" }}>
                       {RESTAURANT_INFO.address}
                     </div>
-                    <div className="text-sm napoli-body" style={{ color: "oklch(0.75 0.015 80)" }}>
+                    <div className="text-sm napoli-body group-hover:text-napoli-red transition-colors" style={{ color: "oklch(0.75 0.015 80)" }}>
                       {RESTAURANT_INFO.city}
                     </div>
                   </div>
-                </div>
+                </a>
                 <a
                   href={`https://${RESTAURANT_INFO.website}`}
                   target="_blank"
