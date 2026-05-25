@@ -761,6 +761,30 @@ export default function CartDrawer() {
               </div>
             </div>
 
+            {/* Accepted cards row */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>We accept:</span>
+              <div className="flex items-center gap-1.5">
+                {/* Visa */}
+                <div className="flex items-center justify-center rounded px-1.5 py-0.5 border" style={{ background: "#1a1f71", borderColor: "#1a1f71", minWidth: 36, height: 22 }}>
+                  <span className="text-white font-bold" style={{ fontSize: 9, fontFamily: "'Arial', sans-serif", letterSpacing: "0.02em" }}>VISA</span>
+                </div>
+                {/* Mastercard */}
+                <div className="flex items-center justify-center rounded px-1 border" style={{ background: "white", borderColor: "oklch(0.82 0.015 80)", minWidth: 36, height: 22, gap: 0 }}>
+                  <div className="rounded-full" style={{ width: 13, height: 13, background: "#EB001B", marginRight: -4, zIndex: 1 }} />
+                  <div className="rounded-full" style={{ width: 13, height: 13, background: "#F79E1B" }} />
+                </div>
+                {/* Amex */}
+                <div className="flex items-center justify-center rounded px-1.5 py-0.5 border" style={{ background: "#2E77BC", borderColor: "#2E77BC", minWidth: 36, height: 22 }}>
+                  <span className="text-white font-bold" style={{ fontSize: 7.5, fontFamily: "'Arial', sans-serif", letterSpacing: "0.02em" }}>AMEX</span>
+                </div>
+                {/* Discover */}
+                <div className="flex items-center justify-center rounded px-1.5 py-0.5 border" style={{ background: "white", borderColor: "oklch(0.82 0.015 80)", minWidth: 36, height: 22 }}>
+                  <span className="font-bold" style={{ fontSize: 7, fontFamily: "'Arial', sans-serif", color: "#231F20", letterSpacing: "0.01em" }}>DISC<span style={{ color: "#F76F20" }}>VR</span></span>
+                </div>
+              </div>
+            </div>
+
             {/* Authorize.net card fields */}
             {paymentMethod === "authorizenet" && <div className="space-y-2 p-3 rounded-lg border" style={{ borderColor: "oklch(0.82 0.015 80)", background: "oklch(0.98 0.005 80)" }}>
                 <div className="flex items-center gap-1.5 mb-1">
