@@ -2,7 +2,7 @@
  * Napoli Pizzeria — Full Menu Page
  * All categories: Appetizers, Lunch Specials, Pizzeria, Wings, Pasta, Subs, Burgers, Salads, Desserts, Specials
  */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLunchTimer } from "@/hooks/useLunchTimer";
 import LunchTimerBadge from "@/components/LunchTimerBadge";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
@@ -588,6 +588,24 @@ export default function Menu() {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  // Scroll to hash section on mount (e.g. /menu#pizza)
+  useEffect(() => {
+    const hash = window.location.hash.replace("#", "");
+    if (!hash) return;
+    setActiveCategory(hash);
+    // Use two attempts: quick (for fast loads) and delayed (for lazy images)
+    const scrollToHash = () => {
+      const el = document.getElementById(hash);
+      if (!el) return;
+      // Calculate offset accounting for sticky navbar (~80px) + extra breathing room
+      const navbarHeight = 90;
+      const top = el.getBoundingClientRect().top + window.scrollY - navbarHeight;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    };
+    setTimeout(scrollToHash, 200);
+    setTimeout(scrollToHash, 700); // second attempt for lazy-loaded content
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">

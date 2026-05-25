@@ -370,7 +370,7 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-              <Link href="/menu">
+              <Link href="/menu#pizza">
                 <button className="napoli-btn-red flex items-center gap-2 px-6 py-3 rounded text-sm">
                   See Full Pizza Menu <ArrowRight size={15} />
                 </button>
@@ -420,7 +420,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Appetizers */}
-            <Link href="/menu">
+            <Link href="/menu#appetizers">
               <div
                 className="napoli-card-hover rounded-md overflow-hidden border cursor-pointer bg-white"
                 style={{ borderColor: "oklch(0.88 0.015 80)" }}
@@ -454,7 +454,7 @@ export default function Home() {
             </Link>
 
             {/* Lunch Specials */}
-            <Link href="/menu">
+            <Link href="/menu#lunch">
               <div
                 className="napoli-card-hover rounded-md overflow-hidden border cursor-pointer bg-white"
                 style={{ borderColor: "oklch(0.88 0.015 80)" }}
@@ -491,7 +491,7 @@ export default function Home() {
             </Link>
 
             {/* Pizzeria */}
-            <Link href="/menu">
+            <Link href="/menu#pizza">
               <div
                 className="napoli-card-hover rounded-md overflow-hidden border cursor-pointer bg-white"
                 style={{ borderColor: "oklch(0.88 0.015 80)" }}
@@ -604,7 +604,7 @@ export default function Home() {
                 Specialty Pizzas
               </h2>
             </div>
-            <Link href="/menu">
+            <Link href="/menu#pizza">
               <button className="hidden md:flex items-center gap-1.5 text-sm napoli-label" style={{ color: "var(--napoli-red)", fontSize: "0.75rem" }}>
                 Full Pizza Menu <ArrowRight size={13} />
               </button>
