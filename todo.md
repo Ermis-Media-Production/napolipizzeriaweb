@@ -200,23 +200,28 @@
 - [x] Tests: 66/67 passing (only legacy Authorize.net prod test fails — not related to changes)
 
 ## Embedded Stripe Card Form (Payment Element in CartDrawer)
-- [ ] Fix Stripe webhook URL to production domain (tradevault-brxvwswy.manus.space)
-- [ ] Install @stripe/react-stripe-js and @stripe/stripe-js
-- [ ] Server: createPaymentIntent procedure (returns clientSecret + paymentIntentId)
-- [ ] Server: confirmPaymentIntent procedure (stores order after payment confirmation)
-- [ ] Server: webhook handles payment_intent.succeeded to create scheduledOrders row
-- [ ] CartDrawer: replace "Pay Securely" redirect button with embedded Stripe Payment Element
-- [ ] CartDrawer: show card form (number, expiry, CVC) inline after customer info is filled
-- [ ] CartDrawer: handle payment confirmation and redirect to /order-success
-- [ ] OrderSuccess: support paymentIntentId param in addition to session_id
-- [ ] TypeScript check + tests + checkpoint
+- [x] Fix Stripe webhook URL to production domain (tradevault-brxvwswy.manus.space)
+- [x] Install @stripe/react-stripe-js and @stripe/stripe-js
+- [x] Server: createPaymentIntent procedure (returns clientSecret + paymentIntentId)
+- [x] Server: webhook handles payment_intent.succeeded to create scheduledOrders row
+- [x] Server: getPaymentIntentDetails procedure (returns same shape as getSession for OrderSuccess)
+- [x] CartDrawer: embedded Stripe Payment Element (card number, expiry, CVC) — no redirect
+- [x] CartDrawer: 20-mile radius geo-validation for delivery addresses (Manus Maps proxy)
+- [x] CartDrawer: block orders from outside Las Vegas metro area with friendly error message
+- [x] OrderSuccess: support ?payment=stripe&payment_intent=pi_xxx param (embedded flow)
+- [x] OrderSuccess: poll getOrderRefByPaymentIntent for embedded flow
+- [x] OrderSuccess: getPaymentIntentDetails for display (name, total, orderType)
+- [x] TypeScript: 0 errors, 66/67 tests passing
+- [x] Checkpoint saved: 8e6cbf3f
 
-## Embedded Stripe Card Form + Geo-Restriction
-- [ ] Server: createPaymentIntent procedure (returns clientSecret, stores order metadata)
-- [ ] Server: webhook handles payment_intent.succeeded to create scheduledOrders row
-- [ ] Server: getOrderRefByPaymentIntent query for OrderSuccess lookup
-- [ ] CartDrawer: Stripe Elements card form embedded inline (no redirect)
-- [ ] CartDrawer: 20-mile radius geo-validation for delivery addresses (Google Maps Geocoding)
-- [ ] CartDrawer: block orders from outside Las Vegas metro area (show friendly error)
-- [ ] OrderSuccess: support ?payment=stripe&payment_intent=pi_xxx param
-- [ ] Publish to production after TypeScript check passes
+## Address Autocomplete in Checkout
+- [x] Build AddressAutocomplete component using Google Places API (Manus proxy)
+- [x] Load Google Maps JS SDK with places library (singleton loader, no duplicate scripts)
+- [x] Show dropdown suggestions as user types (debounced 300ms, min 3 chars)
+- [x] Bias suggestions toward Las Vegas metro (50km radius bias)
+- [x] On selection: auto-fill city, state, ZIP from place geometry components
+- [x] Trigger 20-mile radius check immediately using precise lat/lng (no extra geocode call)
+- [x] Trigger Uber Direct quote immediately after valid address selection
+- [x] Visual feedback: MapPin icon → CheckCircle2 when address confirmed
+- [x] "Powered by Google" attribution in dropdown (required by ToS)
+- [x] TypeScript: 0 errors, 66/67 tests passing

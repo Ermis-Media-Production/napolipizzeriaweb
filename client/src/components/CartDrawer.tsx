@@ -8,7 +8,7 @@ import { OrderScheduler, OrderPoliciesNote, type ScheduleSelection } from "./Ord
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useCart } from "@/contexts/CartContext";
-
+import AddressAutocomplete, { type AddressComponents } from "@/components/AddressAutocomplete";
 // ─── Stripe publishable key ────────────────────────────────────────────────────
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ?? "");
 
@@ -286,8 +286,24 @@ export default function CartDrawer() {
     }, 1200);
   };
 
-  const redeemCoupon = trpc.coupon.redeem.useMutation();
+    /** Called when user picks a suggestion from the autocomplete dropdown */
+  const handleAddressSelect = useCallback((components: AddressComponents) => {
+    setDeliveryAddress(components.streetAddress);
+    setDeliveryCity(components.city || "North Las Vegas");
+    setDeliveryState(components.state || "NV");
+    setDeliveryZip(components.zip || "");
+    setGeoError(null);
+    // Use the precise lat/lng directly — no need to geocode again
+    const miles = haversineMiles(RESTAURANT_LAT, RESTAURANT_LNG, components.lat, components.lng);
+    if (miles > MAX_DELIVERY_MILES) {
+      setGeoError(`Sorry, we only deliver within ${MAX_DELIVERY_MILES} miles of our restaurant. Your address is approximately ${miles.toFixed(1)} miles away. Please call us at 725-204-0379 for catering or special arrangements.`);
+    } else {
+      // Trigger Uber quote with the precise address
+      triggerUberQuote(components.streetAddress, components.city || "North Las Vegas", components.state || "NV", components.zip || "");
+    }
+  }, []);
 
+  const redeemCoupon = trpc.coupon.redeem.useMutation();
   const handleApplyCoupon = async () => {
     const code = couponCode.trim().toUpperCase();
     if (!code) return;
@@ -583,13 +599,12 @@ export default function CartDrawer() {
                     Within 20 miles · Las Vegas area
                   </span>
                 </div>
-                <input
-                  type="text"
-                  placeholder="Street address *"
+                <AddressAutocomplete
                   value={deliveryAddress}
-                  onChange={(e) => handleAddressChange("address", e.target.value)}
-                  className="w-full text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-                  style={{ borderColor: geoError ? "oklch(0.65 0.18 25)" : "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+                  onChange={(val) => handleAddressChange("address", val)}
+                  onSelect={handleAddressSelect}
+                  placeholder="Street address *"
+                  hasError={!!geoError}
                 />
                 <div className="grid grid-cols-3 gap-2">
                   <input type="text" placeholder="City" value={deliveryCity}
