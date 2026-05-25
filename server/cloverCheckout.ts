@@ -25,6 +25,7 @@ import { pushOrderToClover } from "./cloverSync";
 import { getDb } from "./db";
 import { scheduledOrders, orderItems } from "../drizzle/schema";
 import { notifyOwner } from "./_core/notification";
+import { sendOrderConfirmationSms } from "./_core/sms";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -488,6 +489,25 @@ export async function handleCloverWebhook(body: unknown): Promise<void> {
   }).catch((err) => {
     console.error(`[CloverWebhook] Failed to push order ${order.orderRef} to POS:`, err);
   });
+
+  // Send SMS confirmation to customer (fire-and-forget)
+  if (order.customerPhone) {
+    const origin = process.env.NODE_ENV === "production"
+      ? "https://napolipizzerianorthlasvegas.com"
+      : "https://tradevault-brxvwswy.manus.space";
+    sendOrderConfirmationSms({
+      customerPhone: order.customerPhone,
+      customerName: order.customerName ?? "Customer",
+      orderRef: order.orderRef,
+      orderType: order.orderType as "pickup" | "delivery" | "dine-in",
+      total: order.total,
+      isAsap: order.isAsap ?? false,
+      scheduledAt: order.scheduledAt ?? undefined,
+      origin,
+    }).catch((err) => {
+      console.error(`[CloverWebhook] SMS failed for ${order.orderRef}:`, err);
+    });
+  }
 
   // Notify owner
   const scheduledStr = order.scheduledAt

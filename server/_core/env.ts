@@ -44,6 +44,13 @@ export const DOORDASH_ENV = {
   baseUrl: "https://openapi.doordash.com",
 };
 
+// Twilio SMS
+export const TWILIO_ENV = {
+  accountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
+  authToken: process.env.TWILIO_AUTH_TOKEN ?? "",
+  phoneNumber: process.env.TWILIO_PHONE_NUMBER ?? "",
+};
+
 // Stripe
 export const STRIPE_ENV = {
   secretKey: process.env.STRIPE_SECRET_KEY ?? "",
