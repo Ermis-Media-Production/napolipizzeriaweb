@@ -171,3 +171,17 @@
 - [x] Wrap AdminOrders and AdminSettings with AdminLayout (remove old custom headers)
 - [x] TypeScript check passing (0 errors)
 - [x] 66/67 tests passing (1 legacy Authorize.net prod test fails due to DNS in sandbox)
+
+## Burger Modifiers & Interactive Menu
+- [x] napoliData: separate BURGER_EXTRAS (Cheese $1, Bacon $1, Avocado $1) from BURGER_BREAD_OPTIONS (Regular / Gluten Free — both free)
+- [x] BurgerCustomizerModal: added Step 3 (Bread selection) between Size and Sauces
+- [x] BurgerCustomizerModal: Gluten Free Bread shown as free option with GF badge
+- [x] BurgerCustomizerModal: extras redesigned as 3-column grid with emoji icons (🧀🥓🥑)
+- [x] BurgerCustomizerModal: supports preselectedBurger + preselectedSize to skip steps 1-2
+- [x] BurgerCustomizerModal: price breakdown shown in footer (base + fries + extras)
+- [x] Menu.tsx BurgerRow: buttons now open BurgerCustomizerModal with pre-selected burger+size instead of direct add-to-cart
+- [x] Menu.tsx burger section header: shows GF badge + add-on chips (Cheese $1, Bacon $1, Avocado $1)
+- [x] server/stripe.ts: CartItemSchema now includes description field
+- [x] server/stripe.ts: description preserved in metadata serialization, getSession, and orderItems insertion
+- [x] TypeScript check: 0 errors
+- [x] Tests: 66/67 passing

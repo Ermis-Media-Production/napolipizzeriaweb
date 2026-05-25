@@ -333,12 +333,17 @@ export const BURGER_EXTRAS = [
   { name: "Add Cheese", price: 1.00 },
   { name: "Add Bacon", price: 1.00 },
   { name: "Add Avocado", price: 1.00 },
-  { name: "Gluten Free Bread", price: 1.50 },
+];
+
+/** Bread options — shown as a separate selector in the burger customizer */
+export const BURGER_BREAD_OPTIONS = [
+  { name: "Regular Bread", price: 0, icon: "🍞" },
+  { name: "Gluten Free Bread", price: 0, icon: "🌾", badge: "GF" },
 ];
 
 // ── BURGERS ────────────────────────────────────────────────
 export const BURGERS = {
-  note: "100% Angus Beef. Cheese, Lettuce, Tomatoes, Onions, Pickles & Mayo. Choice of 1 Side. Add Cheese $1, Add Bacon $1, Add Avocado $1. Gluten Free Bread Available.",
+  note: "100% Angus Beef. Cheese, Lettuce, Tomatoes, Onions, Pickles & Mayo. Choice of 1 Side. Add Cheese $1 · Add Bacon $1 · Add Avocado $1 · Gluten Free Bread Available.",
   items: [
     { name: "Hamburger", half: "$11.49", single: "$14.49" },
     { name: "Cheeseburger", half: "$12.49", single: "$15.49" },

@@ -236,23 +236,14 @@ function WingsRow({
   );
 }
 
-function BurgerRow({ item }: { item: { name: string; desc?: string; half: string; single: string } }) {
-  const { addItem, openCart } = useCart();
+function BurgerRow({
+  item,
+  onOpenModal,
+}: {
+  item: { name: string; desc?: string; half: string; single: string };
+  onOpenModal: (burgerName: string, size: "half" | "single") => void;
+}) {
   const photo = getMenuPhoto(item.name);
-
-  const handleAdd = (label: string, price: number) => {
-    addItem({
-      id: `burger-${item.name}-${label}-${Date.now()}`,
-      name: `${item.name} (${label})`,
-      price,
-      quantity: 1,
-      category: "burgers",
-      description: item.desc,
-    });
-    toast.success(`${item.name} (${label}) added to cart`, {
-      action: { label: "View Cart", onClick: openCart },
-    });
-  };
 
   const halfPrice = parsePrice(item.half);
   const singlePrice = parsePrice(item.single);
@@ -274,7 +265,7 @@ function BurgerRow({ item }: { item: { name: string; desc?: string; half: string
       <div className="flex items-center gap-2 shrink-0">
         {halfPrice && (
           <button
-            onClick={() => handleAdd("½ lb", halfPrice)}
+            onClick={() => onOpenModal(item.name, "half")}
             className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
             style={{ background: "oklch(0.97 0.012 80)", color: "var(--napoli-red)", border: "1px solid oklch(0.88 0.015 80)" }}
           >
@@ -284,7 +275,7 @@ function BurgerRow({ item }: { item: { name: string; desc?: string; half: string
         )}
         {singlePrice && (
           <button
-            onClick={() => handleAdd("1 lb", singlePrice)}
+            onClick={() => onOpenModal(item.name, "single")}
             className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
             style={{ background: "var(--napoli-red)", color: "white" }}
           >
@@ -1322,9 +1313,22 @@ export default function Menu() {
         <MenuCard>
           <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
             <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{BURGERS.note}</p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <span className="napoli-badge-green">🌾 Gluten Free Bread Available</span>
+              <span className="text-xs px-2 py-0.5 rounded border napoli-body" style={{ borderColor: "oklch(0.88 0.015 80)", color: "oklch(0.42 0.03 30)" }}>🧀 Add Cheese $1</span>
+              <span className="text-xs px-2 py-0.5 rounded border napoli-body" style={{ borderColor: "oklch(0.88 0.015 80)", color: "oklch(0.42 0.03 30)" }}>🥓 Add Bacon $1</span>
+              <span className="text-xs px-2 py-0.5 rounded border napoli-body" style={{ borderColor: "oklch(0.88 0.015 80)", color: "oklch(0.42 0.03 30)" }}>🥑 Add Avocado $1</span>
+            </div>
           </div>
           {BURGERS.items.map((item) => (
-            <BurgerRow key={item.name} item={item} />
+            <BurgerRow
+              key={item.name}
+              item={item}
+              onOpenModal={(burgerName, size) => {
+                setBurgerModalKey(k => k + 1);
+                setBurgerTrigger({ open: true, preselectedBurger: burgerName, preselectedSize: size });
+              }}
+            />
           ))}
         </MenuCard>
 

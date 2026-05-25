@@ -62,6 +62,7 @@ const CartItemSchema = z.object({
   price: z.number().positive(),
   quantity: z.number().int().positive(),
   category: z.string().optional(),
+  description: z.string().optional(),
 });
 
 // ─── tRPC router ──────────────────────────────────────────────────────────────
@@ -186,7 +187,7 @@ export const stripeRouter = router({
           restaurantName: "The Original Napoli Pizzeria",
           // Serialize cart items so the webhook can push them to Clover and create the order
           cartItems: JSON.stringify(
-            input.items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category ?? "" }))
+            input.items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category ?? "", description: i.description ?? "" }))
           ),
           // Scheduling fields
           scheduledAt: input.scheduledAt ? String(input.scheduledAt) : "",
@@ -250,7 +251,7 @@ export const stripeRouter = router({
         dropoffNotes: session.metadata?.dropoffNotes || null,
         // Cart items stored in metadata during checkout
         cartItems: session.metadata?.cartItems
-          ? (JSON.parse(session.metadata.cartItems) as Array<{ id: string; name: string; price: number; quantity: number; category?: string }>)
+          ? (JSON.parse(session.metadata.cartItems) as Array<{ id: string; name: string; price: number; quantity: number; category?: string; description?: string }>)
           : [],
       };
     }),
@@ -285,7 +286,7 @@ async function createScheduledOrderFromStripe(session: Stripe.Checkout.Session):
   const meta = session.metadata ?? {};
 
   // Parse cart items
-  let items: Array<{ id: string; name: string; price: number; quantity: number; category?: string }> = [];
+  let items: Array<{ id: string; name: string; price: number; quantity: number; category?: string; description?: string }> = [];
   try {
     items = meta.cartItems ? JSON.parse(meta.cartItems) : [];
   } catch {
@@ -379,7 +380,7 @@ async function createScheduledOrderFromStripe(session: Stripe.Checkout.Session):
       await db.insert(orderItems).values({
         orderId,
         name: item.name,
-        description: null,
+        description: item.description || null,
         unitPrice: String(item.price),
         quantity: item.quantity ?? 1,
         lineTotal: String(item.price * (item.quantity ?? 1)),
