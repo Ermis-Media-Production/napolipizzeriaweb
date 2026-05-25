@@ -611,7 +611,11 @@ export default function CartDrawer() {
                 <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
                   SCHEDULE DATE & TIME
                 </p>
-                <OrderScheduler value={schedule} onChange={setSchedule} />
+                <OrderScheduler
+                  value={schedule}
+                  onChange={setSchedule}
+                  orderType={orderType === "scheduled" ? "pickup" : (orderType as "pickup" | "delivery" | "dine-in")}
+                />
               </div>
             ) : (
               <div

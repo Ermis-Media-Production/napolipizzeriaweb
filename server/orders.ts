@@ -153,6 +153,8 @@ export const ordersRouter = router({
       z.object({
         /** UTC ms timestamp of the date to query (start of day) */
         dateMs: z.number(),
+        /** Order type — affects minimum lead time */
+        orderType: z.enum(["pickup", "delivery", "dine-in"]).optional().default("pickup"),
       })
     )
     .query(async ({ input }) => {
@@ -220,8 +222,9 @@ export const ordersRouter = router({
         const hour = current.getHours();
         const pizzasBooked = pizzasByHour[hour] ?? 0;
 
-        // For today, skip slots that are in the past (need at least 15 min lead time)
-        const minLeadMs = 15 * 60 * 1000;
+        // For today, skip slots that are in the past
+        // Delivery requires 45 min lead time; Pickup & Dine-In require 15 min
+        const minLeadMs = input.orderType === "delivery" ? 45 * 60 * 1000 : 15 * 60 * 1000;
         const isPast = isToday && slotMs < storeNow.getTime() + minLeadMs;
 
         const label = current.toLocaleTimeString("en-US", {
@@ -270,12 +273,15 @@ export const ordersRouter = router({
             message: `Scheduled orders are only accepted between 10:00 AM and 10:00 PM. For events outside these hours, please contact us about catering.`,
           });
         }
-        // Must be in the future (at least 15 min lead time)
+        // Must be in the future with sufficient lead time
+        // Delivery: 45 min minimum; Pickup & Dine-In: 15 min minimum
         const storeNow = nowInStoreTimezone();
-        if (input.scheduledAt < storeNow.getTime() + 15 * 60 * 1000) {
+        const minLeadMs = input.orderType === "delivery" ? 45 * 60 * 1000 : 15 * 60 * 1000;
+        const minLeadLabel = input.orderType === "delivery" ? "45 minutes" : "15 minutes";
+        if (input.scheduledAt < storeNow.getTime() + minLeadMs) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: `Please schedule your order at least 15 minutes in advance.`,
+            message: `Please schedule your ${input.orderType} order at least ${minLeadLabel} in advance.`,
           });
         }
       } else {

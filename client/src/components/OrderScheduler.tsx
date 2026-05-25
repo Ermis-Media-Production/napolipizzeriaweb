@@ -20,6 +20,8 @@ export type ScheduleSelection =
 interface OrderSchedulerProps {
   value: ScheduleSelection | null;
   onChange: (selection: ScheduleSelection) => void;
+  /** Order type — affects minimum lead time shown in slot picker */
+  orderType?: "pickup" | "delivery" | "dine-in";
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -49,7 +51,7 @@ function getLocalDate(ms: number): Date {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function OrderScheduler({ value, onChange }: OrderSchedulerProps) {
+export function OrderScheduler({ value, onChange, orderType = "pickup" }: OrderSchedulerProps) {
   const { data: storeStatus } = trpc.orders.storeStatus.useQuery(undefined, {
     refetchInterval: 60_000,
   });
@@ -84,7 +86,7 @@ export function OrderScheduler({ value, onChange }: OrderSchedulerProps) {
   }, [storeStatus, value]);
 
   const { data: slotsData, isLoading: slotsLoading } = trpc.orders.availableSlots.useQuery(
-    { dateMs: selectedDayMs },
+    { dateMs: selectedDayMs, orderType },
     { enabled: showScheduler }
   );
 
@@ -119,18 +121,33 @@ export function OrderScheduler({ value, onChange }: OrderSchedulerProps) {
           <div>
             <p className="font-semibold text-amber-800 text-sm">We're currently closed</p>
             <p className="text-amber-700 text-xs mt-0.5">
-              We open at {nextOpen}. You can still place your order now and schedule it for when we open!
+              Our hours are <strong>10:00 AM – 10:00 PM</strong> daily.
+              We open at <strong>{nextOpen}</strong>. You can place your order now and schedule it for when we open!
             </p>
           </div>
         </div>
+        {/* Primary CTA: schedule for next opening */}
         <Button
           size="sm"
           className="w-full bg-[#c41e3a] hover:bg-[#a01830] text-white"
           onClick={() => setShowScheduler(true)}
         >
           <Calendar className="w-4 h-4 mr-2" />
-          Schedule My Order
+          Schedule for {nextOpen}
         </Button>
+        {/* Secondary: catering for off-hours events */}
+        <div className="flex items-center gap-2 pt-1 border-t border-amber-200">
+          <Info className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+          <p className="text-xs text-amber-700">
+            Need service outside our hours?{" "}
+            <a
+              href="/catering"
+              className="font-semibold underline hover:text-amber-900"
+            >
+              View our Catering options →
+            </a>
+          </p>
+        </div>
       </div>
     );
   }
