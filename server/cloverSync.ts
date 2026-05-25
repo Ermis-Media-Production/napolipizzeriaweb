@@ -11,6 +11,12 @@
  *   Food      → appetizers, wings, chicken fingers, burgers, subs, wraps,
  *               salads, soups, sides, triple deckers, kids menu, lunch specials
  *   Bar/Drinks → beverages, desserts, soda, water, beer, wine, milkshake
+ *
+ * Employee / Tender:
+ *   - All web orders are assigned to the employee named "Online"
+ *     (looked up by name; created automatically if not found).
+ *   - The order tender is set to "Table" (looked up by name in the merchant's
+ *     tender list).
  */
 
 import axios from "axios";
@@ -77,22 +83,15 @@ const BAR_DRINKS_KEYWORDS = [
 export function getPrinterLabel(itemName: string): PrinterLabel {
   const lower = itemName.toLowerCase();
 
-  // Check Pizza first (most specific)
   if (PIZZA_KEYWORDS.some((kw) => lower.includes(kw))) {
     return CLOVER_PRINTER_LABELS.PIZZA;
   }
-
-  // Check Bar/Drinks
   if (BAR_DRINKS_KEYWORDS.some((kw) => lower.includes(kw))) {
     return CLOVER_PRINTER_LABELS.BAR_DRINKS;
   }
-
-  // Check Pizzeria (pasta, Italian dishes)
   if (PIZZERIA_KEYWORDS.some((kw) => lower.includes(kw))) {
     return CLOVER_PRINTER_LABELS.PIZZERIA;
   }
-
-  // Default: Food (burgers, wings, subs, salads, appetizers, etc.)
   return CLOVER_PRINTER_LABELS.FOOD;
 }
 
@@ -109,12 +108,95 @@ function cloverUrl(path: string) {
   return `${CLOVER_ENV.baseUrl}/v3/merchants/${CLOVER_ENV.merchantId}${path}`;
 }
 
+// ── Employee lookup / creation ─────────────────────────────────────────────────
+
+/**
+ * Find the Clover employee ID for the "Online" employee.
+ * If not found, create it automatically.
+ * Returns the employee ID string, or null on failure.
+ */
+async function getOnlineEmployeeId(): Promise<string | null> {
+  try {
+    const res = await axios.get(
+      cloverUrl("/employees?limit=200"),
+      { headers: cloverHeaders() }
+    );
+
+    const employees: Array<{ id: string; name: string }> =
+      res.data?.elements ?? [];
+
+    const online = employees.find(
+      (e) => e.name?.toLowerCase() === "online"
+    );
+
+    if (online) {
+      return online.id;
+    }
+
+    // Not found — create it
+    console.log("[Clover] 'Online' employee not found, creating...");
+    const createRes = await axios.post(
+      cloverUrl("/employees"),
+      {
+        name: "Online",
+        nickname: "Online",
+        role: "EMPLOYEE",
+        isOwner: false,
+      },
+      { headers: cloverHeaders() }
+    );
+
+    const newId: string = createRes.data?.id;
+    console.log(`[Clover] Created 'Online' employee with ID: ${newId}`);
+    return newId ?? null;
+  } catch (err) {
+    console.error("[Clover] Failed to get/create Online employee:", err);
+    return null;
+  }
+}
+
+// ── Tender lookup ──────────────────────────────────────────────────────────────
+
+/**
+ * Find the Clover tender ID for the "Table" tender.
+ * Returns the tender ID string, or null if not found.
+ */
+async function getTableTenderId(): Promise<string | null> {
+  try {
+    const res = await axios.get(
+      cloverUrl("/tenders?limit=100"),
+      { headers: cloverHeaders() }
+    );
+
+    const tenders: Array<{ id: string; label: string; labelKey?: string }> =
+      res.data?.elements ?? [];
+
+    // Try exact match first, then partial match
+    const table =
+      tenders.find((t) => t.label?.toLowerCase() === "table") ??
+      tenders.find((t) => t.label?.toLowerCase().includes("table")) ??
+      tenders.find((t) => t.labelKey?.toLowerCase().includes("table"));
+
+    if (table) {
+      console.log(`[Clover] Found 'Table' tender: ${table.id} (${table.label})`);
+      return table.id;
+    }
+
+    console.warn("[Clover] 'Table' tender not found. Available tenders:", tenders.map((t) => t.label).join(", "));
+    return null;
+  } catch (err) {
+    console.error("[Clover] Failed to fetch tenders:", err);
+    return null;
+  }
+}
+
 // ── Push order to Clover POS ───────────────────────────────────────────────────
 
 /**
  * Push a confirmed order to Clover POS.
- * Creates the order shell, then adds all line items with printer label assignments.
- * Throws on failure — callers should handle errors (e.g., .catch() for fire-and-forget).
+ * - Assigns the "Online" employee to the order
+ * - Sets the tender to "Table"
+ * - Routes each line item to the correct kitchen printer via label
  */
 export async function pushOrderToClover(input: CloverOrderInput): Promise<CloverOrderResult> {
   if (!CLOVER_ENV.apiToken || !CLOVER_ENV.merchantId) {
@@ -146,18 +228,30 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     noteLines.push(`Scheduled: ${scheduledStr}`);
   }
 
-  // Step 1: Create the order shell
+  // Fetch employee and tender IDs in parallel (non-blocking — failures are handled gracefully)
+  const [onlineEmployeeId, tableTenderId] = await Promise.all([
+    getOnlineEmployeeId(),
+    getTableTenderId(),
+  ]);
+
+  // Step 1: Create the order shell, assigning the "Online" employee
+  const orderPayload: Record<string, unknown> = {
+    state: "open",
+    currency: "USD",
+    total: input.totalCents,
+    title: `${orderTypeLabel} — Napoli Pizzeria`,
+    note: noteLines.length ? noteLines.join(" | ") : undefined,
+    manualTransaction: false,
+    testMode: false,
+  };
+
+  if (onlineEmployeeId) {
+    orderPayload.employee = { id: onlineEmployeeId };
+  }
+
   const orderRes = await axios.post(
     cloverUrl("/orders"),
-    {
-      state: "open",
-      currency: "USD",
-      total: input.totalCents,
-      title: `${orderTypeLabel} — Napoli Pizzeria`,
-      note: noteLines.length ? noteLines.join(" | ") : undefined,
-      manualTransaction: false,
-      testMode: false,
-    },
+    orderPayload,
     { headers: cloverHeaders() }
   );
 
@@ -170,7 +264,6 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
       name: item.name,
       price: Math.round(item.price * 100), // cents
       unitQty: item.quantity,
-      // Assign printer label so Clover routes to the correct kitchen printer
       printerLabel: { name: printerLabel },
     };
   });
@@ -181,8 +274,31 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     { headers: cloverHeaders() }
   );
 
+  // Step 3: Add a "Table" tender payment to the order so it appears under Table
+  if (tableTenderId) {
+    try {
+      await axios.post(
+        cloverUrl(`/orders/${orderId}/payments`),
+        {
+          tender: { id: tableTenderId },
+          amount: input.totalCents,
+          tipAmount: 0,
+          offline: false,
+          employee: onlineEmployeeId ? { id: onlineEmployeeId } : undefined,
+          externalPaymentId: input.externalId ?? input.orderRef ?? orderId,
+        },
+        { headers: cloverHeaders() }
+      );
+      console.log(`[Clover] Applied 'Table' tender to order ${orderId}`);
+    } catch (err) {
+      // Non-fatal — order is still created, just without the tender assignment
+      console.warn(`[Clover] Failed to apply Table tender to order ${orderId}:`, err);
+    }
+  }
+
   console.log(
     `[Clover] Order ${orderId} created for ${input.customerName ?? "unknown"} (${orderTypeLabel}). ` +
+    `Employee: ${onlineEmployeeId ?? "none"} | Tender: ${tableTenderId ?? "none"} | ` +
     `Labels: ${Array.from(new Set(input.items.map((i) => getPrinterLabel(i.name)))).join(", ")}`
   );
 
