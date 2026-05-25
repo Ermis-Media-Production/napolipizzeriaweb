@@ -15,6 +15,9 @@ import OrderSuccess from "./pages/OrderSuccess";
 import AdminOrders from "./pages/AdminOrders";
 import AdminDoorDashTest from "./pages/AdminDoorDashTest";
 import AdminSettings from "./pages/AdminSettings";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminMenuManager from "./pages/AdminMenuManager";
+import AdminModifierManager from "./pages/AdminModifierManager";
 import Catering from "./pages/Catering";
 import MyOrder from "./pages/MyOrder";
 
@@ -28,7 +31,11 @@ function Router() {
       <Route path="/order" component={Order} />
       <Route path="/order-success" component={OrderSuccess} />
       <Route path="/my-order/:orderRef" component={MyOrder} />
+      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/admin/orders" component={AdminOrders} />
+      <Route path="/admin/menu" component={AdminMenuManager} />
+      <Route path="/admin/modifiers" component={AdminModifierManager} />
       <Route path="/admin/doordash-test" component={AdminDoorDashTest} />
       <Route path="/admin/settings" component={AdminSettings} />
       <Route path="/404" component={NotFound} />

@@ -478,6 +478,95 @@ Transaction ID: ${input.transactionId ?? "N/A"}`,
     }),
 
   /**
+   * Admin stats: total revenue, today's orders, pending, completed.
+   */
+  adminStats: adminProcedure.query(async () => {
+    const db = await requireDb();
+
+    const storeNow = nowInStoreTimezone();
+    const todayStart = new Date(storeNow);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(storeNow);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const [todayRows, pendingRows, completedRows, revenueRows] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(scheduledOrders)
+        .where(
+          and(
+            gte(scheduledOrders.scheduledAt, todayStart.getTime()),
+            lt(scheduledOrders.scheduledAt, todayEnd.getTime() + 1)
+          )
+        ),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(scheduledOrders)
+        .where(eq(scheduledOrders.status, "pending")),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(scheduledOrders)
+        .where(eq(scheduledOrders.status, "completed")),
+      db
+        .select({ total: sql<string>`COALESCE(SUM(total), 0)` })
+        .from(scheduledOrders)
+        .where(eq(scheduledOrders.paymentStatus, "paid")),
+    ]);
+
+    return {
+      todayOrders: Number(todayRows[0]?.count ?? 0),
+      pendingOrders: Number(pendingRows[0]?.count ?? 0),
+      completedOrders: Number(completedRows[0]?.count ?? 0),
+      totalRevenue: parseFloat(revenueRows[0]?.total ?? "0"),
+    };
+  }),
+
+  /**
+   * List scheduled orders for admin panel with pagination.
+   * Returns orders sorted by most recent first.
+   */
+  listScheduledOrders: adminProcedure
+    .input(
+      z.object({
+        limit: z.number().default(50),
+        offset: z.number().default(0),
+        status: z
+          .enum(["pending", "confirmed", "preparing", "ready", "completed", "cancelled", "all"])
+          .default("all"),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = await requireDb();
+      const conditions = [];
+
+      if (input.status !== "all") {
+        conditions.push(eq(scheduledOrders.status, input.status));
+      }
+
+      const orders =
+        conditions.length > 0
+          ? await db
+              .select()
+              .from(scheduledOrders)
+              .where(and(...conditions))
+              .orderBy(sql`createdAt DESC`)
+              .limit(input.limit)
+              .offset(input.offset)
+          : await db
+              .select()
+              .from(scheduledOrders)
+              .orderBy(sql`createdAt DESC`)
+              .limit(input.limit)
+              .offset(input.offset);
+
+      const [countRow] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(scheduledOrders);
+
+      return { orders, total: Number(countRow?.count ?? 0) };
+    }),
+
+  /**
    * Mark an order as ready (pickup) or out for delivery.
    * Sends an SMS notification to the customer.
    * Admin-only action.

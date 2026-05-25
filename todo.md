@@ -161,11 +161,13 @@
 - [x] DB schema migration applied (menuItems, modifierGroups, modifierOptions, itemModifierGroups tables)
 
 ## Admin Panel — Full CRUD + Login
-- [ ] Server: menuItems CRUD procedures (list, create, update, delete, uploadPhoto)
-- [ ] Server: modifierGroups + modifierOptions CRUD + assign/unassign to items
-- [ ] Admin login page with Manus OAuth + role guard (admin only)
-- [ ] Admin dashboard: stats, recent orders, quick actions
-- [ ] Admin menu manager: list by category, add/edit/delete items, photo upload, print label selector
-- [ ] Admin modifier manager: create groups, add options with price, assign to items
-- [ ] Wire admin routes in App.tsx, protect all admin pages
-- [ ] TypeScript check + tests + checkpoint
+- [x] Server: menuItems CRUD procedures (list, create, update, delete, uploadPhoto)
+- [x] Server: modifierGroups + modifierOptions CRUD + assign/unassign to items
+- [x] Admin login page with Manus OAuth + role guard (admin only) via AdminLayout
+- [x] Admin dashboard: stats, recent orders, quick actions (/admin/dashboard)
+- [x] Admin menu manager: list by category, add/edit/delete items, photo upload, print label selector (/admin/menu)
+- [x] Admin modifier manager: create groups, add options with price, assign to items (/admin/modifiers)
+- [x] Wire admin routes in App.tsx: /admin, /admin/dashboard, /admin/orders, /admin/menu, /admin/modifiers, /admin/settings
+- [x] Wrap AdminOrders and AdminSettings with AdminLayout (remove old custom headers)
+- [x] TypeScript check passing (0 errors)
+- [x] 66/67 tests passing (1 legacy Authorize.net prod test fails due to DNS in sandbox)

@@ -7,29 +7,16 @@
  * Changes are persisted in the storeSettings DB table and take
  * effect immediately for all new cart sessions.
  */
+import AdminLayout from "@/components/AdminLayout";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/_core/hooks/useAuth";
-import { useEffect, useState } from "react";
-import { useLocation, Link } from "wouter";
-import { Settings, Save, RefreshCw, ToggleLeft, ToggleRight, Percent, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Settings, Save, RefreshCw, ToggleLeft, ToggleRight, Percent, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AdminSettings() {
-  const { user, loading: authLoading } = useAuth();
-  const [, navigate] = useLocation();
-
-  // Redirect non-admins
-  useEffect(() => {
-    if (!authLoading && (!user || user.role !== "admin")) {
-      navigate("/");
-      toast.error("Access denied — admin only.");
-    }
-  }, [user, authLoading, navigate]);
 
   // Fetch current settings
-  const { data: feeConfig, isLoading, refetch } = trpc.settings.getConvenienceFee.useQuery(undefined, {
-    enabled: !!user && user.role === "admin",
-  });
+  const { data: feeConfig, isLoading, refetch } = trpc.settings.getConvenienceFee.useQuery();
 
   // Local state for the form
   const [feeEnabled, setFeeEnabled] = useState<boolean>(true);
@@ -84,53 +71,13 @@ export default function AdminSettings() {
     updateFee.mutate({ enabled: feeEnabled, percent: parsed });
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "oklch(0.97 0.012 80)" }}>
-        <RefreshCw size={24} className="animate-spin" style={{ color: "var(--napoli-red, #c0392b)" }} />
-      </div>
-    );
-  }
-
-  if (!user || user.role !== "admin") return null;
-
   return (
-    <div className="min-h-screen" style={{ background: "oklch(0.97 0.012 80)" }}>
-      {/* ── Header ── */}
-      <div
-        className="border-b px-6 py-4 flex items-center justify-between"
-        style={{ background: "white", borderColor: "oklch(0.88 0.015 80)" }}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="w-9 h-9 rounded flex items-center justify-center"
-            style={{ background: "var(--napoli-red, #c0392b)" }}
-          >
-            <Settings size={18} color="white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold" style={{ color: "oklch(0.22 0.04 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.04em" }}>
-              STORE SETTINGS
-            </h1>
-            <p className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
-              Napoli Pizzeria · Runtime Configuration
-            </p>
-          </div>
+    <AdminLayout>
+      <div className="max-w-2xl space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Settings</h1>
+          <p className="text-sm text-muted-foreground mt-1">Runtime configuration for the store.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Link href="/admin/orders">
-            <button
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95"
-              style={{ background: "oklch(0.96 0.012 80)", color: "oklch(0.35 0.04 30)", border: "1px solid oklch(0.88 0.015 80)", fontFamily: "'Oswald', sans-serif" }}
-            >
-              <ArrowLeft size={13} />
-              Orders
-            </button>
-          </Link>
-        </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
 
         {/* ── Convenience Fee Card ── */}
         <div
@@ -314,6 +261,6 @@ export default function AdminSettings() {
           </p>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 }

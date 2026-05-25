@@ -7,10 +7,10 @@
  *
  * Accessible only to users with role=admin.
  */
+import AdminLayout from "@/components/AdminLayout";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/_core/hooks/useAuth";
-import { useEffect, useState, useMemo } from "react";
-import { useLocation, Link } from "wouter";
+import { useState, useMemo } from "react";
+import { Link } from "wouter";
 import {
   RefreshCw,
   ShoppingBag,
@@ -810,60 +810,31 @@ function CloverOrdersTab() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AdminOrders() {
-  const { user, loading: authLoading } = useAuth();
-  const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<"scheduled" | "clover">("scheduled");
 
-  useEffect(() => {
-    if (!authLoading && (!user || user.role !== "admin")) {
-      navigate("/");
-      toast.error("Access denied — admin only.");
-    }
-  }, [user, authLoading, navigate]);
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "oklch(0.97 0.012 80)" }}>
-        <RefreshCw size={24} className="animate-spin" style={{ color: "var(--napoli-red, #c0392b)" }} />
-      </div>
-    );
-  }
-
-  if (!user || user.role !== "admin") return null;
-
   return (
-    <div className="min-h-screen" style={{ background: "oklch(0.97 0.012 80)" }}>
-      {/* Header */}
-      <div className="border-b px-6 py-4 flex items-center justify-between flex-wrap gap-3" style={{ background: "white", borderColor: "oklch(0.88 0.015 80)" }}>
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded flex items-center justify-center" style={{ background: "var(--napoli-red, #c0392b)" }}>
-            <ShoppingBag size={18} color="white" />
-          </div>
+    <AdminLayout>
+      <div className="space-y-4">
+        {/* Page header */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-lg font-bold" style={{ color: "oklch(0.22 0.04 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.04em" }}>ORDERS PANEL</h1>
-            <p className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>Napoli Pizzeria · Admin Dashboard</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Orders</h1>
+            <p className="text-sm text-muted-foreground mt-1">Track and manage all incoming orders.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <a
+              href={`https://www.clover.com/r/${496603379884}/orders`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-700 text-white hover:bg-red-800 transition-colors"
+            >
+              <ExternalLink size={13} /> Clover Dashboard
+            </a>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Link href="/admin/settings">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95" style={{ background: "oklch(0.96 0.04 250)", color: "oklch(0.28 0.10 250)", border: "1px solid oklch(0.70 0.15 250)", fontFamily: "'Oswald', sans-serif" }}>
-              <Settings size={13} />Settings
-            </button>
-          </Link>
-          <Link href="/admin/doordash-test">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95" style={{ background: "oklch(0.96 0.04 145)", color: "oklch(0.28 0.10 145)", border: "1px solid oklch(0.70 0.15 145)", fontFamily: "'Oswald', sans-serif" }}>
-              <Truck size={13} />DD Test
-            </button>
-          </Link>
-          <a href={`https://www.clover.com/r/${496603379884}/orders`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95" style={{ background: "var(--napoli-red, #c0392b)", color: "white", fontFamily: "'Oswald', sans-serif" }}>
-            <ExternalLink size={13} />Clover
-          </a>
-        </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="border-b px-6" style={{ background: "white", borderColor: "oklch(0.88 0.015 80)" }}>
-        <div className="flex gap-0">
+        {/* Tabs */}
+        <div className="flex gap-0 border-b border-border">
           {([
             { key: "scheduled", label: "Scheduled Orders", icon: <Calendar size={14} /> },
             { key: "clover", label: "Clover POS", icon: <ShoppingBag size={14} /> },
@@ -871,25 +842,23 @@ export default function AdminOrders() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className="flex items-center gap-1.5 px-4 py-3 text-sm font-semibold border-b-2 transition-colors"
-              style={{
-                borderBottomColor: activeTab === tab.key ? "var(--napoli-red, #c0392b)" : "transparent",
-                color: activeTab === tab.key ? "var(--napoli-red, #c0392b)" : "oklch(0.55 0.03 30)",
-                fontFamily: "'Oswald', sans-serif",
-                letterSpacing: "0.03em",
-              }}
+              className={`flex items-center gap-1.5 px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                activeTab === tab.key
+                  ? "border-red-700 text-red-700"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
             >
               {tab.icon}
               {tab.label}
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Tab content */}
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        {activeTab === "scheduled" ? <ScheduledOrdersTab /> : <CloverOrdersTab />}
+        {/* Tab content */}
+        <div>
+          {activeTab === "scheduled" ? <ScheduledOrdersTab /> : <CloverOrdersTab />}
+        </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 }
