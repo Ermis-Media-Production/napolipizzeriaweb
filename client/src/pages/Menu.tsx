@@ -4,7 +4,7 @@
  */
 import { useState } from "react";
 import { useLunchTimer } from "@/hooks/useLunchTimer";
-import LunchTimerBadge from "@/components/LunchTimerBadge";
+import LunchTimerBadge, { LunchDigitalClock } from "@/components/LunchTimerBadge";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
@@ -665,9 +665,34 @@ export default function Menu() {
         </MenuCard>
 
         {/* ── LUNCH SPECIALS ─────────────────────────────────── */}
-        <SectionHeader id="lunch" title="Lunch Specials" emoji="🕙" photo="/manus-storage/napoli-lunch_94df386a.jpg" />
+        {/* Custom section header with digital clock embedded */}
+        <div
+          id="lunch"
+          className="relative overflow-hidden rounded-t-md scroll-mt-24"
+          style={{ minHeight: "140px" }}
+        >
+          <img
+            src="/manus-storage/napoli-lunch_94df386a.jpg"
+            alt="Lunch Specials"
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(to right, rgba(180,20,20,0.88) 0%, rgba(180,20,20,0.55) 60%, rgba(0,0,0,0.25) 100%)" }}
+          />
+          {/* Title row */}
+          <div className="relative flex items-center justify-between h-full px-5 py-4">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl drop-shadow">🕙</span>
+              <h2 className="napoli-label text-xl text-white tracking-widest drop-shadow-md">Lunch Specials</h2>
+            </div>
+            {/* Digital clock — right side of header */}
+            <LunchDigitalClock />
+          </div>
+        </div>
         <MenuCard>
-          {/* Timer bar */}
+          {/* Info bar */}
           <div
             className="px-5 py-3 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2"
             style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}

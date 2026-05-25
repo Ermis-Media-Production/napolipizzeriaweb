@@ -257,3 +257,9 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up { animation: none; }
 }
+
+/* ── Digital clock colon blink ── */
+@keyframes blink-colon {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.15; }
+}
