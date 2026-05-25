@@ -1,4 +1,4 @@
-import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, decimal, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -77,3 +77,81 @@ export const storeSettings = mysqlTable("storeSettings", {
 
 export type StoreSetting = typeof storeSettings.$inferSelect;
 export type InsertStoreSetting = typeof storeSettings.$inferInsert;
+
+/**
+ * Scheduled orders — one row per customer order.
+ * Stores the full order snapshot (items, totals, customer info) plus scheduling info.
+ */
+export const scheduledOrders = mysqlTable("scheduledOrders", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Unique public-facing order reference (e.g. "NPZ-20260525-0042") */
+  orderRef: varchar("orderRef", { length: 32 }).notNull().unique(),
+  /** Order status lifecycle */
+  status: mysqlEnum("status", ["pending", "confirmed", "preparing", "ready", "completed", "cancelled"])
+    .default("confirmed")
+    .notNull(),
+  /** Order type */
+  orderType: mysqlEnum("orderType", ["pickup", "delivery", "dine-in"]).notNull(),
+  /** Scheduled pickup/delivery time as UTC Unix timestamp (ms) */
+  scheduledAt: int("scheduledAt").notNull(),
+  /** Whether this is ASAP (true) or a future scheduled time (false) */
+  isAsap: boolean("isAsap").default(false).notNull(),
+  /** Customer info */
+  customerName: varchar("customerName", { length: 128 }).notNull(),
+  customerPhone: varchar("customerPhone", { length: 32 }).notNull(),
+  customerEmail: varchar("customerEmail", { length: 320 }),
+  /** Delivery address (only for delivery orders) */
+  deliveryAddress: text("deliveryAddress"),
+  /** Full cart snapshot as JSON array of CartItem */
+  items: json("items").notNull(),
+  /** Number of pizzas in this order (for capacity tracking) */
+  pizzaCount: int("pizzaCount").default(0).notNull(),
+  /** Pricing */
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+  discountAmount: decimal("discountAmount", { precision: 10, scale: 2 }).default("0").notNull(),
+  convenienceFee: decimal("convenienceFee", { precision: 10, scale: 2 }).default("0").notNull(),
+  salesTax: decimal("salesTax", { precision: 10, scale: 2 }).default("0").notNull(),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  /** Coupon used (if any) */
+  couponCode: varchar("couponCode", { length: 64 }),
+  /** Authorize.net transaction reference (for refunds) */
+  transactionId: varchar("transactionId", { length: 64 }),
+  authCode: varchar("authCode", { length: 16 }),
+  /** Total amount already refunded */
+  refundedAmount: decimal("refundedAmount", { precision: 10, scale: 2 }).default("0").notNull(),
+  /** Special instructions from customer */
+  specialInstructions: text("specialInstructions"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ScheduledOrder = typeof scheduledOrders.$inferSelect;
+export type InsertScheduledOrder = typeof scheduledOrders.$inferInsert;
+
+/**
+ * Individual line items within a scheduled order.
+ * Allows per-item cancellation and partial refunds.
+ */
+export const orderItems = mysqlTable("orderItems", {
+  id: int("id").autoincrement().primaryKey(),
+  orderId: int("orderId").notNull(),
+  /** Item name as shown on the receipt */
+  name: varchar("name", { length: 256 }).notNull(),
+  /** Full description including customizations */
+  description: text("description"),
+  /** Unit price at time of order */
+  unitPrice: decimal("unitPrice", { precision: 10, scale: 2 }).notNull(),
+  quantity: int("quantity").default(1).notNull(),
+  /** Line total = unitPrice * quantity */
+  lineTotal: decimal("lineTotal", { precision: 10, scale: 2 }).notNull(),
+  /** Whether this item is a pizza (for capacity tracking) */
+  isPizza: boolean("isPizza").default(false).notNull(),
+  /** Item status */
+  status: mysqlEnum("status", ["active", "cancelled"]).default("active").notNull(),
+  /** Refund amount issued for this item (0 if not refunded) */
+  refundedAmount: decimal("refundedAmount", { precision: 10, scale: 2 }).default("0").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type OrderItem = typeof orderItems.$inferSelect;
+export type InsertOrderItem = typeof orderItems.$inferInsert;

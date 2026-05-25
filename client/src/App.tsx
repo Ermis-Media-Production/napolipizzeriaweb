@@ -16,6 +16,7 @@ import AdminOrders from "./pages/AdminOrders";
 import AdminDoorDashTest from "./pages/AdminDoorDashTest";
 import AdminSettings from "./pages/AdminSettings";
 import Catering from "./pages/Catering";
+import MyOrder from "./pages/MyOrder";
 
 function Router() {
   return (
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/catering" component={Catering} />
       <Route path="/order" component={Order} />
       <Route path="/order-success" component={OrderSuccess} />
+      <Route path="/my-order/:orderRef" component={MyOrder} />
       <Route path="/admin/orders" component={AdminOrders} />
       <Route path="/admin/doordash-test" component={AdminDoorDashTest} />
       <Route path="/admin/settings" component={AdminSettings} />

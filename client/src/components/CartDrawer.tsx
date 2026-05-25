@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { NV_SALES_TAX_RATE } from "@shared/const";
+import { OrderScheduler, OrderPoliciesNote, type ScheduleSelection } from "./OrderScheduler";
 
 
 declare global {
@@ -24,18 +25,25 @@ declare global {
   }
 }
 
+type PaymentMethod = "stripe" | "authorizenet";
+
 export default function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, clearCart, totalItems, totalPrice } = useCart();
   const [, navigate] = useLocation();
   const [orderType, setOrderType] = useState<"delivery" | "pickup" | "dine-in">("pickup");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("stripe");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
   // Delivery address fields
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [deliveryCity, setDeliveryCity] = useState("North Las Vegas");
   const [deliveryState, setDeliveryState] = useState("NV");
   const [deliveryZip, setDeliveryZip] = useState("89032");
   const [deliveryNotes, setDeliveryNotes] = useState("");
+
+  // Schedule selection
+  const [schedule, setSchedule] = useState<ScheduleSelection | null>(null);
 
   // Uber Direct quote state
   const [uberQuoteId, setUberQuoteId] = useState<string | null>(null);
@@ -66,11 +74,12 @@ export default function CartDrawer() {
   // Debounce timer ref for auto-quote
   const quoteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load Accept.js script for Authorize.net
+  // Load Accept.js script for Authorize.net (only when selected)
   const acceptJsLoaded = useRef(false);
   const { data: authnetConfig } = trpc.authorizenet.getClientKey.useQuery();
 
   useEffect(() => {
+    if (paymentMethod !== "authorizenet") return;
     if (acceptJsLoaded.current) return;
     const isSandbox = authnetConfig?.isSandbox ?? true;
     const src = isSandbox
@@ -84,7 +93,7 @@ export default function CartDrawer() {
       document.body.appendChild(script);
     }
     acceptJsLoaded.current = true;
-  }, [authnetConfig]);
+  }, [authnetConfig, paymentMethod]);
 
   // Reset quotes when order type changes away from delivery
   useEffect(() => {
@@ -134,6 +143,13 @@ export default function CartDrawer() {
 
   const createUberDelivery = trpc.uber.createDelivery.useMutation();
   const redeemCoupon = trpc.coupon.redeem.useMutation();
+  const createOrder = trpc.orders.createOrder.useMutation();
+  const createStripeCheckout = trpc.stripe.createCheckoutSession.useMutation({
+    onSuccess: (data) => {
+      if (data.url) window.location.href = data.url;
+    },
+    onError: (err) => toast.error("Could not start checkout: " + err.message),
+  });
 
   const utils = trpc.useUtils();
   const handleApplyCoupon = async () => {
@@ -157,12 +173,82 @@ export default function CartDrawer() {
     }
   };
 
+  // Pricing breakdown (computed here so we can pass to chargeCard)
+  const subtotal = totalPrice;
+  const discountAmount = appliedCoupon ? (subtotal * appliedCoupon.discountPercent) / 100 : 0;
+  const discountedSubtotal = subtotal - discountAmount;
+  const convenienceFee = Math.round(discountedSubtotal * liveFeeRate * 100) / 100;
+  const salesTax = Math.round(discountedSubtotal * NV_SALES_TAX_RATE * 100) / 100;
+  const selectedDeliveryFee = orderType === "delivery" && uberFee !== null ? uberFee : null;
+  const deliveryFeeDollars = selectedDeliveryFee !== null ? selectedDeliveryFee / 100 : 0;
+  const grandTotal = discountedSubtotal + convenienceFee + salesTax + deliveryFeeDollars;
+
+  /** After successful payment, create the scheduled order record */
+  const handlePostPaymentCreateOrder = async (
+    transactionId: string,
+    authCode: string | undefined,
+    resolvedSchedule: ScheduleSelection
+  ) => {
+    const scheduledAt =
+      resolvedSchedule.type === "asap"
+        ? Date.now()
+        : resolvedSchedule.scheduledAt;
+    const isAsap = resolvedSchedule.type === "asap";
+
+    try {
+      const result = await createOrder.mutateAsync({
+        orderType,
+        scheduledAt,
+        isAsap,
+        customerName,
+        customerPhone: customerPhone || "N/A",
+        customerEmail: customerEmail || undefined,
+        deliveryAddress:
+          orderType === "delivery"
+            ? `${deliveryAddress}, ${deliveryCity}, ${deliveryState} ${deliveryZip}`
+            : undefined,
+        items: items.map((i) => ({
+          id: i.id,
+          name: i.name,
+          description: i.description,
+          price: i.price,
+          quantity: i.quantity,
+          category: i.category,
+        })),
+        subtotal,
+        discountAmount,
+        convenienceFee,
+        salesTax,
+        total: grandTotal,
+        couponCode: appliedCoupon?.code || undefined,
+        transactionId,
+        authCode,
+      });
+      return result.orderRef;
+    } catch (err) {
+      // Non-blocking: order record creation failure shouldn't block the success page
+      console.error("Failed to create order record:", err);
+      return null;
+    }
+  };
+
   const chargeCard = trpc.authorizenet.chargeCard.useMutation({
     onSuccess: async (data) => {
       // Redeem coupon usage after successful payment
       if (data.couponCode) {
         redeemCoupon.mutate({ code: data.couponCode });
       }
+
+      // Resolve schedule: default to ASAP if nothing was selected
+      const resolvedSchedule: ScheduleSelection = schedule ?? { type: "asap" };
+
+      // Create the scheduled order record
+      const orderRef = await handlePostPaymentCreateOrder(
+        data.transactionId,
+        data.authCode,
+        resolvedSchedule
+      );
+
       if (orderType === "delivery") {
         try {
           if (uberQuoteId) {
@@ -181,20 +267,20 @@ export default function CartDrawer() {
             clearCart();
             closeCart();
             navigate(
-              `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}&delivery_id=${encodeURIComponent(delivery.deliveryId)}&tracking_url=${encodeURIComponent(delivery.trackingUrl)}`
+              `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}&delivery_id=${encodeURIComponent(delivery.deliveryId)}&tracking_url=${encodeURIComponent(delivery.trackingUrl)}${orderRef ? `&ref=${encodeURIComponent(orderRef)}` : ""}`
             );
           } else {
             clearCart();
             closeCart();
             navigate(
-              `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}`
+              `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}${orderRef ? `&ref=${encodeURIComponent(orderRef)}` : ""}`
             );
           }
         } catch {
           clearCart();
           closeCart();
           navigate(
-            `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}`
+            `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}${orderRef ? `&ref=${encodeURIComponent(orderRef)}` : ""}`
           );
           toast.warning("Payment successful, but delivery dispatch failed. We'll contact you shortly.");
         }
@@ -202,7 +288,7 @@ export default function CartDrawer() {
         clearCart();
         closeCart();
         navigate(
-          `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}`
+          `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}${orderRef ? `&ref=${encodeURIComponent(orderRef)}` : ""}`
         );
       }
     },
@@ -281,26 +367,66 @@ export default function CartDrawer() {
     });
   };
 
+  const handleStripeCheckout = () => {
+    if (items.length === 0) return;
+    if (!customerName.trim()) {
+      toast.error("Please enter your name.");
+      return;
+    }
+    if (orderType === "delivery" && !deliveryAddress.trim()) {
+      toast.error("Please enter your delivery address.");
+      return;
+    }
+    if (orderType === "delivery" && !uberQuoteId) {
+      toast.error("Please wait for the delivery quote to load.");
+      return;
+    }
+    const resolvedSchedule: ScheduleSelection = schedule ?? { type: "asap" };
+    const scheduledAt = resolvedSchedule.type === "asap" ? Date.now() : resolvedSchedule.scheduledAt;
+    const isAsap = resolvedSchedule.type === "asap";
+    createStripeCheckout.mutate({
+      items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category })),
+      successUrl: `${window.location.origin}/order-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${window.location.origin}/menu`,
+      orderType,
+      customerName,
+      customerPhone: customerPhone || undefined,
+      customerEmail: customerEmail || undefined,
+      scheduledAt,
+      isAsap,
+      specialInstructions: undefined,
+      couponCode: appliedCoupon?.code || undefined,
+      discountPercent: appliedCoupon?.discountPercent || undefined,
+      convenienceFeeCents: Math.round(convenienceFee * 100),
+      salesTaxCents: Math.round(salesTax * 100),
+      convenienceFee,
+      salesTax,
+      subtotal,
+      discountAmount,
+      total: grandTotal,
+      ...(orderType === "delivery" && uberQuoteId ? {
+        uberQuoteId,
+        dropoffAddress: deliveryAddress,
+        dropoffCity: deliveryCity,
+        dropoffState: deliveryState,
+        dropoffZip: deliveryZip,
+        dropoffNotes: deliveryNotes || undefined,
+        deliveryFeeCents: uberFee ?? undefined,
+      } : {}),
+    });
+  };
+
   const handleCheckout = () => {
-    handleAuthorizeNetCheckout();
+    if (paymentMethod === "stripe") handleStripeCheckout();
+    else handleAuthorizeNetCheckout();
   };
 
   const isLoading =
     isProcessingAuthNet ||
     chargeCard.isPending ||
+    createStripeCheckout.isPending ||
     createUberDelivery.isPending ||
     feeConfigLoading;
-
-  const selectedDeliveryFee = orderType === "delivery" && uberFee !== null ? uberFee : null;
-
-  // Pricing breakdown
-  const subtotal = totalPrice;
-  const discountAmount = appliedCoupon ? (subtotal * appliedCoupon.discountPercent) / 100 : 0;
-  const discountedSubtotal = subtotal - discountAmount;
-  const convenienceFee = Math.round(discountedSubtotal * liveFeeRate * 100) / 100;
-  const salesTax = Math.round(discountedSubtotal * NV_SALES_TAX_RATE * 100) / 100;
-  const deliveryFeeDollars = selectedDeliveryFee !== null ? selectedDeliveryFee / 100 : 0;
-  const grandTotal = discountedSubtotal + convenienceFee + salesTax + deliveryFeeDollars;
 
   const formatCardNumber = (val: string) =>
     val.replace(/\D/g, "").replace(/(.{4})/g, "$1 ").trim().slice(0, 19);
@@ -371,7 +497,7 @@ export default function CartDrawer() {
             {items.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-3 p-3 rounded-lg border bg-white"
+                className="flex items-center gap-2 py-2 border-b"
                 style={{ borderColor: "oklch(0.88 0.015 80)" }}
               >
                 <div className="flex-1 min-w-0">
@@ -458,6 +584,14 @@ export default function CartDrawer() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Schedule selector */}
+            <div>
+              <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
+                WHEN
+              </p>
+              <OrderScheduler value={schedule} onChange={setSchedule} />
             </div>
 
             {/* Delivery section */}
@@ -583,9 +717,52 @@ export default function CartDrawer() {
                 style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
               />
             </div>
+            <input
+              type="email"
+              placeholder="Email (for order confirmation)"
+              value={customerEmail}
+              onChange={(e) => setCustomerEmail(e.target.value)}
+              className="w-full text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+              style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+            />
+
+            {/* Payment method selector */}
+            <div>
+              <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
+                PAYMENT METHOD
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setPaymentMethod("stripe")}
+                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded border text-xs font-semibold transition-all"
+                  style={{
+                    background: paymentMethod === "stripe" ? "oklch(0.46 0.18 264)" : "transparent",
+                    color: paymentMethod === "stripe" ? "white" : "oklch(0.42 0.03 30)",
+                    borderColor: paymentMethod === "stripe" ? "oklch(0.46 0.18 264)" : "oklch(0.82 0.015 80)",
+                    fontFamily: "'Oswald', sans-serif",
+                  }}
+                >
+                  <CreditCard size={14} />
+                  Stripe
+                </button>
+                <button
+                  onClick={() => setPaymentMethod("authorizenet")}
+                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded border text-xs font-semibold transition-all"
+                  style={{
+                    background: paymentMethod === "authorizenet" ? "oklch(0.38 0.12 145)" : "transparent",
+                    color: paymentMethod === "authorizenet" ? "white" : "oklch(0.42 0.03 30)",
+                    borderColor: paymentMethod === "authorizenet" ? "oklch(0.38 0.12 145)" : "oklch(0.82 0.015 80)",
+                    fontFamily: "'Oswald', sans-serif",
+                  }}
+                >
+                  <Lock size={14} />
+                  Authorize.net
+                </button>
+              </div>
+            </div>
 
             {/* Authorize.net card fields */}
-            <div className="space-y-2 p-3 rounded-lg border" style={{ borderColor: "oklch(0.82 0.015 80)", background: "oklch(0.98 0.005 80)" }}>
+            {paymentMethod === "authorizenet" && <div className="space-y-2 p-3 rounded-lg border" style={{ borderColor: "oklch(0.82 0.015 80)", background: "oklch(0.98 0.005 80)" }}>
                 <div className="flex items-center gap-1.5 mb-1">
                   <Lock size={12} style={{ color: "oklch(0.38 0.12 145)" }} />
                   <span className="text-xs font-semibold" style={{ color: "oklch(0.38 0.12 145)", fontFamily: "'Oswald', sans-serif" }}>
@@ -629,7 +806,17 @@ export default function CartDrawer() {
                     Authorize.net credentials not configured. Add API Login ID and Transaction Key in Secrets.
                   </p>
                 )}
-            </div>
+            </div>}
+
+            {/* Stripe info note */}
+            {paymentMethod === "stripe" && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded border" style={{ borderColor: "oklch(0.70 0.15 264)", background: "oklch(0.97 0.03 264)" }}>
+                <CreditCard size={13} style={{ color: "oklch(0.46 0.18 264)", flexShrink: 0 }} />
+                <p className="text-xs" style={{ color: "oklch(0.35 0.12 264)", fontFamily: "'Lato', sans-serif" }}>
+                  You'll be redirected to Stripe's secure checkout page to complete your payment.
+                </p>
+              </div>
+            )}
 
             {/* Coupon code input */}
             <div className="space-y-1.5">
@@ -726,6 +913,9 @@ export default function CartDrawer() {
               </div>
             </div>
 
+            {/* Order Policies Note */}
+            <OrderPoliciesNote />
+
             {/* Checkout button */}
             <button
               onClick={handleCheckout}
@@ -743,7 +933,9 @@ export default function CartDrawer() {
               {isLoading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  {createUberDelivery.isPending
+                  {createStripeCheckout.isPending
+                    ? "Redirecting to Stripe..."
+                    : createUberDelivery.isPending
                     ? "Dispatching Uber Direct..."
                     : "Processing Payment..."}
                 </>
@@ -761,7 +953,11 @@ export default function CartDrawer() {
               )}
             </button>
             <p className="text-center text-xs" style={{ color: "oklch(0.60 0.03 30)" }}>
-              {orderType === "delivery"
+              {paymentMethod === "stripe"
+                ? orderType === "delivery"
+                  ? "Delivery by Uber Direct · Secured by Stripe"
+                  : "Secured by Stripe · PCI Compliant"
+                : orderType === "delivery"
                 ? "Delivery by Uber Direct · Secured by Authorize.net"
                 : "Secured by Authorize.net · PCI Compliant"}
             </p>

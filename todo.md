@@ -124,3 +124,26 @@
 - [x] Build Catering.tsx page with hero, market stats, 3 packages, contact form, and Why Napoli section
 - [x] Add /catering route in App.tsx
 - [x] Add "Catering" nav link in NapoliNavbar (green button, between Specials and Order Online)
+
+## Scheduled Orders System (Phase 5-9)
+- [x] Add scheduledOrders and orderItems tables to drizzle schema
+- [x] Run pnpm db:push to apply schema migration
+- [x] Create ordersRouter: storeStatus, availableSlots, createOrder, getOrder, listOrders procedures
+- [x] Create orderRefundsRouter: cancelItem (partial refund), cancelOrder (full refund) with 1-hour cutoff
+- [x] Register ordersRouter and orderRefundsRouter in routers.ts
+- [x] CartDrawer: store-closed banner with next opening time countdown
+- [x] CartDrawer: OrderScheduler component (date picker + time slot grid with capacity)
+- [x] CartDrawer: OrderPoliciesNote (cancellation/modification policy shown before payment)
+- [x] CartDrawer: createOrder mutation called after successful Authorize.net payment
+- [x] My Order page (/my-order/:orderRef): view order details, cancel items, cancel full order
+- [x] My Order page: enforce 1-hour cancellation cutoff with clear error message
+- [x] OrderSuccess: show "Track & Manage Your Order" link when orderRef is available
+- [x] Admin Orders panel: tabs for Clover POS orders and Scheduled Orders
+- [x] Admin Orders: capacity visualization by hour slot
+- [x] Admin Orders: update order status (preparing, ready, completed)
+- [x] Re-enable Stripe as payment option in CartDrawer (alongside Authorize.net)
+- [x] Stripe createCheckoutSession: accept and store scheduling metadata
+- [x] Stripe webhook: create scheduledOrders row after payment.session.completed
+- [x] Stripe getOrderRefBySession: lookup orderRef by Stripe session ID
+- [x] OrderSuccess: poll getOrderRefBySession every 3s until orderRef is available (Stripe flow)
+- [x] Restaurant cancellation policy: cancellations/modifications only accepted up to 1 hour before scheduled time; otherwise call the restaurant

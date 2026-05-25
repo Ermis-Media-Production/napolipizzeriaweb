@@ -1,3 +1,13 @@
+/**
+ * Stripe router + webhook handler
+ *
+ * Changes from original:
+ * - createCheckoutSession now accepts scheduling fields (scheduledAt, isAsap, customerEmail,
+ *   deliveryAddress, subtotal, discountAmount, convenienceFee, salesTax, specialInstructions)
+ *   and stores them in Stripe session metadata.
+ * - Webhook handler creates a scheduledOrders row after payment succeeds.
+ * - New getOrderRefBySession query lets OrderSuccess recover the orderRef from a session_id.
+ */
 import Stripe from "stripe";
 import { z } from "zod";
 import { STRIPE_ENV } from "./_core/env";
@@ -5,6 +15,10 @@ import { publicProcedure, router } from "./_core/trpc";
 import { pushOrderToClover } from "./cloverSync";
 import { markWebhookEventProcessed } from "./db";
 import type { Request, Response } from "express";
+import { getDb } from "./db";
+import { scheduledOrders, orderItems } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
+import { notifyOwner } from "./_core/notification";
 
 // Initialize Stripe lazily so the server can start without keys in dev
 function getStripe() {
@@ -12,6 +26,33 @@ function getStripe() {
     throw new Error("STRIPE_SECRET_KEY is not configured");
   }
   return new Stripe(STRIPE_ENV.secretKey, { apiVersion: "2026-04-22.dahlia" });
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const STORE_TIMEZONE = "America/Los_Angeles";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function generateOrderRef(id: number): string {
+  const now = new Date();
+  const date = now.toISOString().slice(0, 10).replace(/-/g, "");
+  return `NPZ-${date}-${String(id).padStart(4, "0")}`;
+}
+
+function countPizzas(items: Array<{ name: string; quantity: number; category?: string }>): number {
+  return items.reduce((sum, item) => {
+    const isPizza =
+      item.category === "pizza" ||
+      item.category === "specialty" ||
+      item.category === "calzone" ||
+      item.name?.toLowerCase().includes("pizza") ||
+      item.name?.toLowerCase().includes("calzone") ||
+      item.name?.toLowerCase().includes("stromboli") ||
+      item.name?.toLowerCase().includes("sicilian") ||
+      item.name?.toLowerCase().includes("deep dish");
+    return sum + (isPizza ? (item.quantity ?? 1) : 0);
+  }, 0);
 }
 
 // ─── Cart item schema ──────────────────────────────────────────────────────────
@@ -37,7 +78,12 @@ export const stripeRouter = router({
         cancelUrl: z.string().url(),
         customerName: z.string().optional(),
         customerPhone: z.string().optional(),
+        customerEmail: z.string().optional(),
         orderType: z.enum(["delivery", "pickup", "dine-in"]).default("pickup"),
+        // Scheduling fields
+        scheduledAt: z.number().optional(),
+        isAsap: z.boolean().optional(),
+        specialInstructions: z.string().optional(),
         // Delivery provider fields (only for delivery orders)
         deliveryProvider: z.enum(["uber", "doordash"]).optional(),
         // Uber Direct fields
@@ -53,11 +99,18 @@ export const stripeRouter = router({
         // Coupon / discount fields
         couponCode: z.string().optional(),
         discountPercent: z.number().int().min(1).max(100).optional(),
+        // Pricing breakdown (dollars)
+        subtotal: z.number().optional(),
+        discountAmount: z.number().optional(),
         // Delivery fee in cents to add as a separate Stripe line item
         deliveryFeeCents: z.number().int().min(0).optional(),
         // Convenience fee (3%) and Nevada sales tax (8.375%) in cents
         convenienceFeeCents: z.number().int().min(0).optional(),
         salesTaxCents: z.number().int().min(0).optional(),
+        // Dollar amounts for order record
+        convenienceFee: z.number().optional(),
+        salesTax: z.number().optional(),
+        total: z.number().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -126,11 +179,16 @@ export const stripeRouter = router({
           orderType: input.orderType,
           customerName: input.customerName ?? "",
           customerPhone: input.customerPhone ?? "",
+          customerEmail: input.customerEmail ?? "",
           restaurantName: "The Original Napoli Pizzeria",
-          // Serialize cart items so the webhook can push them to Clover
+          // Serialize cart items so the webhook can push them to Clover and create the order
           cartItems: JSON.stringify(
-            input.items.map((i) => ({ name: i.name, price: i.price, quantity: i.quantity }))
+            input.items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category ?? "" }))
           ),
+          // Scheduling fields
+          scheduledAt: input.scheduledAt ? String(input.scheduledAt) : "",
+          isAsap: input.isAsap ? "true" : "false",
+          specialInstructions: input.specialInstructions ?? "",
           // Delivery provider fields stored for post-payment dispatch on OrderSuccess
           deliveryProvider: input.deliveryProvider ?? "uber",
           uberQuoteId: input.uberQuoteId ?? "",
@@ -143,6 +201,12 @@ export const stripeRouter = router({
           // Coupon tracking
           couponCode: input.couponCode ?? "",
           discountPercent: input.discountPercent ? String(input.discountPercent) : "",
+          // Pricing breakdown (dollars as strings)
+          subtotal: input.subtotal ? String(input.subtotal) : "",
+          discountAmount: input.discountAmount ? String(input.discountAmount) : "0",
+          convenienceFee: input.convenienceFee ? String(input.convenienceFee) : "0",
+          salesTax: input.salesTax ? String(input.salesTax) : "0",
+          total: input.total ? String(input.total) : "",
         },
         custom_text: {
           submit: {
@@ -183,11 +247,150 @@ export const stripeRouter = router({
         dropoffNotes: session.metadata?.dropoffNotes || null,
         // Cart items stored in metadata during checkout
         cartItems: session.metadata?.cartItems
-          ? (JSON.parse(session.metadata.cartItems) as Array<{ name: string; price: number; quantity: number }>)
+          ? (JSON.parse(session.metadata.cartItems) as Array<{ id: string; name: string; price: number; quantity: number; category?: string }>)
           : [],
       };
     }),
+
+  /**
+   * Look up the orderRef for a completed Stripe session.
+   * Used by OrderSuccess to show the order tracking link.
+   */
+  getOrderRefBySession: publicProcedure
+    .input(z.object({ sessionId: z.string() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { orderRef: null };
+
+      // The transactionId for Stripe orders is stored as the session ID
+      const [order] = await db
+        .select({ orderRef: scheduledOrders.orderRef })
+        .from(scheduledOrders)
+        .where(eq(scheduledOrders.transactionId, input.sessionId))
+        .limit(1);
+
+      return { orderRef: order?.orderRef ?? null };
+    }),
 });
+
+// ─── Scheduled order creation helper (called from webhook) ────────────────────
+
+async function createScheduledOrderFromStripe(session: Stripe.Checkout.Session): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const meta = session.metadata ?? {};
+
+  // Parse cart items
+  let items: Array<{ id: string; name: string; price: number; quantity: number; category?: string }> = [];
+  try {
+    items = meta.cartItems ? JSON.parse(meta.cartItems) : [];
+  } catch {
+    console.error("[Stripe] Failed to parse cartItems from metadata");
+    return null;
+  }
+
+  if (!items.length) return null;
+
+  const customerName = session.customer_details?.name ?? meta.customerName ?? "Customer";
+  const customerPhone = session.customer_details?.phone ?? meta.customerPhone ?? "N/A";
+  const customerEmail = session.customer_details?.email ?? meta.customerEmail ?? null;
+  const orderType = (meta.orderType ?? "pickup") as "delivery" | "pickup" | "dine-in";
+  const isAsap = meta.isAsap === "true";
+  const scheduledAt = meta.scheduledAt ? parseInt(meta.scheduledAt) : Date.now();
+  const deliveryAddress = meta.dropoffAddress
+    ? `${meta.dropoffAddress}, ${meta.dropoffCity ?? ""}, ${meta.dropoffState ?? ""} ${meta.dropoffZip ?? ""}`.trim()
+    : null;
+
+  // Pricing
+  const subtotal = meta.subtotal ? parseFloat(meta.subtotal) : (session.amount_total ?? 0) / 100;
+  const discountAmount = meta.discountAmount ? parseFloat(meta.discountAmount) : 0;
+  const convenienceFee = meta.convenienceFee ? parseFloat(meta.convenienceFee) : 0;
+  const salesTax = meta.salesTax ? parseFloat(meta.salesTax) : 0;
+  const total = meta.total ? parseFloat(meta.total) : (session.amount_total ?? 0) / 100;
+
+  const pizzaCount = countPizzas(items);
+
+  try {
+    const [insertResult] = await db.insert(scheduledOrders).values({
+      orderRef: `NPZ-TEMP-${Date.now()}`,
+      status: "confirmed",
+      orderType,
+      scheduledAt,
+      isAsap,
+      customerName,
+      customerPhone,
+      customerEmail,
+      deliveryAddress,
+      items,
+      pizzaCount,
+      subtotal: String(subtotal),
+      discountAmount: String(discountAmount),
+      convenienceFee: String(convenienceFee),
+      salesTax: String(salesTax),
+      total: String(total),
+      couponCode: meta.couponCode || null,
+      transactionId: session.id, // Store Stripe session ID as transactionId for lookup
+      authCode: null,
+      refundedAmount: "0",
+      specialInstructions: meta.specialInstructions || null,
+    });
+
+    const orderId = (insertResult as { insertId: number }).insertId;
+    const orderRef = generateOrderRef(orderId);
+
+    await db
+      .update(scheduledOrders)
+      .set({ orderRef })
+      .where(eq(scheduledOrders.id, orderId));
+
+    // Insert line items
+    for (const item of items) {
+      const isPizza =
+        item.category === "pizza" ||
+        item.category === "specialty" ||
+        item.category === "calzone" ||
+        item.name?.toLowerCase().includes("pizza") ||
+        item.name?.toLowerCase().includes("calzone") ||
+        item.name?.toLowerCase().includes("stromboli") ||
+        item.name?.toLowerCase().includes("sicilian") ||
+        item.name?.toLowerCase().includes("deep dish");
+
+      await db.insert(orderItems).values({
+        orderId,
+        name: item.name,
+        description: null,
+        unitPrice: String(item.price),
+        quantity: item.quantity ?? 1,
+        lineTotal: String(item.price * (item.quantity ?? 1)),
+        isPizza,
+        status: "active",
+        refundedAmount: "0",
+      });
+    }
+
+    // Notify owner
+    const scheduledDate = new Date(scheduledAt).toLocaleString("en-US", {
+      timeZone: STORE_TIMEZONE,
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+
+    await notifyOwner({
+      title: `🛒 New Stripe Order ${orderRef} — $${total.toFixed(2)} (${orderType})`,
+      content: `Customer: ${customerName} | Phone: ${customerPhone}
+Scheduled: ${isAsap ? "ASAP" : scheduledDate}
+Items: ${items.map((i) => `${i.quantity ?? 1}x ${i.name}`).join(", ")}
+Total: $${total.toFixed(2)}${meta.couponCode ? ` (coupon: ${meta.couponCode})` : ""}
+Stripe Session: ${session.id}`,
+    }).catch(() => {});
+
+    return orderRef;
+  } catch (err) {
+    console.error("[Stripe] Failed to create scheduled order:", err);
+    return null;
+  }
+}
 
 // ─── Raw Express webhook handler (bypasses tRPC body parsing) ─────────────────
 export async function handleStripeWebhook(req: Request, res: Response) {
@@ -222,8 +425,14 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       // Idempotency guard: skip if this event was already processed (Stripe retry/replay)
       const isNew = await markWebhookEventProcessed(event.id);
       if (!isNew) {
-        console.log(`[Stripe] Webhook event ${event.id} already processed — skipping Clover sync`);
+        console.log(`[Stripe] Webhook event ${event.id} already processed — skipping`);
         break;
+      }
+
+      // Create scheduled order record
+      const orderRef = await createScheduledOrderFromStripe(session);
+      if (orderRef) {
+        console.log(`[Stripe] Created scheduled order ${orderRef} for session ${session.id}`);
       }
 
       // Push order to Clover POS (fire-and-forget)

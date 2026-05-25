@@ -17,12 +17,14 @@ type OrderInfo = {
   deliveryId?: string;
   trackingUrl?: string;
   deliveryProvider?: "uber" | "doordash";
+  orderRef?: string;
 };
 
 export default function OrderSuccess() {
   const { clearCart } = useCart();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [authNetOrder, setAuthNetOrder] = useState<OrderInfo | null>(null);
+  const [orderRef, setOrderRef] = useState<string | null>(null);
 
   // Delivery dispatch state (for Stripe delivery orders)
   const [deliveryId, setDeliveryId] = useState<string | null>(null);
@@ -42,6 +44,8 @@ export default function OrderSuccess() {
       clearCart();
     } else if (txn && method === "authorizenet") {
       clearCart();
+      const ref = params.get("ref");
+      if (ref) setOrderRef(ref);
       const provider = params.get("provider") as "uber" | "doordash" | null;
       setAuthNetOrder({
         method: "authorizenet",
@@ -61,6 +65,27 @@ export default function OrderSuccess() {
     { sessionId: sessionId! },
     { enabled: !!sessionId }
   );
+
+  // Poll for orderRef after Stripe payment (webhook creates it asynchronously)
+  const { data: stripeOrderRefData } = trpc.stripe.getOrderRefBySession.useQuery(
+    { sessionId: sessionId! },
+    {
+      enabled: !!sessionId,
+      refetchInterval: (query) => {
+        // Stop polling once we have an orderRef
+        if (query.state.data?.orderRef) return false;
+        return 3000; // poll every 3 seconds
+      },
+      refetchIntervalInBackground: false,
+    }
+  );
+
+  // Set orderRef when Stripe webhook has created the order
+  useEffect(() => {
+    if (stripeOrderRefData?.orderRef && !orderRef) {
+      setOrderRef(stripeOrderRefData.orderRef);
+    }
+  }, [stripeOrderRefData, orderRef]);
 
   const createUberDelivery = trpc.uber.createDelivery.useMutation();
   const createDdDelivery = trpc.doordash.createDelivery.useMutation();
@@ -374,6 +399,25 @@ export default function OrderSuccess() {
                 </div>
               ))}
             </div>
+
+            {/* Order tracking link */}
+            {orderRef && (
+              <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
+                <p className="text-xs font-semibold text-blue-800 mb-1">Track & Manage Your Order</p>
+                <p className="text-xs text-blue-700 mb-3">
+                  Use this link to view your order status, cancel items, or cancel the entire order (up to 1 hour before your scheduled time).
+                </p>
+                <Link href={`/my-order/${orderRef}`}>
+                  <button
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded font-bold text-sm border border-blue-300 text-blue-700 hover:bg-blue-100 transition-colors"
+                    style={{ fontFamily: "'Oswald', sans-serif" }}
+                  >
+                    View Order {orderRef}
+                    <ArrowRight size={14} />
+                  </button>
+                </Link>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex flex-col gap-2 pt-2">

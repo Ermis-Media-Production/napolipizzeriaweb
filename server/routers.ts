@@ -10,6 +10,8 @@ import { couponRouter } from "./coupon";
 import { doordashRouter } from "./doordash";
 import { settingsRouter } from "./settings";
 import { cateringRouter } from "./catering";
+import { ordersRouter } from "./orders";
+import { orderRefundsRouter } from "./orderRefunds";
 
 export const appRouter = router({
   system: systemRouter,
@@ -31,6 +33,8 @@ export const appRouter = router({
   doordash: doordashRouter,
   settings: settingsRouter,
   catering: cateringRouter,
+  orders: ordersRouter,
+  orderRefunds: orderRefundsRouter,
 });
 
 export type AppRouter = typeof appRouter;

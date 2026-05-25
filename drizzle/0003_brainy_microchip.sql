@@ -1,0 +1,43 @@
+CREATE TABLE `orderItems` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`orderId` int NOT NULL,
+	`name` varchar(256) NOT NULL,
+	`description` text,
+	`unitPrice` decimal(10,2) NOT NULL,
+	`quantity` int NOT NULL DEFAULT 1,
+	`lineTotal` decimal(10,2) NOT NULL,
+	`isPizza` boolean NOT NULL DEFAULT false,
+	`status` enum('active','cancelled') NOT NULL DEFAULT 'active',
+	`refundedAmount` decimal(10,2) NOT NULL DEFAULT '0',
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `orderItems_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `scheduledOrders` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`orderRef` varchar(32) NOT NULL,
+	`status` enum('pending','confirmed','preparing','ready','completed','cancelled') NOT NULL DEFAULT 'confirmed',
+	`orderType` enum('pickup','delivery','dine-in') NOT NULL,
+	`scheduledAt` int NOT NULL,
+	`isAsap` boolean NOT NULL DEFAULT false,
+	`customerName` varchar(128) NOT NULL,
+	`customerPhone` varchar(32) NOT NULL,
+	`customerEmail` varchar(320),
+	`deliveryAddress` text,
+	`items` json NOT NULL,
+	`pizzaCount` int NOT NULL DEFAULT 0,
+	`subtotal` decimal(10,2) NOT NULL,
+	`discountAmount` decimal(10,2) NOT NULL DEFAULT '0',
+	`convenienceFee` decimal(10,2) NOT NULL DEFAULT '0',
+	`salesTax` decimal(10,2) NOT NULL DEFAULT '0',
+	`total` decimal(10,2) NOT NULL,
+	`couponCode` varchar(64),
+	`transactionId` varchar(64),
+	`authCode` varchar(16),
+	`refundedAmount` decimal(10,2) NOT NULL DEFAULT '0',
+	`specialInstructions` text,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `scheduledOrders_id` PRIMARY KEY(`id`),
+	CONSTRAINT `scheduledOrders_orderRef_unique` UNIQUE(`orderRef`)
+);
