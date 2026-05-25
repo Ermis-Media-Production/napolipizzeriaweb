@@ -153,8 +153,8 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
 
   function stepLabel(n: number) {
     if (n === 1) return "Size";
-    if (n === 2) return "Crust";
-    if (n === 3) return "Cut";
+    if (n === 2) return "Dough";
+    if (n === 3) return "Cut Style";
     if (n === 4) return "Toppings";
     return "Review";
   }
@@ -221,18 +221,26 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
         </div>
 
         {/* ── Step Indicator ── */}
-        <div className="flex items-center justify-center gap-1.5 px-4 py-3 shrink-0" style={{ background: "oklch(0.97 0.012 80)", borderBottom: "1px solid oklch(0.90 0.012 80)" }}>
+        <div className="flex items-center justify-center gap-1 px-4 py-3 shrink-0" style={{ background: "oklch(0.97 0.012 80)", borderBottom: "1px solid oklch(0.90 0.012 80)" }}>
           {[1, 2, 3, 4, 5].map((n, i) => (
-            <div key={n} className="flex items-center gap-1.5">
-              <StepDot active={step === n} done={step > n} num={n} />
+            <div key={n} className="flex items-center gap-1">
+              <div className="flex flex-col items-center gap-0.5">
+                <StepDot active={step === n} done={step > n} num={n} />
+                <span
+                  className="text-[9px] font-semibold leading-none"
+                  style={{
+                    color: step === n ? "var(--napoli-red)" : step > n ? "oklch(0.45 0.10 145)" : "oklch(0.65 0.015 80)",
+                    fontFamily: "'Oswald', sans-serif",
+                  }}
+                >
+                  {stepLabel(n)}
+                </span>
+              </div>
               {i < TOTAL_STEPS - 1 && (
-                <div className="w-5 h-0.5 rounded" style={{ background: step > n ? "var(--napoli-red)" : "oklch(0.88 0.015 80)" }} />
+                <div className="w-4 h-0.5 rounded mb-3" style={{ background: step > n ? "var(--napoli-red)" : "oklch(0.88 0.015 80)" }} />
               )}
             </div>
           ))}
-          <span className="ml-2 text-xs font-semibold" style={{ color: "oklch(0.45 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
-            {stepLabel(step)}
-          </span>
         </div>
 
         {/* ── Body ── */}
@@ -284,8 +292,11 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
           {/* STEP 2 — Crust Type */}
           {step === 2 && (
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>
-                Select Crust Type
+              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>
+                Select Dough Type
+              </p>
+              <p className="text-xs mb-3" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+                Choose how you want your pizza dough prepared.
               </p>
               <div className="flex flex-col gap-2">
                 {CRUST_OPTIONS.map((crust) => {
@@ -333,8 +344,11 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
           {/* STEP 3 — Cut Type */}
           {step === 3 && (
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>
-                Select Cut Type
+              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>
+                Select Cut Style
+              </p>
+              <p className="text-xs mb-3" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+                How would you like your pizza sliced?
               </p>
               <div className="flex flex-col gap-2">
                 {CUT_OPTIONS.map((cut) => {
