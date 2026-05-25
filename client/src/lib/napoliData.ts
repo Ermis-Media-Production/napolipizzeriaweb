@@ -110,8 +110,21 @@ export const PIZZA_SIZES = ["10\"", "14\"", "16\"", "18\"", "24\"", "28\"", "30\
 
 export const PIZZA_BASE_PRICES = {
   "Plain Cheese": ["$9.49", "$14.99", "$17.49", "$20.49", "$27.49", "$38.49", "$42.49", "$71.49"],
-  "Add Topping": ["$2.25", "$2.75", "$3.00", "$3.50", "$4.50", "$5.50", "$6.00", "$9.75"],
   "4 Topping Combo": ["$14.49", "$21.49", "$25.49", "$27.49", "$34.49", "$46.49", "$52.49", "$86.49"],
+};
+
+// ── PIZZA TOPPING PRICES BY SIZE ───────────────────────────
+// Each topping costs a different amount depending on pizza size.
+// Sizes: 10"  14"   16"   18"   24"   28"   30"   36"
+export const PIZZA_TOPPING_PRICES: Record<string, number> = {
+  '10"': 2.25,
+  '14"': 2.75,
+  '16"': 3.00,
+  '18"': 3.50,
+  '24"': 4.50,
+  '28"': 5.50,
+  '30"': 6.00,
+  '36"': 9.75,
 };
 
 export const PIZZA_30_TOPPINGS = [

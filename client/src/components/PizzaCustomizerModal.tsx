@@ -15,6 +15,7 @@ import {
   PIZZA_SIZES,
   PIZZA_BASE_PRICES,
   PIZZA_30_TOPPINGS,
+  PIZZA_TOPPING_PRICES,
 } from "@/lib/napoliData";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -47,8 +48,7 @@ const CUT_OPTIONS = [
 // Gluten free is only available in 14"
 const GLUTEN_FREE_SIZE = '14"';
 
-// Topping price per topping
-const TOPPING_PRICE = 1.50;
+// Topping price is size-based — see PIZZA_TOPPING_PRICES in napoliData.ts
 const MAX_TOPPINGS = 10;
 const TOTAL_STEPS = 5;
 
@@ -125,7 +125,9 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
     [pizzaName, effectiveSize, selectedCrust]
   );
 
-  const toppingsTotal = selectedToppings.length * TOPPING_PRICE;
+  // Topping price depends on the selected size
+  const toppingUnitPrice = PIZZA_TOPPING_PRICES[effectiveSize] ?? 2.75;
+  const toppingsTotal = selectedToppings.length * toppingUnitPrice;
   const grandTotal = basePrice + toppingsTotal;
 
   // ── Topping toggle ─────────────────────────────────────────────────────
@@ -388,7 +390,7 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
                 </span>
               </div>
               <p className="text-xs mb-3" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
-                Each topping adds <strong>+$1.50</strong>. Skip to keep as-is.
+                Each topping adds <strong>+${toppingUnitPrice.toFixed(2)}</strong> for {effectiveSize} pizza. Skip to keep as-is.
               </p>
               <div className="flex flex-wrap gap-2">
                 {PIZZA_30_TOPPINGS.map((t) => {
