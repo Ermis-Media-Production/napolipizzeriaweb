@@ -46,8 +46,9 @@ function buildMockSdk(overrides: {
     getResponseCode: vi.fn(() => responseCode),
     getTransId: vi.fn(() => transId),
     getAuthCode: vi.fn(() => authCode),
+    // Real SDK: getErrors() returns an Errors object with getError() array method
     getErrors: errorText
-      ? vi.fn(() => [{ getErrorText: () => errorText }])
+      ? vi.fn(() => ({ getError: () => [{ getErrorText: () => errorText }] }))
       : vi.fn(() => null),
   };
 

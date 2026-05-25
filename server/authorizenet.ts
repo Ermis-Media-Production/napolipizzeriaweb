@@ -34,32 +34,29 @@ export type ChargeResult = {
 
 // ── Core charge function (injectable for testing) ─────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ANetSDK = { APIContracts: any; APIControllers: any; Constants: any };
+
 /**
  * Charge a credit card using an Authorize.net opaque data token.
  * The `sdk` parameter allows test injection of a mock SDK.
+ * Uses the exact pattern from the official Authorize.net sample-code-node repo.
  */
 export async function chargeOpaqueData(
   params: ChargeParams,
-  sdk?: {
-    APIContracts: Record<string, unknown>;
-    APIControllers: Record<string, unknown>;
-    Constants: Record<string, unknown>;
-  }
+  sdk?: ANetSDK
 ): Promise<ChargeResult> {
   // Use injected SDK in tests, otherwise load the real one
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const authorizenet = sdk ?? require("authorizenet");
-  const { APIContracts, APIControllers, Constants } = authorizenet as {
-    APIContracts: Record<string, new (...args: unknown[]) => Record<string, (...args: unknown[]) => void>>;
-    APIControllers: Record<string, new (...args: unknown[]) => { setEnvironment: (e: unknown) => void; execute: (cb: () => void) => void; getResponse: () => unknown }>;
-    Constants: { endpoint: { sandbox: string; production: string } };
-  };
+  const { APIContracts, APIControllers, Constants }: ANetSDK = sdk ?? require("authorizenet");
 
   return new Promise((resolve, reject) => {
+    // ── Merchant authentication ──────────────────────────────────────────────
     const merchantAuth = new APIContracts.MerchantAuthenticationType();
     merchantAuth.setName(AUTHNET_ENV.apiLoginId);
     merchantAuth.setTransactionKey(AUTHNET_ENV.transactionKey);
 
+    // ── Opaque data from Accept.js ───────────────────────────────────────────
     const opaqueData = new APIContracts.OpaqueDataType();
     opaqueData.setDataDescriptor(params.opaqueDataDescriptor);
     opaqueData.setDataValue(params.opaqueDataValue);
@@ -67,38 +64,33 @@ export async function chargeOpaqueData(
     const paymentType = new APIContracts.PaymentType();
     paymentType.setOpaqueData(opaqueData);
 
+    // ── Order details ────────────────────────────────────────────────────────
     const orderDetails = new APIContracts.OrderType();
     orderDetails.setInvoiceNumber(`NAPOLI-${Date.now()}`);
     orderDetails.setDescription(params.orderDescription.substring(0, 255));
 
-    const customer = new APIContracts.CustomerDataType();
-    if (params.customerEmail) customer.setEmail(params.customerEmail);
-
-    const billTo = new APIContracts.CustomerAddressType();
+    // ── Customer / billing info ──────────────────────────────────────────────
     const nameParts = params.customerName.trim().split(" ");
+    const billTo = new APIContracts.CustomerAddressType();
     billTo.setFirstName(nameParts[0] ?? "Customer");
     billTo.setLastName(nameParts.slice(1).join(" ") || "Guest");
     if (params.customerPhone) billTo.setPhoneNumber(params.customerPhone);
+    if (params.customerEmail) billTo.setEmail(params.customerEmail);
 
+    // ── Transaction request ──────────────────────────────────────────────────
     const transactionRequest = new APIContracts.TransactionRequestType();
-    transactionRequest.setTransactionType(
-      (APIContracts as unknown as { TransactionTypeEnum: { AUTHCAPTURETRANSACTION: string } })
-        .TransactionTypeEnum.AUTHCAPTURETRANSACTION
-    );
+    transactionRequest.setTransactionType(APIContracts.TransactionTypeEnum.AUTHCAPTURETRANSACTION);
     transactionRequest.setPayment(paymentType);
     transactionRequest.setAmount(params.amount.toFixed(2));
     transactionRequest.setOrder(orderDetails);
-    transactionRequest.setCustomer(customer);
     transactionRequest.setBillTo(billTo);
 
     const createRequest = new APIContracts.CreateTransactionRequest();
     createRequest.setMerchantAuthentication(merchantAuth);
     createRequest.setTransactionRequest(transactionRequest);
 
-    const ctrl = new APIControllers.CreateTransactionController(
-      (createRequest as unknown as { getJSON: () => unknown }).getJSON()
-    );
-
+    // ── Controller ───────────────────────────────────────────────────────────
+    const ctrl = new APIControllers.CreateTransactionController(createRequest.getJSON());
     ctrl.setEnvironment(
       AUTHNET_ENV.isSandbox
         ? Constants.endpoint.sandbox
@@ -108,24 +100,28 @@ export async function chargeOpaqueData(
     ctrl.execute(() => {
       try {
         const apiResponse = ctrl.getResponse();
-        const response = new (APIContracts as unknown as { CreateTransactionResponse: new (r: unknown) => {
-          getMessages: () => { getResultCode: () => string; getMessage: () => Array<{ getText: () => string }> } | null;
-          getTransactionResponse: () => {
-            getResponseCode: () => string;
-            getTransId: () => string;
-            getAuthCode: () => string;
-            getErrors?: () => Array<{ getErrorText: () => string }> | null;
-          } | null;
-        } }).CreateTransactionResponse(apiResponse);
 
-        if (!response) return reject(new Error("No response from Authorize.net"));
+        if (apiResponse == null) {
+          const apiError = ctrl.getError?.();
+          return reject(new Error(apiError ? String(apiError) : "No response from Authorize.net"));
+        }
+
+        // Build typed response object from raw JSON — matches official SDK pattern
+        const response = new APIContracts.CreateTransactionResponse(apiResponse);
 
         const messages = response.getMessages();
         if (!messages) return reject(new Error("No messages in Authorize.net response"));
 
-        const MessageTypeEnum = (APIContracts as unknown as { MessageTypeEnum: { OK: string } }).MessageTypeEnum;
-        if (messages.getResultCode() !== MessageTypeEnum.OK) {
-          const errMsg = messages.getMessage()?.[0]?.getText() ?? "Transaction failed";
+        if (messages.getResultCode() !== APIContracts.MessageTypeEnum.OK) {
+          // Top-level failure (auth error, config error, etc.)
+          const transResp = response.getTransactionResponse();
+          if (transResp?.getErrors?.()?.getError?.()?.length) {
+            const errText = transResp.getErrors().getError()[0].getErrorText();
+            return reject(new Error(errText));
+          }
+          const errMsg = messages.getMessage()?.length
+            ? messages.getMessage()[0].getText()
+            : "Transaction failed";
           return reject(new Error(errMsg));
         }
 
@@ -134,8 +130,9 @@ export async function chargeOpaqueData(
 
         const responseCode = transResponse.getResponseCode();
         if (responseCode !== "1") {
-          const errMessages = transResponse.getErrors?.();
-          const errText = errMessages?.[0]?.getErrorText?.() ?? "Card declined";
+          // Card-level decline
+          const errors = transResponse.getErrors?.()?.getError?.();
+          const errText = errors?.length ? errors[0].getErrorText() : "Card declined";
           return reject(new Error(errText));
         }
 
