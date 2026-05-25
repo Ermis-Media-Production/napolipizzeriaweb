@@ -11,9 +11,9 @@ export const ENV = {
 
 // Authorize.net
 export const AUTHNET_ENV = {
-  apiLoginId: process.env.AUTHORIZENET_API_LOGIN_ID ?? "",
-  transactionKey: process.env.AUTHORIZENET_TRANSACTION_KEY ?? "",
-  isSandbox: process.env.AUTHORIZENET_SANDBOX !== "false", // default to sandbox
+  apiLoginId: process.env.AUTHNET_API_LOGIN_ID ?? "",
+  transactionKey: process.env.AUTHNET_TRANSACTION_KEY ?? "",
+  isSandbox: process.env.AUTHNET_IS_SANDBOX === "true", // default to production
 };
 
 // Uber Direct
