@@ -11,7 +11,8 @@ import { toast } from "sonner";
 export default function OrderSuccess() {
   const { clearCart } = useCart();
 
-  // Clover session ID (primary payment method)
+  // Payment session IDs
+  const [stripeSessionId, setStripeSessionId] = useState<string | null>(null);
   const [cloverSessionId, setCloverSessionId] = useState<string | null>(null);
 
   // Legacy Authorize.net support (kept for historical orders)
@@ -40,7 +41,11 @@ export default function OrderSuccess() {
     const txn = params.get("txn");
     const method = params.get("method");
 
-    if (sid && payment === "clover") {
+    if (sid && payment === "stripe") {
+      // Stripe Checkout return
+      setStripeSessionId(sid);
+      clearCart();
+    } else if (sid && payment === "clover") {
       // Clover Hosted Checkout return
       setCloverSessionId(sid);
       clearCart();
@@ -61,6 +66,26 @@ export default function OrderSuccess() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Poll for order ref after Stripe payment
+  const { data: stripeOrderData, isLoading: stripeLoading } = trpc.stripe.getOrderRefBySession.useQuery(
+    { sessionId: stripeSessionId! },
+    {
+      enabled: !!stripeSessionId,
+      refetchInterval: (query) => {
+        const d = query.state.data;
+        if (d?.orderRef) return false;
+        return 3000;
+      },
+      refetchIntervalInBackground: false,
+    }
+  );
+
+  // Stripe session details (for display)
+  const { data: stripeSession } = trpc.stripe.getSession.useQuery(
+    { sessionId: stripeSessionId! },
+    { enabled: !!stripeSessionId }
+  );
+
   // Poll for order ref after Clover payment (webhook creates it asynchronously)
   const { data: cloverOrderData, isLoading: cloverLoading } = trpc.cloverCheckout.getOrderRefBySession.useQuery(
     { sessionId: cloverSessionId! },
@@ -75,6 +100,13 @@ export default function OrderSuccess() {
     }
   );
 
+  // Set orderRef when Stripe webhook has confirmed the order
+  useEffect(() => {
+    if (stripeOrderData?.orderRef && !orderRef) {
+      setOrderRef(stripeOrderData.orderRef);
+    }
+  }, [stripeOrderData, orderRef]);
+
   // Set orderRef when Clover webhook has confirmed the order
   useEffect(() => {
     if (cloverOrderData?.orderRef && !orderRef) {
@@ -83,6 +115,64 @@ export default function OrderSuccess() {
   }, [cloverOrderData, orderRef]);
 
   const createUberDelivery = trpc.uber.createDelivery.useMutation();
+
+  // Auto-dispatch Uber delivery when Stripe order is confirmed
+  useEffect(() => {
+    if (
+      !stripeSession ||
+      stripeSession.status !== "paid" ||
+      stripeSession.orderType !== "delivery" ||
+      !stripeSession.dropoffAddress ||
+      !stripeSession.uberQuoteId ||
+      dispatchedRef.current
+    ) return;
+
+    const storageKey = `delivery_dispatched_stripe_${stripeSessionId}`;
+    const alreadyDispatched = sessionStorage.getItem(storageKey);
+
+    if (alreadyDispatched) {
+      try {
+        const saved = JSON.parse(alreadyDispatched) as { deliveryId: string; trackingUrl: string };
+        setDeliveryId(saved.deliveryId);
+        setTrackingUrl(saved.trackingUrl);
+      } catch { /* ignore */ }
+      dispatchedRef.current = true;
+      return;
+    }
+
+    dispatchedRef.current = true;
+    setIsDispatching(true);
+
+    createUberDelivery.mutate(
+      {
+        quoteId: stripeSession.uberQuoteId,
+        dropoffAddress: stripeSession.dropoffAddress,
+        dropoffCity: stripeSession.dropoffCity ?? "North Las Vegas",
+        dropoffState: stripeSession.dropoffState ?? "NV",
+        dropoffZip: stripeSession.dropoffZip ?? "89032",
+        dropoffName: stripeSession.customerName ?? "Customer",
+        dropoffPhone: stripeSession.customerPhone ?? "+17025550000",
+        orderItems: (stripeSession.cartItems ?? []).map((i: { name: string; quantity: number }) => ({ name: i.name, quantity: i.quantity })),
+        externalId: stripeSessionId ?? undefined,
+      },
+      {
+        onSuccess: (data) => {
+          setDeliveryId(data.deliveryId);
+          setTrackingUrl(data.trackingUrl);
+          setIsDispatching(false);
+          sessionStorage.setItem(storageKey, JSON.stringify({ deliveryId: data.deliveryId, trackingUrl: data.trackingUrl }));
+          toast.success("Delivery dispatched via Uber Direct! Track your order in real time.");
+        },
+        onError: (err) => {
+          setIsDispatching(false);
+          dispatchedRef.current = false;
+          console.error("[Uber Direct] Stripe dispatch failed:", err);
+          toast.warning("Payment confirmed! We'll arrange your delivery shortly.");
+        },
+      }
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stripeSession]);
 
   // Auto-dispatch Uber delivery when Clover order is confirmed
   useEffect(() => {
@@ -148,21 +238,42 @@ export default function OrderSuccess() {
   }, [cloverOrderData]);
 
   // Resolve display data
+  const isStripe = !!stripeSessionId;
   const isClover = !!cloverSessionId;
-  const isLoading = isClover && cloverLoading && !cloverOrderData;
+  const isLoading =
+    (isStripe && stripeLoading && !stripeOrderData) ||
+    (isClover && cloverLoading && !cloverOrderData);
   // paymentStatus enum: "pending" | "paid" | "refunded" | "failed"
-  const isPending = isClover && cloverOrderData && cloverOrderData.paymentStatus === "pending";
+  const isPending =
+    (isStripe && stripeOrderData && !stripeOrderData.orderRef) ||
+    (isClover && cloverOrderData && cloverOrderData.paymentStatus === "pending");
 
-  const displayName = isClover ? cloverOrderData?.customerName : authNetInfo?.customerName;
-  const displayTotal = isClover ? cloverOrderData?.total : authNetInfo?.amountTotal;
-  const displayOrderType = isClover ? cloverOrderData?.orderType : authNetInfo?.orderType;
-  const displayTxnId = isClover ? cloverSessionId : authNetInfo?.transactionId;
-  const displayDeliveryId = isClover ? deliveryId : authNetInfo?.deliveryId;
-  const displayTrackingUrl = isClover ? (trackingUrl ?? authNetInfo?.trackingUrl) : authNetInfo?.trackingUrl;
+  const displayName = isStripe
+    ? stripeSession?.customerName
+    : isClover
+    ? cloverOrderData?.customerName
+    : authNetInfo?.customerName;
+  const displayTotal = isStripe
+    ? stripeSession?.amountTotal
+    : isClover
+    ? cloverOrderData?.total
+    : authNetInfo?.amountTotal;
+  const displayOrderType = isStripe
+    ? stripeSession?.orderType
+    : isClover
+    ? cloverOrderData?.orderType
+    : authNetInfo?.orderType;
+  const displayTxnId = isStripe ? stripeSessionId : isClover ? cloverSessionId : authNetInfo?.transactionId;
+  const displayDeliveryId = deliveryId ?? (isClover ? undefined : authNetInfo?.deliveryId);
+  const displayTrackingUrl = trackingUrl ?? authNetInfo?.trackingUrl;
   const hasDelivery = !!displayTrackingUrl;
   const isDelivery = displayOrderType === "delivery";
 
-  const hasData = isClover ? !!cloverOrderData : !!authNetInfo;
+  const hasData = isStripe
+    ? !!stripeSession
+    : isClover
+    ? !!cloverOrderData
+    : !!authNetInfo;
 
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">
@@ -200,7 +311,7 @@ export default function OrderSuccess() {
               <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-xs font-semibold"
                 style={{ background: "oklch(0.25 0.08 145)", color: "oklch(0.85 0.08 145)" }}>
                 <Shield size={11} />
-                {isClover ? "Paid via Clover" : "Paid via Authorize.net"}
+                {isStripe ? "Paid via Stripe" : isClover ? "Paid via Clover" : "Paid via Authorize.net"}
               </div>
             )}
           </div>

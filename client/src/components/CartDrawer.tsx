@@ -7,14 +7,15 @@ import { useLocation } from "wouter";
 import { NV_SALES_TAX_RATE } from "@shared/const";
 import { OrderScheduler, OrderPoliciesNote, type ScheduleSelection } from "./OrderScheduler";
 
-
-// Clover is the sole payment method
+// Payment method type
+type PaymentMethod = "stripe" | "clover";
 
 export default function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, clearCart, totalItems, totalPrice, pendingOrderType, clearPendingOrderType } = useCart();
   const [, navigate] = useLocation();
   const [orderType, setOrderType] = useState<"delivery" | "pickup" | "dine-in" | "scheduled">("pickup");
-  const [isRedirectingToClover, setIsRedirectingToClover] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("stripe");
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -41,7 +42,6 @@ export default function CartDrawer() {
 
   // Live convenience fee config from DB
   const { data: feeConfig, isLoading: feeConfigLoading } = trpc.settings.getConvenienceFee.useQuery();
-  // While loading, fall back to 3% so totals are never shown as $0 fee
   const liveFeeRate = feeConfigLoading
     ? 0.03
     : feeConfig?.enabled
@@ -83,7 +83,6 @@ export default function CartDrawer() {
   /** Trigger an Uber Direct quote — debounced so it fires 800ms after the user stops typing */
   const triggerUberQuote = (address: string, city: string, state: string, zip: string) => {
     if (quoteDebounceRef.current) clearTimeout(quoteDebounceRef.current);
-    // Reset previous quote immediately
     setUberQuoteId(null); setUberFee(null); setUberEta(null);
     if (!address.trim()) return;
     quoteDebounceRef.current = setTimeout(() => {
@@ -107,13 +106,26 @@ export default function CartDrawer() {
 
   const createUberDelivery = trpc.uber.createDelivery.useMutation();
   const redeemCoupon = trpc.coupon.redeem.useMutation();
+
+  // Stripe checkout mutation
+  const createStripeSession = trpc.stripe.createCheckoutSession.useMutation({
+    onSuccess: (data) => {
+      if (data.url) window.location.href = data.url;
+    },
+    onError: (err) => {
+      toast.error("Could not start Stripe checkout: " + err.message);
+      setIsRedirecting(false);
+    },
+  });
+
+  // Clover checkout mutation
   const createCloverSession = trpc.cloverCheckout.createSession.useMutation({
     onSuccess: (data) => {
       window.location.href = data.href;
     },
     onError: (err) => {
-      toast.error("Could not start checkout: " + err.message);
-      setIsRedirectingToClover(false);
+      toast.error("Could not start Clover checkout: " + err.message);
+      setIsRedirecting(false);
     },
   });
 
@@ -139,7 +151,7 @@ export default function CartDrawer() {
     }
   };
 
-  // Pricing breakdown (computed here so we can pass to chargeCard)
+  // Pricing breakdown
   const subtotal = totalPrice;
   const discountAmount = appliedCoupon ? (subtotal * appliedCoupon.discountPercent) / 100 : 0;
   const discountedSubtotal = subtotal - discountAmount;
@@ -149,26 +161,70 @@ export default function CartDrawer() {
   const deliveryFeeDollars = selectedDeliveryFee !== null ? selectedDeliveryFee / 100 : 0;
   const grandTotal = discountedSubtotal + convenienceFee + salesTax + deliveryFeeDollars;
 
-  const handleCloverCheckout = () => {
-    if (items.length === 0) return;
+  // Shared validation
+  const validateForm = () => {
+    if (items.length === 0) return false;
     if (!customerName.trim()) {
       toast.error("Please enter your name.");
-      return;
+      return false;
     }
     if (orderType === "delivery" && !deliveryAddress.trim()) {
       toast.error("Please enter your delivery address.");
-      return;
+      return false;
     }
     if (orderType === "delivery" && !uberQuoteId) {
       toast.error("Please wait for the delivery quote to load.");
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const handleStripeCheckout = () => {
+    if (!validateForm()) return;
+    const resolvedSchedule: ScheduleSelection = schedule ?? { type: "asap" };
+    const scheduledAt = resolvedSchedule.type === "asap" ? Date.now() : resolvedSchedule.scheduledAt;
+    const isAsap = resolvedSchedule.type === "asap";
+    const apiOrderType = orderType === "scheduled" ? "pickup" : orderType as "delivery" | "pickup" | "dine-in";
+    const origin = window.location.origin;
+
+    setIsRedirecting(true);
+    createStripeSession.mutate({
+      items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category })),
+      successUrl: `${origin}/order-success?payment=stripe&session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${origin}/menu`,
+      customerName,
+      customerPhone: customerPhone || undefined,
+      customerEmail: customerEmail || undefined,
+      orderType: apiOrderType,
+      scheduledAt,
+      isAsap,
+      uberQuoteId: orderType === "delivery" && uberQuoteId ? uberQuoteId : undefined,
+      dropoffAddress: orderType === "delivery" ? deliveryAddress : undefined,
+      dropoffCity: orderType === "delivery" ? deliveryCity : undefined,
+      dropoffState: orderType === "delivery" ? deliveryState : undefined,
+      dropoffZip: orderType === "delivery" ? deliveryZip : undefined,
+      dropoffNotes: orderType === "delivery" && deliveryNotes ? deliveryNotes : undefined,
+      couponCode: appliedCoupon?.code || undefined,
+      discountPercent: appliedCoupon?.discountPercent || undefined,
+      subtotal,
+      discountAmount,
+      convenienceFee,
+      salesTax,
+      total: grandTotal,
+      convenienceFeeCents: Math.round(convenienceFee * 100),
+      salesTaxCents: Math.round(salesTax * 100),
+      deliveryFeeCents: selectedDeliveryFee ?? 0,
+    });
+  };
+
+  const handleCloverCheckout = () => {
+    if (!validateForm()) return;
     const resolvedSchedule: ScheduleSelection = schedule ?? { type: "asap" };
     const scheduledAt = resolvedSchedule.type === "asap" ? Date.now() : resolvedSchedule.scheduledAt;
     const isAsap = resolvedSchedule.type === "asap";
     const apiOrderType = orderType === "scheduled" ? "pickup" : orderType;
     const scheduledLabel = resolvedSchedule.type === "scheduled" ? resolvedSchedule.label : undefined;
-    setIsRedirectingToClover(true);
+    setIsRedirecting(true);
     createCloverSession.mutate({
       items: items.map((i) => ({ id: i.id, name: i.name, description: i.description, price: i.price, quantity: i.quantity, category: i.category })),
       orderType: apiOrderType,
@@ -190,10 +246,17 @@ export default function CartDrawer() {
     });
   };
 
-  const handleCheckout = () => handleCloverCheckout();
+  const handleCheckout = () => {
+    if (paymentMethod === "stripe") {
+      handleStripeCheckout();
+    } else {
+      handleCloverCheckout();
+    }
+  };
 
   const isLoading =
-    isRedirectingToClover ||
+    isRedirecting ||
+    createStripeSession.isPending ||
     createCloverSession.isPending ||
     feeConfigLoading;
 
@@ -352,7 +415,7 @@ export default function CartDrawer() {
               </div>
             </div>
 
-            {/* Schedule selector — full picker when scheduled, ASAP note otherwise */}
+            {/* Schedule selector */}
             {orderType === "scheduled" ? (
               <div>
                 <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
@@ -397,30 +460,18 @@ export default function CartDrawer() {
                   style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
                 />
                 <div className="grid grid-cols-3 gap-2">
-                  <input
-                    type="text"
-                    placeholder="City"
-                    value={deliveryCity}
+                  <input type="text" placeholder="City" value={deliveryCity}
                     onChange={(e) => handleAddressChange("city", e.target.value)}
                     className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="State"
-                    value={deliveryState}
+                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }} />
+                  <input type="text" placeholder="State" value={deliveryState}
                     onChange={(e) => handleAddressChange("state", e.target.value)}
                     className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="ZIP"
-                    value={deliveryZip}
+                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }} />
+                  <input type="text" placeholder="ZIP" value={deliveryZip}
                     onChange={(e) => handleAddressChange("zip", e.target.value)}
                     className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
-                  />
+                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }} />
                 </div>
                 <input
                   type="text"
@@ -431,7 +482,6 @@ export default function CartDrawer() {
                   style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
                 />
 
-                {/* Delivery quote status */}
                 {isFetchingUberQuote && (
                   <div className="flex items-center gap-2 py-2 text-xs" style={{ color: "oklch(0.42 0.03 30)" }}>
                     <Loader2 size={13} className="animate-spin" style={{ color: "oklch(0.40 0.15 220)" }} />
@@ -440,10 +490,8 @@ export default function CartDrawer() {
                 )}
 
                 {!isFetchingUberQuote && uberFee !== null && uberQuoteId && (
-                  <div
-                    className="flex items-center justify-between px-3 py-2 rounded-lg border"
-                    style={{ borderColor: "oklch(0.70 0.15 220)", background: "oklch(0.95 0.04 220)" }}
-                  >
+                  <div className="flex items-center justify-between px-3 py-2 rounded-lg border"
+                    style={{ borderColor: "oklch(0.70 0.15 220)", background: "oklch(0.95 0.04 220)" }}>
                     <div className="flex items-center gap-2">
                       <CheckCircle2 size={14} style={{ color: "oklch(0.40 0.15 220)" }} />
                       <div>
@@ -508,12 +556,62 @@ export default function CartDrawer() {
               style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
             />
 
-            {/* Clover payment info */}
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded border" style={{ borderColor: "oklch(0.70 0.15 145)", background: "oklch(0.97 0.03 145)" }}>
-              <CreditCard size={13} style={{ color: "oklch(0.38 0.12 145)", flexShrink: 0 }} />
-              <p className="text-xs" style={{ color: "oklch(0.30 0.10 145)", fontFamily: "'Lato', sans-serif" }}>
-                You'll be redirected to Clover's secure checkout page to complete your payment.
+            {/* Payment method selector */}
+            <div>
+              <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
+                PAYMENT METHOD
               </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setPaymentMethod("stripe")}
+                  className="flex flex-col items-center gap-1 py-2.5 px-3 rounded border transition-all"
+                  style={{
+                    background: paymentMethod === "stripe" ? "oklch(0.97 0.04 265)" : "transparent",
+                    borderColor: paymentMethod === "stripe" ? "oklch(0.55 0.20 265)" : "oklch(0.82 0.015 80)",
+                    color: paymentMethod === "stripe" ? "oklch(0.35 0.18 265)" : "oklch(0.42 0.03 30)",
+                  }}
+                >
+                  <CreditCard size={16} />
+                  <span className="text-xs font-semibold" style={{ fontFamily: "'Oswald', sans-serif" }}>
+                    Credit / Debit Card
+                  </span>
+                  <span className="text-xs opacity-70">via Stripe</span>
+                </button>
+                <button
+                  onClick={() => setPaymentMethod("clover")}
+                  className="flex flex-col items-center gap-1 py-2.5 px-3 rounded border transition-all"
+                  style={{
+                    background: paymentMethod === "clover" ? "oklch(0.97 0.04 145)" : "transparent",
+                    borderColor: paymentMethod === "clover" ? "oklch(0.55 0.15 145)" : "oklch(0.82 0.015 80)",
+                    color: paymentMethod === "clover" ? "oklch(0.30 0.12 145)" : "oklch(0.42 0.03 30)",
+                  }}
+                >
+                  <CreditCard size={16} />
+                  <span className="text-xs font-semibold" style={{ fontFamily: "'Oswald', sans-serif" }}>
+                    Clover Checkout
+                  </span>
+                  <span className="text-xs opacity-70">via Clover POS</span>
+                </button>
+              </div>
+
+              {/* Payment info note */}
+              {paymentMethod === "stripe" ? (
+                <div className="flex items-center gap-2 px-3 py-2 rounded border mt-2"
+                  style={{ borderColor: "oklch(0.70 0.20 265)", background: "oklch(0.97 0.04 265)" }}>
+                  <Lock size={12} style={{ color: "oklch(0.38 0.18 265)", flexShrink: 0 }} />
+                  <p className="text-xs" style={{ color: "oklch(0.30 0.15 265)", fontFamily: "'Lato', sans-serif" }}>
+                    Secure checkout powered by Stripe. Accepts cards, Apple Pay, Google Pay &amp; more.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-3 py-2 rounded border mt-2"
+                  style={{ borderColor: "oklch(0.70 0.15 145)", background: "oklch(0.97 0.03 145)" }}>
+                  <CreditCard size={12} style={{ color: "oklch(0.38 0.12 145)", flexShrink: 0 }} />
+                  <p className="text-xs" style={{ color: "oklch(0.30 0.10 145)", fontFamily: "'Lato', sans-serif" }}>
+                    You'll be redirected to Clover's secure checkout page to complete your payment.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Accepted cards row */}
@@ -540,56 +638,35 @@ export default function CartDrawer() {
                   </div>
                 </div>
               </div>
-              {/* Digital wallets row */}
-              {true && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>Also:</span>
-                  <div className="flex items-center gap-1.5">
-                    {/* Apple Pay */}
-                    <div
-                      className="flex items-center justify-center rounded px-2 border"
-                      style={{ background: "#000", borderColor: "#000", height: 22, minWidth: 52 }}
-                    >
-                      <svg viewBox="0 0 50 20" width="42" height="14" fill="white" xmlns="http://www.w3.org/2000/svg">
-                        {/* Apple logo */}
-                        <path d="M9.5 4.2c.6-.8.9-1.7.9-2.7-.9.1-2 .6-2.6 1.4-.6.7-1 1.6-.9 2.6.9 0 1.9-.5 2.6-1.3z"/>
-                        <path d="M10.4 5.6c-1.4-.1-2.6.8-3.3.8-.7 0-1.7-.8-2.9-.7-1.5.1-2.8.9-3.6 2.2-1.5 2.6-.4 6.5 1.1 8.6.7 1 1.6 2.2 2.8 2.1 1.1 0 1.5-.7 2.9-.7 1.3 0 1.7.7 2.9.7 1.2 0 2-1.1 2.7-2.1.5-.7.9-1.5 1.2-2.3-3.1-1.2-2.5-5.5.2-6.6-.8-1.2-2-2-4-2z"/>
-                        {/* Pay text */}
-                        <text x="18" y="15" fontSize="11" fontFamily="-apple-system, Arial" fontWeight="600" fill="white">Pay</text>
-                      </svg>
-                    </div>
-                    {/* Google Pay */}
-                    <div
-                      className="flex items-center justify-center rounded px-2 border"
-                      style={{ background: "white", borderColor: "oklch(0.82 0.015 80)", height: 22, minWidth: 52 }}
-                    >
-                      <svg viewBox="0 0 50 20" width="44" height="14" xmlns="http://www.w3.org/2000/svg">
-                        {/* G */}
-                        <text x="0" y="15" fontSize="13" fontFamily="Arial" fontWeight="700">
-                          <tspan fill="#4285F4">G</tspan>
-                          <tspan fill="#EA4335">o</tspan>
-                          <tspan fill="#FBBC05">o</tspan>
-                          <tspan fill="#4285F4">g</tspan>
-                          <tspan fill="#34A853">l</tspan>
-                          <tspan fill="#EA4335">e</tspan>
-                        </text>
-                        <text x="28" y="15" fontSize="11" fontFamily="Arial" fontWeight="600" fill="#5F6368">Pay</text>
-                      </svg>
-                    </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>Also:</span>
+                <div className="flex items-center gap-1.5">
+                  {/* Apple Pay */}
+                  <div className="flex items-center justify-center rounded px-2 border" style={{ background: "#000", borderColor: "#000", height: 22, minWidth: 52 }}>
+                    <svg viewBox="0 0 50 20" width="42" height="14" fill="white" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M9.5 4.2c.6-.8.9-1.7.9-2.7-.9.1-2 .6-2.6 1.4-.6.7-1 1.6-.9 2.6.9 0 1.9-.5 2.6-1.3z"/>
+                      <path d="M10.4 5.6c-1.4-.1-2.6.8-3.3.8-.7 0-1.7-.8-2.9-.7-1.5.1-2.8.9-3.6 2.2-1.5 2.6-.4 6.5 1.1 8.6.7 1 1.6 2.2 2.8 2.1 1.1 0 1.5-.7 2.9-.7 1.3 0 1.7.7 2.9.7 1.2 0 2-1.1 2.7-2.1.5-.7.9-1.5 1.2-2.3-3.1-1.2-2.5-5.5.2-6.6-.8-1.2-2-2-4-2z"/>
+                      <text x="18" y="15" fontSize="11" fontFamily="-apple-system, Arial" fontWeight="600" fill="white">Pay</text>
+                    </svg>
+                  </div>
+                  {/* Google Pay */}
+                  <div className="flex items-center justify-center rounded px-2 border" style={{ background: "white", borderColor: "oklch(0.82 0.015 80)", height: 22, minWidth: 52 }}>
+                    <svg viewBox="0 0 50 20" width="44" height="14" xmlns="http://www.w3.org/2000/svg">
+                      <text x="0" y="15" fontSize="13" fontFamily="Arial" fontWeight="700">
+                        <tspan fill="#4285F4">G</tspan><tspan fill="#EA4335">o</tspan><tspan fill="#FBBC05">o</tspan><tspan fill="#4285F4">g</tspan><tspan fill="#34A853">l</tspan><tspan fill="#EA4335">e</tspan>
+                      </text>
+                      <text x="28" y="15" fontSize="11" fontFamily="Arial" fontWeight="600" fill="#5F6368">Pay</text>
+                    </svg>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
-
-
 
             {/* Coupon code input */}
             <div className="space-y-1.5">
               {appliedCoupon ? (
-                <div
-                  className="flex items-center justify-between px-3 py-2 rounded-lg border"
-                  style={{ borderColor: "oklch(0.70 0.15 145)", background: "oklch(0.96 0.04 145)" }}
-                >
+                <div className="flex items-center justify-between px-3 py-2 rounded-lg border"
+                  style={{ borderColor: "oklch(0.70 0.15 145)", background: "oklch(0.96 0.04 145)" }}>
                   <div>
                     <span className="text-xs font-bold" style={{ color: "oklch(0.35 0.12 145)", fontFamily: "'Oswald', sans-serif" }}>
                       {appliedCoupon.discountPercent}% OFF
@@ -635,10 +712,7 @@ export default function CartDrawer() {
             </div>
 
             {/* Order Summary */}
-            <div
-              className="flex flex-col gap-1 py-2 border-t"
-              style={{ borderColor: "oklch(0.88 0.015 80)" }}
-            >
+            <div className="flex flex-col gap-1 py-2 border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
               <div className="flex items-center justify-between">
                 <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>Subtotal ({totalItems} item{totalItems !== 1 ? "s" : ""})</span>
                 <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>${subtotal.toFixed(2)}</span>
@@ -686,9 +760,11 @@ export default function CartDrawer() {
               onClick={handleCheckout}
               disabled={isLoading || (orderType === "delivery" && isFetchingUberQuote)}
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded font-bold text-sm transition-all active:scale-[0.98]"
-                style={{
+              style={{
                 background: isLoading || (orderType === "delivery" && isFetchingUberQuote)
                   ? "oklch(0.55 0.03 30)"
+                  : paymentMethod === "stripe"
+                  ? "oklch(0.38 0.18 265)"
                   : "oklch(0.38 0.12 145)",
                 color: "white",
                 fontFamily: "'Oswald', sans-serif",
@@ -698,7 +774,7 @@ export default function CartDrawer() {
               {isLoading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  {"Redirecting to Clover..."}
+                  {paymentMethod === "stripe" ? "Redirecting to Stripe..." : "Redirecting to Clover..."}
                 </>
               ) : orderType === "delivery" && isFetchingUberQuote ? (
                 <>
@@ -708,13 +784,17 @@ export default function CartDrawer() {
               ) : (
                 <>
                   <Lock size={15} />
-                  Pay Securely
+                  Pay Securely — ${grandTotal.toFixed(2)}
                   <ChevronRight size={16} />
                 </>
               )}
             </button>
             <p className="text-center text-xs" style={{ color: "oklch(0.60 0.03 30)" }}>
-              {orderType === "delivery"
+              {paymentMethod === "stripe"
+                ? orderType === "delivery"
+                  ? "Delivery by Uber Direct · Secured by Stripe"
+                  : "Secured by Stripe · PCI Compliant"
+                : orderType === "delivery"
                 ? "Delivery by Uber Direct · Secured by Clover"
                 : "Secured by Clover · PCI Compliant"}
             </p>

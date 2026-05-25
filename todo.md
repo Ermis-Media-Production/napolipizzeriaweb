@@ -147,3 +147,25 @@
 - [x] Stripe getOrderRefBySession: lookup orderRef by Stripe session ID
 - [x] OrderSuccess: poll getOrderRefBySession every 3s until orderRef is available (Stripe flow)
 - [x] Restaurant cancellation policy: cancellations/modifications only accepted up to 1 hour before scheduled time; otherwise call the restaurant
+
+## Stripe Re-enabled (alongside Clover)
+- [x] CartDrawer: payment method selector (Stripe vs Clover) with visual toggle
+- [x] CartDrawer: Stripe checkout flow calls trpc.stripe.createCheckoutSession
+- [x] CartDrawer: Clover checkout flow calls trpc.cloverCheckout.createSession
+- [x] OrderSuccess: detect payment=stripe in URL params, set stripeSessionId
+- [x] OrderSuccess: poll trpc.stripe.getOrderRefBySession until orderRef available
+- [x] OrderSuccess: load trpc.stripe.getSession for display data (name, total, orderType)
+- [x] OrderSuccess: auto-dispatch Uber Direct for Stripe delivery orders
+- [x] OrderSuccess: show correct payment label (Paid via Stripe / Clover / Authorize.net)
+- [x] TypeScript check passing (0 errors)
+- [x] DB schema migration applied (menuItems, modifierGroups, modifierOptions, itemModifierGroups tables)
+
+## Admin Panel — Full CRUD + Login
+- [ ] Server: menuItems CRUD procedures (list, create, update, delete, uploadPhoto)
+- [ ] Server: modifierGroups + modifierOptions CRUD + assign/unassign to items
+- [ ] Admin login page with Manus OAuth + role guard (admin only)
+- [ ] Admin dashboard: stats, recent orders, quick actions
+- [ ] Admin menu manager: list by category, add/edit/delete items, photo upload, print label selector
+- [ ] Admin modifier manager: create groups, add options with price, assign to items
+- [ ] Wire admin routes in App.tsx, protect all admin pages
+- [ ] TypeScript check + tests + checkpoint

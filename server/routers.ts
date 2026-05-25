@@ -13,6 +13,8 @@ import { cateringRouter } from "./catering";
 import { ordersRouter } from "./orders";
 import { orderRefundsRouter } from "./orderRefunds";
 import { cloverCheckoutRouter } from "./cloverCheckout";
+import { menuItemsRouter } from "./menuItems";
+import { modifiersRouter } from "./modifiers";
 
 export const appRouter = router({
   system: systemRouter,
@@ -37,6 +39,8 @@ export const appRouter = router({
   orders: ordersRouter,
   orderRefunds: orderRefundsRouter,
   cloverCheckout: cloverCheckoutRouter,
+  menuItems: menuItemsRouter,
+  modifiers: modifiersRouter,
 });
 
 export type AppRouter = typeof appRouter;

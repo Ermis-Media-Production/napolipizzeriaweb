@@ -165,3 +165,97 @@ export const orderItems = mysqlTable("orderItems", {
 
 export type OrderItem = typeof orderItems.$inferSelect;
 export type InsertOrderItem = typeof orderItems.$inferInsert;
+
+/**
+ * Menu items managed by admin.
+ * Mirrors the static napoliData.ts but stored in DB for live editing.
+ */
+export const menuItems = mysqlTable("menuItems", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Display name, e.g. "Margherita Pizza" */
+  name: varchar("name", { length: 256 }).notNull(),
+  /** Category slug matching napoliData categories, e.g. "pizza", "burger", "beverage" */
+  category: varchar("category", { length: 64 }).notNull(),
+  /** Short description shown on menu */
+  description: text("description"),
+  /** Base price in dollars */
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  /** Second price tier (e.g. large size) — optional */
+  price2: decimal("price2", { precision: 10, scale: 2 }),
+  /** Label for price2 tier, e.g. "1 lb" or "Large" */
+  price2Label: varchar("price2Label", { length: 64 }),
+  /** S3 storage URL for the item image */
+  imageUrl: text("imageUrl"),
+  /** S3 storage key for deletion */
+  imageKey: varchar("imageKey", { length: 256 }),
+  /** Clover printer label: Food | Pizza | Pizzeria | Bar/Drinks */
+  printLabel: mysqlEnum("printLabel", ["Food", "Pizza", "Pizzeria", "Bar/Drinks"]).default("Food").notNull(),
+  /** Whether this item is currently available for ordering */
+  isAvailable: boolean("isAvailable").default(true).notNull(),
+  /** Display sort order within category */
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MenuItem = typeof menuItems.$inferSelect;
+export type InsertMenuItem = typeof menuItems.$inferInsert;
+
+/**
+ * Modifier groups (e.g. "Choose your crust", "Add toppings").
+ * A group can be required or optional, with min/max selection limits.
+ */
+export const modifierGroups = mysqlTable("modifierGroups", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Group name shown to customer, e.g. "Choose Crust" */
+  name: varchar("name", { length: 128 }).notNull(),
+  /** Whether customer must select at least one option */
+  required: boolean("required").default(false).notNull(),
+  /** Minimum number of options to select (0 = optional) */
+  minSelect: int("minSelect").default(0).notNull(),
+  /** Maximum number of options to select (0 = unlimited) */
+  maxSelect: int("maxSelect").default(1).notNull(),
+  /** Display sort order */
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ModifierGroup = typeof modifierGroups.$inferSelect;
+export type InsertModifierGroup = typeof modifierGroups.$inferInsert;
+
+/**
+ * Individual options within a modifier group.
+ * e.g. "Thin Crust (+$0.00)", "Stuffed Crust (+$2.00)"
+ */
+export const modifierOptions = mysqlTable("modifierOptions", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Parent modifier group */
+  groupId: int("groupId").notNull(),
+  /** Option name shown to customer */
+  name: varchar("name", { length: 128 }).notNull(),
+  /** Price adjustment in dollars (positive = upcharge, negative = discount, 0 = no change) */
+  priceAdjustment: decimal("priceAdjustment", { precision: 10, scale: 2 }).default("0").notNull(),
+  /** Whether this option is pre-selected by default */
+  isDefault: boolean("isDefault").default(false).notNull(),
+  /** Display sort order within group */
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ModifierOption = typeof modifierOptions.$inferSelect;
+export type InsertModifierOption = typeof modifierOptions.$inferInsert;
+
+/**
+ * Join table: which modifier groups apply to which menu items.
+ */
+export const itemModifierGroups = mysqlTable("itemModifierGroups", {
+  id: int("id").autoincrement().primaryKey(),
+  itemId: int("itemId").notNull(),
+  groupId: int("groupId").notNull(),
+  /** Display sort order for this group on this item */
+  sortOrder: int("sortOrder").default(0).notNull(),
+});
+
+export type ItemModifierGroup = typeof itemModifierGroups.$inferSelect;
+export type InsertItemModifierGroup = typeof itemModifierGroups.$inferInsert;
