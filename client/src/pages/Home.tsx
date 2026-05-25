@@ -246,13 +246,13 @@ export default function Home() {
 
             {/* CTAs */}
             <div className="flex flex-wrap gap-3 animate-fade-up" style={{ animationDelay: "180ms" }}>
-              <button
-                onClick={handleOrder}
+              <a
+                href="tel:7252040379"
                 className="napoli-btn-red flex items-center gap-2 px-7 py-3.5 rounded text-sm"
               >
-                Order Online
-                <ArrowRight size={16} />
-              </button>
+                <Phone size={16} />
+                Call Us
+              </a>
               <Link href="/menu">
                 <button
                   className="flex items-center gap-2 px-7 py-3.5 rounded text-sm font-semibold border-2 transition-colors napoli-label"
@@ -642,13 +642,13 @@ export default function Home() {
             Call us or order online — delivery, pick-up, and dine-in available!
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
-            <button
-              onClick={handleOrder}
+            <a
+              href="tel:7252040379"
               className="flex items-center gap-2 px-8 py-3.5 rounded text-sm font-semibold napoli-label transition-colors"
               style={{ background: "var(--napoli-gold)", color: "var(--napoli-dark)" }}
             >
-              Order Online <ArrowRight size={15} />
-            </button>
+              <Phone size={15} /> Call Us
+            </a>
             <a
               href={`tel:${RESTAURANT_INFO.phone}`}
               className="flex items-center gap-2 px-8 py-3.5 rounded text-sm font-semibold napoli-label border-2 transition-colors"
