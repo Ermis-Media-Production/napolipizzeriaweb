@@ -418,7 +418,7 @@ export default function Home() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {/* Appetizers */}
             <Link href="/menu#appetizers">
               <div
@@ -516,6 +516,108 @@ export default function Home() {
                   </h3>
                   <p className="text-sm napoli-body mb-3" style={{ color: "oklch(0.50 0.03 30)" }}>
                     17 specialty creations, 30+ toppings, sizes 10"–36", stuffed dough & more
+                  </p>
+                  <div className="flex items-center gap-1 text-sm font-semibold napoli-label" style={{ color: "var(--napoli-red)", fontSize: "0.75rem" }}>
+                    View Menu <ChevronRight size={13} />
+                  </div>
+                </div>
+              </div>
+            </Link>
+
+            {/* Wings */}
+            <Link href="/menu#wings">
+              <div
+                className="napoli-card-hover rounded-md overflow-hidden border cursor-pointer bg-white"
+                style={{ borderColor: "oklch(0.88 0.015 80)" }}
+              >
+                <div className="relative h-48 overflow-hidden">
+                  <img
+                    src="/manus-storage/napoli-wings_5305444c.jpg"
+                    alt="Wings"
+                    className="w-full h-full object-cover"
+                  />
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: "linear-gradient(to top, oklch(0.14 0.03 27 / 0.7), transparent)" }}
+                  />
+                  <div className="absolute bottom-3 left-4">
+                    <span className="napoli-badge-red">Wings</span>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h3 className="napoli-heading text-lg mb-1" style={{ color: "var(--napoli-dark)" }}>
+                    Wings & Fingers
+                  </h3>
+                  <p className="text-sm napoli-body mb-3" style={{ color: "oklch(0.50 0.03 30)" }}>
+                    Buffalo, BBQ, Honey Garlic & more — Wings, Wing Dings, Boneless & Chicken Fingers
+                  </p>
+                  <div className="flex items-center gap-1 text-sm font-semibold napoli-label" style={{ color: "var(--napoli-red)", fontSize: "0.75rem" }}>
+                    View Menu <ChevronRight size={13} />
+                  </div>
+                </div>
+              </div>
+            </Link>
+
+            {/* Subs */}
+            <Link href="/menu#subs">
+              <div
+                className="napoli-card-hover rounded-md overflow-hidden border cursor-pointer bg-white"
+                style={{ borderColor: "oklch(0.88 0.015 80)" }}
+              >
+                <div className="relative h-48 overflow-hidden">
+                  <img
+                    src="/manus-storage/napoli-subs_cb6cce6c.jpg"
+                    alt="Sub Sandwiches"
+                    className="w-full h-full object-cover"
+                  />
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: "linear-gradient(to top, oklch(0.14 0.03 27 / 0.7), transparent)" }}
+                  />
+                  <div className="absolute bottom-3 left-4">
+                    <span className="napoli-badge-gold">Subs</span>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h3 className="napoli-heading text-lg mb-1" style={{ color: "var(--napoli-dark)" }}>
+                    Sub Sandwiches
+                  </h3>
+                  <p className="text-sm napoli-body mb-3" style={{ color: "oklch(0.50 0.03 30)" }}>
+                    Italian, Meatball, Chicken Parm, Steak & Cheese, Veggie & more on fresh-baked bread
+                  </p>
+                  <div className="flex items-center gap-1 text-sm font-semibold napoli-label" style={{ color: "var(--napoli-red)", fontSize: "0.75rem" }}>
+                    View Menu <ChevronRight size={13} />
+                  </div>
+                </div>
+              </div>
+            </Link>
+
+            {/* Burgers */}
+            <Link href="/menu#burgers">
+              <div
+                className="napoli-card-hover rounded-md overflow-hidden border cursor-pointer bg-white"
+                style={{ borderColor: "oklch(0.88 0.015 80)" }}
+              >
+                <div className="relative h-48 overflow-hidden">
+                  <img
+                    src="/manus-storage/napoli-burger_bea110a3.png"
+                    alt="Burgers"
+                    className="w-full h-full object-cover"
+                  />
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: "linear-gradient(to top, oklch(0.14 0.03 27 / 0.7), transparent)" }}
+                  />
+                  <div className="absolute bottom-3 left-4">
+                    <span className="napoli-badge-green">Burgers</span>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h3 className="napoli-heading text-lg mb-1" style={{ color: "var(--napoli-dark)" }}>
+                    100% Angus Beef Burgers
+                  </h3>
+                  <p className="text-sm napoli-body mb-3" style={{ color: "oklch(0.50 0.03 30)" }}>
+                    Classic, BBQ Bacon, Mushroom Swiss, Double Stack & more — all on a brioche bun
                   </p>
                   <div className="flex items-center gap-1 text-sm font-semibold napoli-label" style={{ color: "var(--napoli-red)", fontSize: "0.75rem" }}>
                     View Menu <ChevronRight size={13} />
