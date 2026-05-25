@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
 import { ANYTIME_SPECIALS, LUNCH_SPECIALS, RESTAURANT_INFO } from "@/lib/napoliData";
+import LunchTimerBadge from "@/components/LunchTimerBadge";
 
 const handleOrder = () => toast.info("Order online at napolipizzerianorthlasvegas.com or call 725-204-0379!");
 
@@ -46,10 +47,11 @@ export default function Specials() {
 
         {/* Lunch Specials */}
         <div className="mb-10">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex flex-wrap items-center gap-3 mb-4">
             <h2 className="napoli-display text-2xl" style={{ color: "var(--napoli-dark)" }}>Lunch Specials</h2>
-            <span className="napoli-badge-green">Mon–Fri 9AM–3PM</span>
+            <span className="napoli-badge-green">Mon–Fri 10AM–3PM</span>
             <span className="napoli-badge-gold">FREE Soda!</span>
+            <LunchTimerBadge />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {LUNCH_SPECIALS.items.map((item) => (

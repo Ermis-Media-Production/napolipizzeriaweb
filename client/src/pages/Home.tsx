@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
 import { RESTAURANT_INFO, LUNCH_SPECIALS, PIZZA_SPECIALS, APPETIZERS } from "@/lib/napoliData";
+import LunchTimerBadge from "@/components/LunchTimerBadge";
 
 const handleOrder = () => toast.info("Order online at napolipizzerianorthlasvegas.com or call 725-204-0379!");
 
@@ -534,9 +535,12 @@ export default function Home() {
         <div className="container">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div>
-              <p className="napoli-label text-xs mb-2" style={{ color: "oklch(0.75 0.08 145)", letterSpacing: "0.2em" }}>
-                Monday – Friday · 9AM – 3PM Only
-              </p>
+              <div className="flex flex-wrap items-center gap-3 mb-2">
+                <p className="napoli-label text-xs" style={{ color: "oklch(0.75 0.08 145)", letterSpacing: "0.2em" }}>
+                  Monday – Friday · 10AM – 3PM Only
+                </p>
+                <LunchTimerBadge />
+              </div>
               <h2 className="napoli-display text-3xl md:text-4xl mb-2" style={{ color: "oklch(0.99 0.015 80)" }}>
                 Lunch Specials
               </h2>
