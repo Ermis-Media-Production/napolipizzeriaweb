@@ -185,3 +185,16 @@
 - [x] server/stripe.ts: description preserved in metadata serialization, getSession, and orderItems insertion
 - [x] TypeScript check: 0 errors
 - [x] Tests: 66/67 passing
+
+## Stripe-Only Payment (Clover & Authorize.net removed from checkout)
+- [x] CartDrawer: removed payment method selector, Stripe is the only checkout path
+- [x] CartDrawer: removed all Clover checkout mutation and handleCloverCheckout logic
+- [x] CartDrawer: payment info note updated to "Stripe only" (cards, Apple Pay, Google Pay)
+- [x] CartDrawer: checkout button always blue (Stripe color), no conditional Clover green
+- [x] server/routers.ts: removed authorizeNetRouter and cloverCheckoutRouter from app router
+- [x] server/_core/index.ts: removed Clover webhook route and import
+- [x] OrderSuccess: rewritten Stripe-only — removed Clover polling, Clover Uber dispatch, Authorize.net legacy state
+- [x] OrderSuccess: "Paid via Stripe" badge, clean Stripe-only display logic
+- [x] orderRefunds router kept (used by MyOrder page for customer cancellations)
+- [x] TypeScript: 0 errors
+- [x] Tests: 66/67 passing (only legacy Authorize.net prod test fails — not related to changes)

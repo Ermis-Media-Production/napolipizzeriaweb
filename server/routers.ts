@@ -3,7 +3,6 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { stripeRouter } from "./stripe";
-import { authorizeNetRouter } from "./authorizenet";
 import { uberDirectRouter } from "./uberdirect";
 import { cloverRouter } from "./clover";
 import { couponRouter } from "./coupon";
@@ -12,7 +11,6 @@ import { settingsRouter } from "./settings";
 import { cateringRouter } from "./catering";
 import { ordersRouter } from "./orders";
 import { orderRefundsRouter } from "./orderRefunds";
-import { cloverCheckoutRouter } from "./cloverCheckout";
 import { menuItemsRouter } from "./menuItems";
 import { modifiersRouter } from "./modifiers";
 
@@ -29,7 +27,6 @@ export const appRouter = router({
     }),
   }),
   stripe: stripeRouter,
-  authorizenet: authorizeNetRouter,
   uber: uberDirectRouter,
   clover: cloverRouter,
   coupon: couponRouter,
@@ -38,7 +35,6 @@ export const appRouter = router({
   catering: cateringRouter,
   orders: ordersRouter,
   orderRefunds: orderRefundsRouter,
-  cloverCheckout: cloverCheckoutRouter,
   menuItems: menuItemsRouter,
   modifiers: modifiersRouter,
 });

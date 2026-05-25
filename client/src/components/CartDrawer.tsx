@@ -7,14 +7,10 @@ import { useLocation } from "wouter";
 import { NV_SALES_TAX_RATE } from "@shared/const";
 import { OrderScheduler, OrderPoliciesNote, type ScheduleSelection } from "./OrderScheduler";
 
-// Payment method type
-type PaymentMethod = "stripe" | "clover";
-
 export default function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, clearCart, totalItems, totalPrice, pendingOrderType, clearPendingOrderType } = useCart();
   const [, navigate] = useLocation();
   const [orderType, setOrderType] = useState<"delivery" | "pickup" | "dine-in" | "scheduled">("pickup");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("stripe");
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -118,17 +114,6 @@ export default function CartDrawer() {
     },
   });
 
-  // Clover checkout mutation
-  const createCloverSession = trpc.cloverCheckout.createSession.useMutation({
-    onSuccess: (data) => {
-      window.location.href = data.href;
-    },
-    onError: (err) => {
-      toast.error("Could not start Clover checkout: " + err.message);
-      setIsRedirecting(false);
-    },
-  });
-
   const utils = trpc.useUtils();
   const handleApplyCoupon = async () => {
     const code = couponCode.trim().toUpperCase();
@@ -217,47 +202,13 @@ export default function CartDrawer() {
     });
   };
 
-  const handleCloverCheckout = () => {
-    if (!validateForm()) return;
-    const resolvedSchedule: ScheduleSelection = schedule ?? { type: "asap" };
-    const scheduledAt = resolvedSchedule.type === "asap" ? Date.now() : resolvedSchedule.scheduledAt;
-    const isAsap = resolvedSchedule.type === "asap";
-    const apiOrderType = orderType === "scheduled" ? "pickup" : orderType;
-    const scheduledLabel = resolvedSchedule.type === "scheduled" ? resolvedSchedule.label : undefined;
-    setIsRedirecting(true);
-    createCloverSession.mutate({
-      items: items.map((i) => ({ id: i.id, name: i.name, description: i.description, price: i.price, quantity: i.quantity, category: i.category })),
-      orderType: apiOrderType,
-      customerName,
-      customerPhone: customerPhone || "",
-      customerEmail: customerEmail || undefined,
-      deliveryAddress: orderType === "delivery" ? `${deliveryAddress}, ${deliveryCity}, ${deliveryState} ${deliveryZip}` : undefined,
-      isAsap,
-      scheduledAt,
-      scheduledLabel,
-      subtotal,
-      discountAmount,
-      convenienceFee,
-      salesTax,
-      total: grandTotal,
-      couponCode: appliedCoupon?.code || undefined,
-      uberQuoteId: orderType === "delivery" && uberQuoteId ? uberQuoteId : undefined,
-      origin: window.location.origin,
-    });
-  };
-
   const handleCheckout = () => {
-    if (paymentMethod === "stripe") {
-      handleStripeCheckout();
-    } else {
-      handleCloverCheckout();
-    }
+    handleStripeCheckout();
   };
 
   const isLoading =
     isRedirecting ||
     createStripeSession.isPending ||
-    createCloverSession.isPending ||
     feeConfigLoading;
 
   return (
@@ -556,62 +507,13 @@ export default function CartDrawer() {
               style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
             />
 
-            {/* Payment method selector */}
-            <div>
-              <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
-                PAYMENT METHOD
+            {/* Payment info note */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded border"
+              style={{ borderColor: "oklch(0.70 0.20 265)", background: "oklch(0.97 0.04 265)" }}>
+              <Lock size={12} style={{ color: "oklch(0.38 0.18 265)", flexShrink: 0 }} />
+              <p className="text-xs" style={{ color: "oklch(0.30 0.15 265)", fontFamily: "'Lato', sans-serif" }}>
+                Secure checkout powered by Stripe. Accepts cards, Apple Pay &amp; Google Pay.
               </p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setPaymentMethod("stripe")}
-                  className="flex flex-col items-center gap-1 py-2.5 px-3 rounded border transition-all"
-                  style={{
-                    background: paymentMethod === "stripe" ? "oklch(0.97 0.04 265)" : "transparent",
-                    borderColor: paymentMethod === "stripe" ? "oklch(0.55 0.20 265)" : "oklch(0.82 0.015 80)",
-                    color: paymentMethod === "stripe" ? "oklch(0.35 0.18 265)" : "oklch(0.42 0.03 30)",
-                  }}
-                >
-                  <CreditCard size={16} />
-                  <span className="text-xs font-semibold" style={{ fontFamily: "'Oswald', sans-serif" }}>
-                    Credit / Debit Card
-                  </span>
-                  <span className="text-xs opacity-70">via Stripe</span>
-                </button>
-                <button
-                  onClick={() => setPaymentMethod("clover")}
-                  className="flex flex-col items-center gap-1 py-2.5 px-3 rounded border transition-all"
-                  style={{
-                    background: paymentMethod === "clover" ? "oklch(0.97 0.04 145)" : "transparent",
-                    borderColor: paymentMethod === "clover" ? "oklch(0.55 0.15 145)" : "oklch(0.82 0.015 80)",
-                    color: paymentMethod === "clover" ? "oklch(0.30 0.12 145)" : "oklch(0.42 0.03 30)",
-                  }}
-                >
-                  <CreditCard size={16} />
-                  <span className="text-xs font-semibold" style={{ fontFamily: "'Oswald', sans-serif" }}>
-                    Clover Checkout
-                  </span>
-                  <span className="text-xs opacity-70">via Clover POS</span>
-                </button>
-              </div>
-
-              {/* Payment info note */}
-              {paymentMethod === "stripe" ? (
-                <div className="flex items-center gap-2 px-3 py-2 rounded border mt-2"
-                  style={{ borderColor: "oklch(0.70 0.20 265)", background: "oklch(0.97 0.04 265)" }}>
-                  <Lock size={12} style={{ color: "oklch(0.38 0.18 265)", flexShrink: 0 }} />
-                  <p className="text-xs" style={{ color: "oklch(0.30 0.15 265)", fontFamily: "'Lato', sans-serif" }}>
-                    Secure checkout powered by Stripe. Accepts cards, Apple Pay, Google Pay &amp; more.
-                  </p>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 px-3 py-2 rounded border mt-2"
-                  style={{ borderColor: "oklch(0.70 0.15 145)", background: "oklch(0.97 0.03 145)" }}>
-                  <CreditCard size={12} style={{ color: "oklch(0.38 0.12 145)", flexShrink: 0 }} />
-                  <p className="text-xs" style={{ color: "oklch(0.30 0.10 145)", fontFamily: "'Lato', sans-serif" }}>
-                    You'll be redirected to Clover's secure checkout page to complete your payment.
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* Accepted cards row */}
@@ -763,18 +665,16 @@ export default function CartDrawer() {
               style={{
                 background: isLoading || (orderType === "delivery" && isFetchingUberQuote)
                   ? "oklch(0.55 0.03 30)"
-                  : paymentMethod === "stripe"
-                  ? "oklch(0.38 0.18 265)"
-                  : "oklch(0.38 0.12 145)",
+                  : "oklch(0.38 0.18 265)",
                 color: "white",
                 fontFamily: "'Oswald', sans-serif",
                 letterSpacing: "0.05em",
               }}
             >
-              {isLoading ? (
+                {isLoading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  {paymentMethod === "stripe" ? "Redirecting to Stripe..." : "Redirecting to Clover..."}
+                  Redirecting to Stripe...
                 </>
               ) : orderType === "delivery" && isFetchingUberQuote ? (
                 <>
@@ -790,13 +690,9 @@ export default function CartDrawer() {
               )}
             </button>
             <p className="text-center text-xs" style={{ color: "oklch(0.60 0.03 30)" }}>
-              {paymentMethod === "stripe"
-                ? orderType === "delivery"
-                  ? "Delivery by Uber Direct · Secured by Stripe"
-                  : "Secured by Stripe · PCI Compliant"
-                : orderType === "delivery"
-                ? "Delivery by Uber Direct · Secured by Clover"
-                : "Secured by Clover · PCI Compliant"}
+              {orderType === "delivery"
+                ? "Delivery by Uber Direct · Secured by Stripe"
+                : "Secured by Stripe · PCI Compliant"}
             </p>
           </div>
         )}
