@@ -218,15 +218,6 @@ export default function NapoliNavbar() {
           {/* Mobile: cart + hamburger */}
           <div className="md:hidden flex items-center gap-2">
             <button
-              onClick={() => setOrderPopupOpen((v) => !v)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold"
-              style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
-            >
-              <ShoppingBag size={13} />
-              Order
-              <ChevronDown size={11} style={{ transform: orderPopupOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
-            </button>
-            <button
               onClick={() => openCartWithType("pickup")}
               className="relative p-2 rounded"
               style={{ color: "var(--napoli-red)" }}
