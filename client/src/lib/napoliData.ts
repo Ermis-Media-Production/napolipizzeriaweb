@@ -310,17 +310,21 @@ export const SUBS = {
 };
 
 // ── BURGER CUSTOMIZER DATA ────────────────────────────────
+/** 1 sauce included free. Each additional sauce: $0.50 */
+export const SAUCE_EXTRA_PRICE = 0.50;
+export const SAUCES_FREE_COUNT = 1;
+
 export const BURGER_SAUCES = [
-  { name: "Ketchup", price: 0 },
-  { name: "Mustard", price: 0 },
-  { name: "Mayo", price: 0 },
-  { name: "BBQ Sauce", price: 0 },
-  { name: "Ranch", price: 0 },
-  { name: "1000 Island", price: 0 },
-  { name: "Hot Sauce", price: 0 },
-  { name: "Chipotle Mayo", price: 0 },
-  { name: "Garlic Aioli", price: 0 },
-  { name: "No Sauce", price: 0 },
+  { name: "Ketchup" },
+  { name: "Mustard" },
+  { name: "Mayo" },
+  { name: "BBQ Sauce" },
+  { name: "Ranch" },
+  { name: "1000 Island" },
+  { name: "Hot Sauce" },
+  { name: "Chipotle Mayo" },
+  { name: "Garlic Aioli" },
+  { name: "No Sauce" },
 ];
 
 export const BURGER_FRIES = [
