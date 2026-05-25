@@ -224,6 +224,105 @@ export const stripeRouter = router({
     }),
 
   /**
+   * Create a PaymentIntent for embedded Stripe Elements checkout.
+   * Returns a clientSecret for the frontend to confirm the payment.
+   */
+  createPaymentIntent: publicProcedure
+    .input(
+      z.object({
+        items: z.array(CartItemSchema).min(1),
+        customerName: z.string().optional(),
+        customerPhone: z.string().optional(),
+        customerEmail: z.string().optional(),
+        orderType: z.enum(["delivery", "pickup", "dine-in"]).default("pickup"),
+        scheduledAt: z.number().optional(),
+        isAsap: z.boolean().optional(),
+        specialInstructions: z.string().optional(),
+        uberQuoteId: z.string().optional(),
+        dropoffAddress: z.string().optional(),
+        dropoffCity: z.string().optional(),
+        dropoffState: z.string().optional(),
+        dropoffZip: z.string().optional(),
+        dropoffNotes: z.string().optional(),
+        couponCode: z.string().optional(),
+        discountPercent: z.number().int().min(1).max(100).optional(),
+        subtotal: z.number().optional(),
+        discountAmount: z.number().optional(),
+        deliveryFeeCents: z.number().int().min(0).optional(),
+        convenienceFeeCents: z.number().int().min(0).optional(),
+        salesTaxCents: z.number().int().min(0).optional(),
+        convenienceFee: z.number().optional(),
+        salesTax: z.number().optional(),
+        total: z.number().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const stripe = getStripe();
+
+      // Compute total in cents
+      const itemsCents = input.items.reduce((sum, item) => {
+        const discountMultiplier = input.discountPercent ? (100 - input.discountPercent) / 100 : 1;
+        return sum + Math.round(item.price * 100 * discountMultiplier) * item.quantity;
+      }, 0);
+      const totalCents =
+        itemsCents +
+        (input.convenienceFeeCents ?? 0) +
+        (input.salesTaxCents ?? 0) +
+        (input.deliveryFeeCents ?? 0);
+
+      const intent = await stripe.paymentIntents.create({
+        amount: totalCents,
+        currency: "usd",
+        automatic_payment_methods: { enabled: true },
+        metadata: {
+          orderType: input.orderType,
+          customerName: input.customerName ?? "",
+          customerPhone: input.customerPhone ?? "",
+          customerEmail: input.customerEmail ?? "",
+          restaurantName: "The Original Napoli Pizzeria",
+          cartItems: JSON.stringify(
+            input.items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category ?? "", description: i.description ?? "" }))
+          ),
+          scheduledAt: input.scheduledAt ? String(input.scheduledAt) : "",
+          isAsap: input.isAsap ? "true" : "false",
+          specialInstructions: input.specialInstructions ?? "",
+          uberQuoteId: input.uberQuoteId ?? "",
+          dropoffAddress: input.dropoffAddress ?? "",
+          dropoffCity: input.dropoffCity ?? "",
+          dropoffState: input.dropoffState ?? "",
+          dropoffZip: input.dropoffZip ?? "",
+          dropoffNotes: input.dropoffNotes ?? "",
+          couponCode: input.couponCode ?? "",
+          discountPercent: input.discountPercent ? String(input.discountPercent) : "",
+          subtotal: input.subtotal ? String(input.subtotal) : "",
+          discountAmount: input.discountAmount ? String(input.discountAmount) : "0",
+          convenienceFee: input.convenienceFee ? String(input.convenienceFee) : "0",
+          salesTax: input.salesTax ? String(input.salesTax) : "0",
+          total: input.total ? String(input.total) : String(totalCents / 100),
+        },
+      });
+
+      return { clientSecret: intent.client_secret!, paymentIntentId: intent.id };
+    }),
+
+  /**
+   * Look up the orderRef for a completed PaymentIntent.
+   * Used by OrderSuccess after embedded checkout.
+   */
+  getOrderRefByPaymentIntent: publicProcedure
+    .input(z.object({ paymentIntentId: z.string() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { orderRef: null };
+      const [order] = await db
+        .select({ orderRef: scheduledOrders.orderRef })
+        .from(scheduledOrders)
+        .where(eq(scheduledOrders.transactionId, input.paymentIntentId))
+        .limit(1);
+      return { orderRef: order?.orderRef ?? null };
+    }),
+
+  /**
    * Retrieve a checkout session to verify payment status.
    */
   getSession: publicProcedure
@@ -274,6 +373,35 @@ export const stripeRouter = router({
         .limit(1);
 
       return { orderRef: order?.orderRef ?? null };
+    }),
+
+  /**
+   * Retrieve PaymentIntent details for the embedded checkout flow.
+   * Returns the same shape as getSession so OrderSuccess can use either.
+   */
+  getPaymentIntentDetails: publicProcedure
+    .input(z.object({ paymentIntentId: z.string() }))
+    .query(async ({ input }) => {
+      const stripe = getStripe();
+      const intent = await stripe.paymentIntents.retrieve(input.paymentIntentId);
+      const meta = intent.metadata ?? {};
+      return {
+        status: intent.status === "succeeded" ? "paid" : intent.status,
+        customerName: meta.customerName || null,
+        customerPhone: meta.customerPhone || null,
+        customerEmail: meta.customerEmail || null,
+        amountTotal: intent.amount ? intent.amount / 100 : 0,
+        orderType: (meta.orderType ?? "pickup") as "delivery" | "pickup" | "dine-in",
+        uberQuoteId: meta.uberQuoteId || null,
+        dropoffAddress: meta.dropoffAddress || null,
+        dropoffCity: meta.dropoffCity || null,
+        dropoffState: meta.dropoffState || null,
+        dropoffZip: meta.dropoffZip || null,
+        dropoffNotes: meta.dropoffNotes || null,
+        cartItems: meta.cartItems
+          ? (JSON.parse(meta.cartItems) as Array<{ id: string; name: string; price: number; quantity: number; category?: string; description?: string }>)
+          : [],
+      };
     }),
 });
 
@@ -413,6 +541,111 @@ Stripe Session: ${session.id}`,
   }
 }
 
+// ─── Order creation from PaymentIntent (embedded Elements flow) ──────────────
+async function createScheduledOrderFromPaymentIntent(intent: Stripe.PaymentIntent): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const meta = intent.metadata ?? {};
+
+  let items: Array<{ id: string; name: string; price: number; quantity: number; category?: string; description?: string }> = [];
+  try {
+    items = meta.cartItems ? JSON.parse(meta.cartItems) : [];
+  } catch {
+    console.error("[Stripe PI] Failed to parse cartItems from metadata");
+    return null;
+  }
+
+  if (!items.length) return null;
+
+  const customerName = meta.customerName || "Customer";
+  const customerPhone = meta.customerPhone || "N/A";
+  const customerEmail = meta.customerEmail || null;
+  const orderType = (meta.orderType ?? "pickup") as "delivery" | "pickup" | "dine-in";
+  const isAsap = meta.isAsap === "true";
+  const scheduledAt = meta.scheduledAt ? parseInt(meta.scheduledAt) : Date.now();
+  const deliveryAddress = meta.dropoffAddress
+    ? `${meta.dropoffAddress}, ${meta.dropoffCity ?? ""}, ${meta.dropoffState ?? ""} ${meta.dropoffZip ?? ""}`.trim()
+    : null;
+
+  const subtotal = meta.subtotal ? parseFloat(meta.subtotal) : (intent.amount ?? 0) / 100;
+  const discountAmount = meta.discountAmount ? parseFloat(meta.discountAmount) : 0;
+  const convenienceFee = meta.convenienceFee ? parseFloat(meta.convenienceFee) : 0;
+  const salesTax = meta.salesTax ? parseFloat(meta.salesTax) : 0;
+  const total = meta.total ? parseFloat(meta.total) : (intent.amount ?? 0) / 100;
+  const pizzaCount = countPizzas(items);
+
+  try {
+    const [insertResult] = await db.insert(scheduledOrders).values({
+      orderRef: `NPZ-TEMP-${Date.now()}`,
+      status: "confirmed",
+      orderType,
+      scheduledAt,
+      isAsap,
+      customerName,
+      customerPhone,
+      customerEmail,
+      deliveryAddress,
+      items,
+      pizzaCount,
+      subtotal: String(subtotal),
+      discountAmount: String(discountAmount),
+      convenienceFee: String(convenienceFee),
+      salesTax: String(salesTax),
+      total: String(total),
+      couponCode: meta.couponCode || null,
+      transactionId: intent.id,
+      authCode: null,
+      refundedAmount: "0",
+      specialInstructions: meta.specialInstructions || null,
+    });
+
+    const orderId = (insertResult as { insertId: number }).insertId;
+    const orderRef = generateOrderRef(orderId);
+
+    await db.update(scheduledOrders).set({ orderRef }).where(eq(scheduledOrders.id, orderId));
+
+    for (const item of items) {
+      const isPizza =
+        item.category === "pizza" || item.category === "specialty" || item.category === "calzone" ||
+        item.name?.toLowerCase().includes("pizza") || item.name?.toLowerCase().includes("calzone");
+      await db.insert(orderItems).values({
+        orderId,
+        name: item.name,
+        description: item.description || null,
+        unitPrice: String(item.price),
+        quantity: item.quantity ?? 1,
+        lineTotal: String(item.price * (item.quantity ?? 1)),
+        isPizza,
+        status: "active",
+        refundedAmount: "0",
+      });
+    }
+
+    await notifyOwner({
+      title: `🛒 New Order ${orderRef} — $${total.toFixed(2)} (${orderType})`,
+      content: `Customer: ${customerName} | Phone: ${customerPhone}\nScheduled: ${isAsap ? "ASAP" : new Date(scheduledAt).toLocaleString("en-US", { timeZone: STORE_TIMEZONE })}\nItems: ${items.map((i) => `${i.quantity ?? 1}x ${i.name}`).join(", ")}\nTotal: $${total.toFixed(2)}\nPaymentIntent: ${intent.id}`,
+    }).catch(() => {});
+
+    // Push to Clover POS
+    if (items.length > 0 && intent.amount) {
+      pushOrderToClover({
+        items: items.map((i) => ({ name: i.name, price: i.price, quantity: i.quantity })),
+        orderType,
+        customerName: customerName || undefined,
+        customerPhone: customerPhone || undefined,
+        externalId: intent.id,
+        totalCents: intent.amount,
+      }).catch((err) => console.error("[Clover] Failed to push PI order:", err));
+    }
+
+    return orderRef;
+  } catch (err) {
+    console.error("[Stripe PI] Failed to create scheduled order:", err);
+    return null;
+  }
+}
+
 // ─── Raw Express webhook handler (bypasses tRPC body parsing) ─────────────────
 export async function handleStripeWebhook(req: Request, res: Response) {
   const sig = req.headers["stripe-signature"];
@@ -488,6 +721,20 @@ export async function handleStripeWebhook(req: Request, res: Response) {
       } catch (err) {
         console.error("[Clover] Error parsing Stripe session metadata:", err);
       }
+      break;
+    }
+    case "payment_intent.succeeded": {
+      const intent = event.data.object as Stripe.PaymentIntent;
+      console.log(`[Stripe] PaymentIntent succeeded: ${intent.id}`);
+
+      // Idempotency guard
+      const isNewPI = await markWebhookEventProcessed(event.id);
+      if (!isNewPI) {
+        console.log(`[Stripe] Webhook event ${event.id} already processed — skipping`);
+        break;
+      }
+
+      await createScheduledOrderFromPaymentIntent(intent);
       break;
     }
     case "payment_intent.payment_failed": {

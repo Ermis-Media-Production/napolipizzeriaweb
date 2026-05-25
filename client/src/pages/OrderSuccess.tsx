@@ -12,6 +12,7 @@ export default function OrderSuccess() {
   const { clearCart } = useCart();
 
   const [stripeSessionId, setStripeSessionId] = useState<string | null>(null);
+  const [stripePaymentIntentId, setStripePaymentIntentId] = useState<string | null>(null);
   const [orderRef, setOrderRef] = useState<string | null>(null);
 
   // Delivery dispatch state
@@ -23,16 +24,18 @@ export default function OrderSuccess() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sid = params.get("session_id");
+    const pi = params.get("payment_intent");
     const payment = params.get("payment");
 
-    if (sid && payment === "stripe") {
-      setStripeSessionId(sid);
+    if (payment === "stripe") {
+      if (sid) setStripeSessionId(sid);
+      if (pi) setStripePaymentIntentId(pi);
       clearCart();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Poll for order ref after Stripe payment (webhook creates it asynchronously)
+  // Poll for order ref after Stripe Checkout Session (legacy redirect flow)
   const { data: stripeOrderData, isLoading: stripeOrderLoading } = trpc.stripe.getOrderRefBySession.useQuery(
     { sessionId: stripeSessionId! },
     {
@@ -46,33 +49,55 @@ export default function OrderSuccess() {
     }
   );
 
-  // Stripe session details for display
+  // Poll for order ref after embedded PaymentIntent flow
+  const { data: piOrderData } = trpc.stripe.getOrderRefByPaymentIntent.useQuery(
+    { paymentIntentId: stripePaymentIntentId! },
+    {
+      enabled: !!stripePaymentIntentId,
+      refetchInterval: (query) => {
+        const d = query.state.data;
+        if (d?.orderRef) return false;
+        return 3000;
+      },
+      refetchIntervalInBackground: false,
+    }
+  );
+
+  // Stripe session details for display (Checkout Session flow)
   const { data: stripeSession } = trpc.stripe.getSession.useQuery(
     { sessionId: stripeSessionId! },
     { enabled: !!stripeSessionId }
   );
 
-  // Set orderRef when Stripe webhook has confirmed the order
+  // Stripe PaymentIntent details for display (embedded flow)
+  const { data: piSession } = trpc.stripe.getPaymentIntentDetails.useQuery(
+    { paymentIntentId: stripePaymentIntentId! },
+    { enabled: !!stripePaymentIntentId }
+  );
+
+  // Merge session data — prefer PaymentIntent details when available
+  const activeSession = piSession ?? stripeSession;
+
+  // Set orderRef when webhook has confirmed the order
   useEffect(() => {
-    if (stripeOrderData?.orderRef && !orderRef) {
-      setOrderRef(stripeOrderData.orderRef);
-    }
-  }, [stripeOrderData, orderRef]);
+    const ref = piOrderData?.orderRef ?? stripeOrderData?.orderRef;
+    if (ref && !orderRef) setOrderRef(ref);
+  }, [piOrderData, stripeOrderData, orderRef]);
 
   const createUberDelivery = trpc.uber.createDelivery.useMutation();
 
   // Auto-dispatch Uber delivery when Stripe order is confirmed
   useEffect(() => {
     if (
-      !stripeSession ||
-      stripeSession.status !== "paid" ||
-      stripeSession.orderType !== "delivery" ||
-      !stripeSession.dropoffAddress ||
-      !stripeSession.uberQuoteId ||
+      !activeSession ||
+      activeSession.status !== "paid" ||
+      activeSession.orderType !== "delivery" ||
+      !activeSession.dropoffAddress ||
+      !activeSession.uberQuoteId ||
       dispatchedRef.current
     ) return;
 
-    const storageKey = `delivery_dispatched_stripe_${stripeSessionId}`;
+    const storageKey = `delivery_dispatched_stripe_${stripeSessionId ?? stripePaymentIntentId}`;
     const alreadyDispatched = sessionStorage.getItem(storageKey);
 
     if (alreadyDispatched) {
@@ -90,15 +115,15 @@ export default function OrderSuccess() {
 
     createUberDelivery.mutate(
       {
-        quoteId: stripeSession.uberQuoteId,
-        dropoffAddress: stripeSession.dropoffAddress,
-        dropoffCity: stripeSession.dropoffCity ?? "North Las Vegas",
-        dropoffState: stripeSession.dropoffState ?? "NV",
-        dropoffZip: stripeSession.dropoffZip ?? "89032",
-        dropoffName: stripeSession.customerName ?? "Customer",
-        dropoffPhone: stripeSession.customerPhone ?? "+17025550000",
-        orderItems: (stripeSession.cartItems ?? []).map((i: { name: string; quantity: number }) => ({ name: i.name, quantity: i.quantity })),
-        externalId: stripeSessionId ?? undefined,
+        quoteId: activeSession.uberQuoteId,
+        dropoffAddress: activeSession.dropoffAddress,
+        dropoffCity: activeSession.dropoffCity ?? "North Las Vegas",
+        dropoffState: activeSession.dropoffState ?? "NV",
+        dropoffZip: activeSession.dropoffZip ?? "89032",
+        dropoffName: activeSession.customerName ?? "Customer",
+        dropoffPhone: activeSession.customerPhone ?? "+17025550000",
+        orderItems: (activeSession.cartItems ?? []).map((i: { name: string; quantity: number }) => ({ name: i.name, quantity: i.quantity })),
+        externalId: stripeSessionId ?? stripePaymentIntentId ?? undefined,
       },
       {
         onSuccess: (data) => {
@@ -117,13 +142,15 @@ export default function OrderSuccess() {
       }
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stripeSession]);
+  }, [activeSession]);
 
   // Derived display values
-  const isLoading = !!stripeSessionId && stripeOrderLoading && !stripeOrderData;
-  const isPending = !!stripeSessionId && !!stripeOrderData && !stripeOrderData.orderRef;
-  const hasData = !!stripeSession;
-  const isDelivery = stripeSession?.orderType === "delivery";
+  const isLoading = (!!stripeSessionId && stripeOrderLoading && !stripeOrderData) ||
+    (!!stripePaymentIntentId && !piOrderData && !piSession);
+  const isPending = (!!stripeSessionId && !!stripeOrderData && !stripeOrderData.orderRef) ||
+    (!!stripePaymentIntentId && !!piOrderData && !piOrderData.orderRef);
+  const hasData = !!activeSession;
+  const isDelivery = activeSession?.orderType === "delivery";
   const hasDelivery = !!trackingUrl;
 
   return (
@@ -196,39 +223,39 @@ export default function OrderSuccess() {
                 style={{ background: "oklch(0.97 0.012 80)", borderColor: "oklch(0.88 0.015 80)" }}
               >
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  {stripeSession?.customerName && (
+                  {activeSession?.customerName && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
                         Name
                       </p>
-                      <p style={{ color: "oklch(0.22 0.04 30)" }}>{stripeSession.customerName}</p>
+                      <p style={{ color: "oklch(0.22 0.04 30)" }}>{activeSession.customerName}</p>
                     </div>
                   )}
-                  {stripeSessionId && (
+                  {(stripeSessionId ?? stripePaymentIntentId) && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
                         Payment ID
                       </p>
                       <p className="text-xs truncate" style={{ color: "oklch(0.42 0.03 30)" }}>
-                        {stripeSessionId}
+                        {stripePaymentIntentId ?? stripeSessionId}
                       </p>
                     </div>
                   )}
-                  {stripeSession?.orderType && (
+                  {activeSession?.orderType && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
                         Order Type
                       </p>
-                      <p className="capitalize" style={{ color: "oklch(0.22 0.04 30)" }}>{stripeSession.orderType}</p>
+                      <p className="capitalize" style={{ color: "oklch(0.22 0.04 30)" }}>{activeSession.orderType}</p>
                     </div>
                   )}
-                  {stripeSession?.amountTotal != null && (
+                  {activeSession?.amountTotal != null && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
                         Total Paid
                       </p>
                       <p className="font-bold" style={{ color: "var(--napoli-red)" }}>
-                        ${Number(stripeSession.amountTotal).toFixed(2)}
+                        ${Number(activeSession.amountTotal).toFixed(2)}
                       </p>
                     </div>
                   )}
