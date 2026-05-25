@@ -1323,18 +1323,9 @@ export default function Menu() {
           <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
             <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{BURGERS.note}</p>
           </div>
-          <div className="px-5 py-5 flex flex-col items-center gap-3">
-            <p className="text-sm napoli-body text-center" style={{ color: "oklch(0.52 0.03 30)" }}>
-              {BURGERS.items.length} burgers available · from ${parsePrice(BURGERS.items[0].half)?.toFixed(2)}
-            </p>
-            <button
-              onClick={() => { setBurgerModalKey(k => k + 1); setBurgerTrigger({ open: true }); }}
-              className="flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold napoli-label transition-all active:scale-95 hover:opacity-90"
-              style={{ background: "var(--napoli-red)", color: "white" }}
-            >
-              🍔 Order Burgers
-            </button>
-          </div>
+          {BURGERS.items.map((item) => (
+            <BurgerRow key={item.name} item={item} />
+          ))}
         </MenuCard>
 
         {/* ── SALADS ─────────────────────────────────────────── */}

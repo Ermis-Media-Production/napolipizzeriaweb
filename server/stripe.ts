@@ -314,12 +314,29 @@ async function createScheduledOrderFromStripe(session: Stripe.Checkout.Session):
 
   const pizzaCount = countPizzas(items);
 
+  // Clamp scheduledAt to business hours (10 AM – 10 PM LA time)
+  // If the stored scheduledAt is outside hours (shouldn't happen via UI, but guard anyway)
+  const STORE_TZ = "America/Los_Angeles";
+  const slotLocal = new Date(new Date(scheduledAt).toLocaleString("en-US", { timeZone: STORE_TZ }));
+  const slotHour = slotLocal.getHours();
+  const OPEN_HOUR = 10;
+  const CLOSE_HOUR = 22;
+  let safeScheduledAt = scheduledAt;
+  if (!isAsap && (slotHour < OPEN_HOUR || slotHour >= CLOSE_HOUR)) {
+    // Clamp to next 10 AM opening
+    const nextOpen = new Date(slotLocal);
+    if (slotHour >= CLOSE_HOUR) nextOpen.setDate(nextOpen.getDate() + 1);
+    nextOpen.setHours(OPEN_HOUR, 0, 0, 0);
+    safeScheduledAt = nextOpen.getTime();
+    console.warn(`[Stripe] scheduledAt ${scheduledAt} was outside business hours; clamped to ${safeScheduledAt}`);
+  }
+
   try {
     const [insertResult] = await db.insert(scheduledOrders).values({
       orderRef: `NPZ-TEMP-${Date.now()}`,
       status: "confirmed",
       orderType,
-      scheduledAt,
+      scheduledAt: safeScheduledAt,
       isAsap,
       customerName,
       customerPhone,

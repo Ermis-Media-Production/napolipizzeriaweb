@@ -254,11 +254,42 @@ export const ordersRouter = router({
       const db = await requireDb();
       const pizzaCount = countPizzas(input.items);
 
-      // Verify capacity for the chosen slot (hour-level check)
+      // Validate that the scheduled time is within business hours (10 AM – 10 PM)
+      // ASAP orders are only allowed when the store is currently open
       const slotDate = new Date(input.scheduledAt);
-      const slotDateLocal = new Date(
+      const slotLocal = new Date(
         slotDate.toLocaleString("en-US", { timeZone: STORE_TIMEZONE })
       );
+      const slotHour = slotLocal.getHours();
+
+      if (!input.isAsap) {
+        // Scheduled orders must fall within operating hours
+        if (slotHour < STORE_OPEN_HOUR || slotHour >= STORE_CLOSE_HOUR) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Scheduled orders are only accepted between 10:00 AM and 10:00 PM. For events outside these hours, please contact us about catering.`,
+          });
+        }
+        // Must be in the future (at least 15 min lead time)
+        const storeNow = nowInStoreTimezone();
+        if (input.scheduledAt < storeNow.getTime() + 15 * 60 * 1000) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Please schedule your order at least 15 minutes in advance.`,
+          });
+        }
+      } else {
+        // ASAP orders require the store to be currently open
+        if (!isStoreOpen()) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `We're currently closed. Our hours are 10:00 AM – 10:00 PM. Please schedule your order for when we open, or contact us about catering.`,
+          });
+        }
+      }
+
+      // Verify capacity for the chosen slot (hour-level check)
+      const slotDateLocal = slotLocal;
 
       // Hour window: from start of that hour to end of that hour
       const hourStart = new Date(slotDateLocal);

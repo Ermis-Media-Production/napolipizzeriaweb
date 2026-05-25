@@ -184,6 +184,16 @@ export function OrderScheduler({ value, onChange }: OrderSchedulerProps) {
           </button>
         )}
 
+        {/* Business hours notice */}
+        <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-amber-50 border border-amber-200">
+          <AlertCircle className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
+          <p className="text-xs text-amber-700">
+            Scheduled orders are available <strong>10:00 AM – 10:00 PM</strong> daily.
+            For events outside these hours, please visit our{" "}
+            <a href="/catering" className="underline font-medium">Catering</a> page.
+          </p>
+        </div>
+
         {/* Day picker */}
         <div>
           <p className="text-xs font-medium text-gray-500 mb-2">Select a date</p>
