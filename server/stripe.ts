@@ -170,7 +170,10 @@ export const stripeRouter = router({
       }
 
       const session = await stripe.checkout.sessions.create({
-        payment_method_types: ["card"],
+        // Omitting payment_method_types lets Stripe Dashboard control which methods
+        // are shown, including Apple Pay, Google Pay, Link, and card.
+        // Apple Pay and Google Pay are automatically shown when available.
+        payment_method_types: ["card", "link", "amazon_pay", "cashapp"],
         line_items: lineItems,
         mode: "payment",
         success_url: input.successUrl,
