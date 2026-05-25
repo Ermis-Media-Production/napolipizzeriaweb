@@ -19,6 +19,7 @@ import BurgerCustomizerModal, { type BurgerTrigger } from "@/components/BurgerCu
 import AppetizersCustomizerModal, { type AppetizersModalTrigger, APPETIZER_MODAL_ITEMS } from "@/components/AppetizersCustomizerModal";
 import SaladsCustomizerModal, { type SaladsModalTrigger, SALAD_MODAL_ITEMS } from "@/components/SaladsCustomizerModal";
 import PastaCustomizerModal, { type PastaModalTrigger, PASTA_MODAL_ITEMS } from "@/components/PastaCustomizerModal";
+import GlutenFreePizzaModal from "@/components/GlutenFreePizzaModal";
 import {
   MENU_CATEGORIES, APPETIZERS, LUNCH_SPECIALS, PIZZA_SIZES, PIZZA_BASE_PRICES,
   PIZZA_SPECIALS, PIZZA_30_TOPPINGS, STUFFED_DOUGH, WINGS, PASTA, SUBS,
@@ -580,6 +581,7 @@ export default function Menu() {
   const [appetizersModalTrigger, setAppetizersModalTrigger] = useState<AppetizersModalTrigger | null>(null);
   const [saladsModalTrigger, setSaladsModalTrigger] = useState<SaladsModalTrigger | null>(null);
   const [pastaModalTrigger, setPastaModalTrigger] = useState<PastaModalTrigger | null>(null);
+  const [glutenFreeModalOpen, setGlutenFreeModalOpen] = useState(false);
 
   const scrollTo = (id: string) => {
     setActiveCategory(id);
@@ -779,10 +781,7 @@ export default function Menu() {
               <p className="napoli-price text-sm mt-1" style={{ color: "var(--napoli-red)" }}>$12.75 · Add Topping $2.75</p>
             </div>
             <button
-              onClick={() => {
-                addItem({ id: `gluten-free-pizza-${Date.now()}`, name: 'Gluten Free Pizza 14"', price: 12.75, quantity: 1, category: "pizza" });
-                toast.success('Gluten Free Pizza 14" added to cart', { description: "Add toppings at checkout or call us!" });
-              }}
+              onClick={() => setGlutenFreeModalOpen(true)}
               className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
               style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
             >
@@ -1116,6 +1115,12 @@ export default function Menu() {
         <PastaCustomizerModal
           trigger={pastaModalTrigger}
           onClose={() => setPastaModalTrigger(null)}
+        />
+
+        {/* Gluten Free Pizza Modal */}
+        <GlutenFreePizzaModal
+          isOpen={glutenFreeModalOpen}
+          onClose={() => setGlutenFreeModalOpen(false)}
         />
 
         {/* ── PASTA ──────────────────────────────────────────── */}

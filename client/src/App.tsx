@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { CartProvider } from "./contexts/CartContext";
 import CartDrawer from "./components/CartDrawer";
+import FloatingCart from "./components/FloatingCart";
 import Home from "./pages/Home";
 import Menu from "./pages/Menu";
 import Specials from "./pages/Specials";
@@ -43,6 +44,7 @@ function App() {
             <Toaster richColors position="top-right" />
             <Router />
             <CartDrawer />
+            <FloatingCart />
           </TooltipProvider>
         </CartProvider>
       </ThemeProvider>
