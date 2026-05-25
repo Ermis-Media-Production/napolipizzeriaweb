@@ -13,8 +13,9 @@ import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./db";
 import { orderItems, scheduledOrders } from "../drizzle/schema";
-import { publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
+import { sendSms } from "./_core/sms";
 import { TRPCError } from "@trpc/server";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -474,5 +475,73 @@ Transaction ID: ${input.transactionId ?? "N/A"}`,
               .offset(input.offset);
 
       return orders;
+    }),
+
+  /**
+   * Mark an order as ready (pickup) or out for delivery.
+   * Sends an SMS notification to the customer.
+   * Admin-only action.
+   */
+  markOrderReady: adminProcedure
+    .input(
+      z.object({
+        orderRef: z.string(),
+        readyType: z.enum(["pickup", "delivery", "dine-in"]).default("pickup"),
+        origin: z.string().optional(), // frontend origin for tracking URL
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await requireDb();
+
+      const [order] = await db
+        .select()
+        .from(scheduledOrders)
+        .where(eq(scheduledOrders.orderRef, input.orderRef))
+        .limit(1);
+
+      if (!order) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+      }
+
+      await db
+        .update(scheduledOrders)
+        .set({ status: "ready" })
+        .where(eq(scheduledOrders.orderRef, input.orderRef));
+
+      // Send SMS to customer
+      let smsSent = false;
+      if (order.customerPhone) {
+        const origin = input.origin ?? "https://napolipizzerianorthlasvegas.com";
+        const trackingUrl = `${origin}/my-order/${order.orderRef}`;
+        const firstName = (order.customerName ?? "Customer").trim().split(/\s+/)[0];
+
+        let smsBody: string;
+        if (input.readyType === "delivery") {
+          smsBody = [
+            `Hi ${firstName}! 🚚 Your Napoli Pizzeria order is on its way!`,
+            `Order: ${order.orderRef}`,
+            `Track your order: ${trackingUrl}`,
+            `Questions? Call us: (702) 544-8930`,
+          ].join("\n");
+        } else if (order.orderType === "dine-in") {
+          smsBody = [
+            `Hi ${firstName}! 🍕 Your Napoli Pizzeria order is ready at your table!`,
+            `Order: ${order.orderRef}`,
+            `Enjoy your meal! Questions? (702) 544-8930`,
+          ].join("\n");
+        } else {
+          smsBody = [
+            `Hi ${firstName}! 🍕 Your Napoli Pizzeria order is ready for pickup!`,
+            `Order: ${order.orderRef}`,
+            `We're at 3131 W Craig Rd, North Las Vegas, NV 89032`,
+            `Track your order: ${trackingUrl}`,
+            `Questions? Call us: (702) 544-8930`,
+          ].join("\n");
+        }
+
+        smsSent = await sendSms(order.customerPhone, smsBody).catch(() => false);
+      }
+
+      return { success: true, smsSent };
     }),
 });

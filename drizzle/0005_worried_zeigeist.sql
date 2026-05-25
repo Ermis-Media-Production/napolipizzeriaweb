@@ -1,0 +1,1 @@
+ALTER TABLE `scheduledOrders` ADD `cloverOrderId` varchar(128);

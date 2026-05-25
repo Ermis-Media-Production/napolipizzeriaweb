@@ -172,17 +172,21 @@ async function getTableTenderId(): Promise<string | null> {
       res.data?.elements ?? [];
 
     // Try exact match first, then partial match
+    // Try multiple name variations: "Table", "Tables", "Tab", "Dine In", "Dine-In"
+    const TABLE_PATTERNS = ["table", "tab", "dine in", "dine-in", "dinein"];
     const table =
       tenders.find((t) => t.label?.toLowerCase() === "table") ??
-      tenders.find((t) => t.label?.toLowerCase().includes("table")) ??
-      tenders.find((t) => t.labelKey?.toLowerCase().includes("table"));
+      tenders.find((t) => TABLE_PATTERNS.some((p) => t.label?.toLowerCase() === p)) ??
+      tenders.find((t) => TABLE_PATTERNS.some((p) => t.label?.toLowerCase().includes(p))) ??
+      tenders.find((t) => TABLE_PATTERNS.some((p) => t.labelKey?.toLowerCase().includes(p)));
 
     if (table) {
-      console.log(`[Clover] Found 'Table' tender: ${table.id} (${table.label})`);
+      console.log(`[Clover] Found 'Table' tender: ${table.id} ("${table.label}")`);
       return table.id;
     }
 
-    console.warn("[Clover] 'Table' tender not found. Available tenders:", tenders.map((t) => t.label).join(", "));
+    console.warn("[Clover] No 'Table' tender found. Available tenders:", tenders.map((t) => `"${t.label}" (${t.labelKey ?? "no key"})`).join(", "));
+    console.warn("[Clover] Orders will be created without a tender assignment. Check Clover Dashboard → Setup → Tenders.");
     return null;
   } catch (err) {
     console.error("[Clover] Failed to fetch tenders:", err);

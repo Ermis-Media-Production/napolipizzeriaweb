@@ -472,7 +472,7 @@ export async function handleCloverWebhook(body: unknown): Promise<void> {
     .from(orderItems)
     .where(eq(orderItems.orderId, order.id));
 
-  // Push to Clover POS printers (fire-and-forget)
+  // Push to Clover POS printers and save the Clover order ID
   pushOrderToClover({
     items: items.map((i) => ({
       name: i.name,
@@ -486,6 +486,20 @@ export async function handleCloverWebhook(body: unknown): Promise<void> {
     totalCents: Math.round(Number(order.total) * 100),
     scheduledAt: order.scheduledAt ?? undefined,
     orderRef: order.orderRef,
+  }).then(async (result) => {
+    // Save the Clover POS order ID so admin can link directly to Clover Dashboard
+    try {
+      const dbInner = await getDb();
+      if (dbInner && result.cloverOrderId) {
+        await dbInner
+          .update(scheduledOrders)
+          .set({ cloverOrderId: result.cloverOrderId })
+          .where(eq(scheduledOrders.cloverSessionId, sessionId));
+        console.log(`[CloverWebhook] Saved cloverOrderId ${result.cloverOrderId} for order ${order.orderRef}`);
+      }
+    } catch (e) {
+      console.warn("[CloverWebhook] Failed to save cloverOrderId:", e);
+    }
   }).catch((err) => {
     console.error(`[CloverWebhook] Failed to push order ${order.orderRef} to POS:`, err);
   });

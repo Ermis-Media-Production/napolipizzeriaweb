@@ -125,6 +125,8 @@ export const scheduledOrders = mysqlTable("scheduledOrders", {
   cloverSessionId: varchar("cloverSessionId", { length: 128 }),
   /** Clover payment/charge ID after successful payment */
   cloverPaymentId: varchar("cloverPaymentId", { length: 128 }),
+  /** Clover POS order ID (for linking to Clover Dashboard) */
+  cloverOrderId: varchar("cloverOrderId", { length: 128 }),
   /** Total amount already refunded */
   refundedAmount: decimal("refundedAmount", { precision: 10, scale: 2 }).default("0").notNull(),
   /** Special instructions from customer */

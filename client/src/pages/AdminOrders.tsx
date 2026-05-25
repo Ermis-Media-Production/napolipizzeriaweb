@@ -111,6 +111,10 @@ function getStatusColor(status: string): { bg: string; text: string } {
   }
 }
 
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const CLOVER_MERCHANT_ID = "MRWSQWMCDSHQ1";
+
 // ── Clover POS Components ─────────────────────────────────────────────────────
 
 type OrderState = string;
@@ -277,15 +281,34 @@ type ScheduledOrder = {
   total: string;
   couponCode?: string | null;
   transactionId?: string | null;
+  cloverOrderId?: string | null;
   refundedAmount: string;
   specialInstructions?: string | null;
 };
 
-function ScheduledOrderCard({ order }: { order: ScheduledOrder }) {
+function ScheduledOrderCard({ order, onStatusChange }: { order: ScheduledOrder; onStatusChange: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const { bg, text } = getStatusColor(order.status);
   const refunded = parseFloat(order.refundedAmount);
   const total = parseFloat(order.total);
+
+  const markReadyMutation = trpc.orders.markOrderReady.useMutation({
+    onSuccess: () => {
+      toast.success(`Order ${order.orderRef} marked as Ready — SMS sent to customer`);
+      onStatusChange();
+    },
+    onError: (err) => {
+      toast.error(`Failed to mark ready: ${err.message}`);
+    },
+  });
+
+  const handleMarkReady = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    markReadyMutation.mutate({
+      orderRef: order.orderRef,
+      readyType: order.orderType as "pickup" | "delivery" | "dine-in",
+    });
+  };
 
   return (
     <div className="border rounded-lg overflow-hidden" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
@@ -397,8 +420,26 @@ function ScheduledOrderCard({ order }: { order: ScheduledOrder }) {
               </div>
             )}
 
-            {/* Link to customer order page */}
-            <div className="sm:col-span-2">
+            {/* Actions row */}
+            <div className="sm:col-span-2 flex flex-wrap items-center gap-3 pt-1">
+              {/* Mark Ready button — only for confirmed/preparing orders */}
+              {(order.status === "confirmed" || order.status === "preparing") && (
+                <button
+                  onClick={handleMarkReady}
+                  disabled={markReadyMutation.isPending}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95 disabled:opacity-60"
+                  style={{
+                    background: "oklch(0.38 0.12 145)",
+                    color: "white",
+                    fontFamily: "'Oswald', sans-serif",
+                  }}
+                >
+                  <CheckCircle2 size={13} />
+                  {markReadyMutation.isPending ? "Sending…" : order.orderType === "delivery" ? "Mark Out for Delivery" : "Mark Ready for Pickup"}
+                </button>
+              )}
+
+              {/* Link to customer order page */}
               <a
                 href={`/my-order/${order.orderRef}`}
                 target="_blank"
@@ -407,8 +448,22 @@ function ScheduledOrderCard({ order }: { order: ScheduledOrder }) {
                 style={{ color: "oklch(0.45 0.12 250)" }}
               >
                 <ExternalLink size={12} />
-                View customer order page
+                Customer order page
               </a>
+
+              {/* Clover Dashboard link */}
+              {order.cloverOrderId && (
+                <a
+                  href={`https://www.clover.com/r/${CLOVER_MERCHANT_ID}/orders/${order.cloverOrderId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs hover:underline"
+                  style={{ color: "oklch(0.45 0.10 145)" }}
+                >
+                  <ExternalLink size={12} />
+                  View in Clover
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -658,7 +713,7 @@ function ScheduledOrdersTab() {
           ) : (
             <div className="space-y-2">
               {orders.map((order) => (
-                <ScheduledOrderCard key={order.id} order={order as ScheduledOrder} />
+                <ScheduledOrderCard key={order.id} order={order as ScheduledOrder} onStatusChange={refetch} />
               ))}
             </div>
           )}
