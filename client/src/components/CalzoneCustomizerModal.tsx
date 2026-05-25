@@ -4,7 +4,7 @@ import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
 import {
   PIZZA_30_TOPPINGS,
-  CALZONE_EXTRA_TOPPING_PRICES,
+  PIZZA_TOPPING_PRICES,
 } from "@/lib/napoliData";
 
 // ── Types ────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ function CalzoneCustomizerInner({ trigger, onClose }: { trigger: CalzoneTrigger;
   // Determine extra topping price based on item type
   const extraToppingPrice = isFlatPrice
     ? (trigger.flatExtraToppingPrice ?? 0)
-    : (selectedSize ? CALZONE_EXTRA_TOPPING_PRICES[selectedSize] ?? 2.0 : 0);
+    : (selectedSize ? PIZZA_TOPPING_PRICES[selectedSize] ?? 2.0 : 0);
 
   const extraCost = extraToppingsList.length * extraToppingPrice;
   const totalPrice = selectedPrice + extraCost;
