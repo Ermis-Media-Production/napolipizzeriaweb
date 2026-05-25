@@ -71,11 +71,13 @@ export default function GlutenFreePizzaModal({ isOpen, onClose }: Props) {
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="relative w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col"
+        className="relative w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl flex flex-col"
         style={{
           background: "oklch(0.99 0.008 80)",
-          maxHeight: "92dvh",
+          maxHeight: "88dvh",
+          height: "88dvh",
           boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+          overflow: "hidden",
         }}
       >
         {/* Header */}
@@ -121,7 +123,7 @@ export default function GlutenFreePizzaModal({ isOpen, onClose }: Props) {
         </div>
 
         {/* Toppings grid — scrollable */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="flex-1 overflow-y-auto px-5 py-4" style={{ minHeight: 0 }}>
           <p className="napoli-label text-xs mb-3" style={{ color: "oklch(0.52 0.03 30)", letterSpacing: "0.12em" }}>
             SELECT TOPPINGS — ${TOPPING_PRICE.toFixed(2)} EACH
           </p>
@@ -165,7 +167,8 @@ export default function GlutenFreePizzaModal({ isOpen, onClose }: Props) {
         {/* Footer — quantity + add to cart */}
         <div
           className="px-5 py-4 shrink-0 border-t flex items-center gap-3"
-          style={{ borderColor: "oklch(0.88 0.015 80)", background: "white" }}
+          style={{ borderColor: "oklch(0.88 0.015 80)", background: "white", flexShrink: 0 }}
+          onClick={(e) => e.stopPropagation()}
         >
           {/* Quantity selector */}
           <div
