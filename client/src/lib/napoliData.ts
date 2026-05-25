@@ -335,6 +335,13 @@ export const BURGER_EXTRAS = [
   { name: "Add Avocado", price: 1.00 },
 ];
 
+/** Doneness options — required selector in the burger customizer */
+export const BURGER_DONENESS_OPTIONS = [
+  { name: "Rare",      icon: "🥩", desc: "Cool red center" },
+  { name: "Medium",    icon: "🌡️", desc: "Warm pink center", isDefault: true },
+  { name: "Well Done", icon: "🔥", desc: "Fully cooked through" },
+];
+
 /** Bread options — shown as a separate selector in the burger customizer */
 export const BURGER_BREAD_OPTIONS = [
   { name: "Regular Bread", price: 0, icon: "🍞" },
