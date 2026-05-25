@@ -2,9 +2,9 @@
  * PizzaCustomizerModal
  * 5-step interactive pizza builder:
  *  Step 1 — Choose size (10"–36")
- *  Step 2 — Choose crust type (Regular / Thin / Stuffed / Gluten Free)
- *  Step 3 — Choose cut type (Square / Triangle / Strips / Uncut)
- *  Step 4 — Add toppings (+$1.50 each, up to 10)
+ *  Step 2 — Choose dough type (Regular / Thin / Stuffed / Gluten Free)
+ *  Step 3 — Choose cut style (Square / Triangle / Strips / Uncut)
+ *  Step 4 — Add toppings (per-item limits + Half & Half for NY Style)
  *  Step 5 — Special notes + confirm add to cart
  */
 import { useState, useMemo } from "react";
@@ -20,8 +20,14 @@ import {
 
 // ── Types ──────────────────────────────────────────────────────────────────
 export interface PizzaSelection {
-  pizzaName: string;   // "Plain Cheese" | specialty name
+  pizzaName: string;   // "Plain Cheese" | "4 Topping Combo" | specialty name
   isSpecialty: boolean;
+  /** Number of toppings included in the base price (0 = all charged) */
+  freeToppings?: number;
+  /** Flat extra-topping price override (for Sicilian / Chicago). If omitted, use PIZZA_TOPPING_PRICES */
+  flatExtraToppingPrice?: number;
+  /** If true, Half & Half option is available on the toppings step */
+  allowHalfAndHalf?: boolean;
 }
 
 interface Props {
@@ -47,9 +53,6 @@ const CUT_OPTIONS = [
 
 // Gluten free is only available in 14"
 const GLUTEN_FREE_SIZE = '14"';
-
-// Topping price is size-based — see PIZZA_TOPPING_PRICES in napoliData.ts
-const MAX_TOPPINGS = 10;
 const TOTAL_STEPS = 5;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -99,6 +102,37 @@ function StepDot({ active, done, num }: { active: boolean; done: boolean; num: n
   );
 }
 
+// ── Topping chip ───────────────────────────────────────────────────────────
+function ToppingChip({
+  label,
+  selected,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  selected: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled && !selected}
+      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-medium transition-all active:scale-95"
+      style={{
+        borderColor: selected ? "var(--napoli-red)" : "oklch(0.85 0.015 80)",
+        background: selected ? "var(--napoli-red)" : disabled && !selected ? "oklch(0.95 0.005 80)" : "white",
+        color: selected ? "white" : disabled && !selected ? "oklch(0.70 0.015 80)" : "oklch(0.40 0.03 30)",
+        fontFamily: "'Lato', sans-serif",
+        cursor: disabled && !selected ? "not-allowed" : "pointer",
+      }}
+    >
+      {selected ? <Minus size={10} /> : <Plus size={10} />}
+      {label}
+    </button>
+  );
+}
+
 // ── Main Modal ─────────────────────────────────────────────────────────────
 export default function PizzaCustomizerModal({ selection, onClose }: Props) {
   if (!selection) return null;
@@ -112,10 +146,21 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [selectedCrust, setSelectedCrust] = useState<string>("");
   const [selectedCut, setSelectedCut] = useState<string>("");
+  // Whole-pizza toppings (normal mode)
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
+  // Half & Half mode
+  const [halfAndHalf, setHalfAndHalf] = useState(false);
+  const [firstHalf, setFirstHalf] = useState<string[]>([]);
+  const [secondHalf, setSecondHalf] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
 
-  const { pizzaName, isSpecialty } = selection;
+  const {
+    pizzaName,
+    isSpecialty,
+    freeToppings = 0,
+    flatExtraToppingPrice,
+    allowHalfAndHalf = false,
+  } = selection;
 
   // When gluten free is selected, force size to 14"
   const effectiveSize = selectedCrust === "gluten-free" ? GLUTEN_FREE_SIZE : selectedSize;
@@ -125,19 +170,44 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
     [pizzaName, effectiveSize, selectedCrust]
   );
 
-  // Topping price depends on the selected size
-  const toppingUnitPrice = PIZZA_TOPPING_PRICES[effectiveSize] ?? 2.75;
-  const toppingsTotal = selectedToppings.length * toppingUnitPrice;
+  // Topping price per unit — flat override (Sicilian/Chicago) or size-based
+  const toppingUnitPrice = flatExtraToppingPrice ?? (PIZZA_TOPPING_PRICES[effectiveSize] ?? 2.75);
+
+  // ── Pricing calculations ───────────────────────────────────────────────
+  const chargeableToppings = useMemo(() => {
+    if (halfAndHalf) {
+      // Each half-topping costs half price
+      const totalHalfToppings = firstHalf.length + secondHalf.length;
+      const chargeableHalf = Math.max(0, totalHalfToppings - freeToppings * 2);
+      return chargeableHalf;
+    }
+    return Math.max(0, selectedToppings.length - freeToppings);
+  }, [halfAndHalf, firstHalf, secondHalf, selectedToppings, freeToppings]);
+
+  const toppingsTotal = useMemo(() => {
+    if (halfAndHalf) {
+      // Half-toppings cost half the unit price each
+      const totalHalfToppings = firstHalf.length + secondHalf.length;
+      const chargeableHalf = Math.max(0, totalHalfToppings - freeToppings * 2);
+      return chargeableHalf * (toppingUnitPrice / 2);
+    }
+    return chargeableToppings * toppingUnitPrice;
+  }, [halfAndHalf, firstHalf, secondHalf, chargeableToppings, toppingUnitPrice, freeToppings]);
+
   const grandTotal = basePrice + toppingsTotal;
 
-  // ── Topping toggle ─────────────────────────────────────────────────────
+  // ── Topping toggles ────────────────────────────────────────────────────
   function toggleTopping(t: string) {
     setSelectedToppings((prev) => {
       if (prev.includes(t)) return prev.filter((x) => x !== t);
-      if (prev.length >= MAX_TOPPINGS) {
-        toast.error(`Maximum ${MAX_TOPPINGS} toppings allowed`);
-        return prev;
-      }
+      return [...prev, t];
+    });
+  }
+
+  function toggleHalfTopping(half: "first" | "second", t: string) {
+    const setter = half === "first" ? setFirstHalf : setSecondHalf;
+    setter((prev) => {
+      if (prev.includes(t)) return prev.filter((x) => x !== t);
       return [...prev, t];
     });
   }
@@ -159,13 +229,22 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
     return "Review";
   }
 
+  // ── Cart ───────────────────────────────────────────────────────────────
   function handleAddToCart() {
-    const toppingStr =
-      selectedToppings.length > 0
-        ? `Toppings: ${selectedToppings.join(", ")}`
-        : "Plain (no extra toppings)";
     const crustLabel = CRUST_OPTIONS.find((c) => c.id === selectedCrust)?.label ?? selectedCrust;
     const cutLabel = CUT_OPTIONS.find((c) => c.id === selectedCut)?.label ?? selectedCut;
+
+    let toppingStr: string;
+    if (halfAndHalf) {
+      const f = firstHalf.length > 0 ? firstHalf.join(", ") : "Plain";
+      const s = secondHalf.length > 0 ? secondHalf.join(", ") : "Plain";
+      toppingStr = `Half & Half — 1st Half: ${f} | 2nd Half: ${s}`;
+    } else if (selectedToppings.length > 0) {
+      toppingStr = `Toppings: ${selectedToppings.join(", ")}`;
+    } else {
+      toppingStr = freeToppings > 0 ? "No extra toppings" : "Plain (no toppings)";
+    }
+
     const descParts = [
       `Size: ${effectiveSize}`,
       `Crust: ${crustLabel}`,
@@ -186,6 +265,13 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
     toast.success(`${pizzaName} Pizza (${effectiveSize}) added to cart!`);
     onClose();
   }
+
+  // ── Toppings step helpers ──────────────────────────────────────────────
+  const totalSelectedCount = halfAndHalf
+    ? firstHalf.length + secondHalf.length
+    : selectedToppings.length;
+
+  const freeRemaining = Math.max(0, freeToppings - (halfAndHalf ? 0 : selectedToppings.length));
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
@@ -255,7 +341,7 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
               <div className="grid grid-cols-4 gap-2">
                 {PIZZA_SIZES.map((size) => {
                   const sizeIndex = PIZZA_SIZES.indexOf(size);
-                  const prices = PIZZA_BASE_PRICES["Plain Cheese"];
+                  const prices = PIZZA_BASE_PRICES[pizzaName as keyof typeof PIZZA_BASE_PRICES] ?? PIZZA_BASE_PRICES["Plain Cheese"];
                   const priceStr = prices?.[sizeIndex] ?? "";
                   const isSelected = selectedSize === size;
                   return (
@@ -283,13 +369,20 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
                   );
                 })}
               </div>
-              <p className="text-xs mt-3" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
-                Prices shown are for Plain Cheese. Specialty pizzas may vary.
+              {freeToppings > 0 && (
+                <p className="text-xs mt-3 font-semibold" style={{ color: "var(--napoli-green)", fontFamily: "'Lato', sans-serif" }}>
+                  ✓ Includes {freeToppings} free toppings
+                </p>
+              )}
+              <p className="text-xs mt-1" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+                {freeToppings > 0
+                  ? "Prices shown include the combo. Extra toppings charged separately."
+                  : "Prices shown are for cheese only. Toppings charged separately."}
               </p>
             </div>
           )}
 
-          {/* STEP 2 — Crust Type */}
+          {/* STEP 2 — Dough Type */}
           {step === 2 && (
             <div>
               <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>
@@ -341,7 +434,7 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
             </div>
           )}
 
-          {/* STEP 3 — Cut Type */}
+          {/* STEP 3 — Cut Style */}
           {step === 3 && (
             <div>
               <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>
@@ -388,45 +481,139 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
           {/* STEP 4 — Toppings */}
           {step === 4 && (
             <div>
-              <div className="flex items-center justify-between mb-3">
+              {/* Header row */}
+              <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>
-                  Add Toppings (Optional)
+                  {freeToppings > 0 ? `Toppings (${freeToppings} Free)` : "Add Toppings (Optional)"}
                 </p>
                 <span
                   className="text-xs px-2 py-0.5 rounded-full font-semibold"
                   style={{
-                    background: selectedToppings.length > 0 ? "var(--napoli-red)" : "oklch(0.88 0.015 80)",
-                    color: selectedToppings.length > 0 ? "white" : "oklch(0.52 0.03 30)",
+                    background: totalSelectedCount > 0 ? "var(--napoli-red)" : "oklch(0.88 0.015 80)",
+                    color: totalSelectedCount > 0 ? "white" : "oklch(0.52 0.03 30)",
                     fontFamily: "'Oswald', sans-serif",
                   }}
                 >
-                  {selectedToppings.length}/{MAX_TOPPINGS} · +{formatPrice(toppingsTotal)}
+                  {halfAndHalf
+                    ? `${firstHalf.length}+${secondHalf.length} · +${formatPrice(toppingsTotal)}`
+                    : `${selectedToppings.length} selected · +${formatPrice(toppingsTotal)}`}
                 </span>
               </div>
+
+              {/* Pricing note */}
               <p className="text-xs mb-3" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
-                Each topping adds <strong>+${toppingUnitPrice.toFixed(2)}</strong> for {effectiveSize} pizza. Skip to keep as-is.
+                {freeToppings > 0
+                  ? <>First <strong>{freeToppings} toppings included</strong>. Additional toppings: <strong>+${toppingUnitPrice.toFixed(2)}</strong> each.{freeRemaining > 0 && !halfAndHalf && <span style={{ color: "var(--napoli-green)" }}> ({freeRemaining} free remaining)</span>}</>
+                  : <>Each topping adds <strong>+${toppingUnitPrice.toFixed(2)}</strong> for {effectiveSize} pizza. Skip to keep as-is.</>}
               </p>
-              <div className="flex flex-wrap gap-2">
-                {PIZZA_30_TOPPINGS.map((t) => {
-                  const isSelected = selectedToppings.includes(t);
-                  return (
-                    <button
-                      key={t}
-                      onClick={() => toggleTopping(t)}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-medium transition-all active:scale-95"
-                      style={{
-                        borderColor: isSelected ? "var(--napoli-red)" : "oklch(0.85 0.015 80)",
-                        background: isSelected ? "var(--napoli-red)" : "white",
-                        color: isSelected ? "white" : "oklch(0.40 0.03 30)",
-                        fontFamily: "'Lato', sans-serif",
-                      }}
+
+              {/* Half & Half toggle — only for NY Style items */}
+              {allowHalfAndHalf && (
+                <div className="mb-4">
+                  <button
+                    onClick={() => {
+                      setHalfAndHalf((v) => !v);
+                      setSelectedToppings([]);
+                      setFirstHalf([]);
+                      setSecondHalf([]);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 w-full text-left transition-all active:scale-[0.99]"
+                    style={{
+                      borderColor: halfAndHalf ? "var(--napoli-red)" : "oklch(0.85 0.015 80)",
+                      background: halfAndHalf ? "oklch(0.97 0.04 27)" : "white",
+                    }}
+                  >
+                    <div
+                      className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
+                      style={{ borderColor: halfAndHalf ? "var(--napoli-red)" : "oklch(0.75 0.015 80)" }}
                     >
-                      {isSelected ? <Minus size={10} /> : <Plus size={10} />}
-                      {t}
-                    </button>
-                  );
-                })}
-              </div>
+                      {halfAndHalf && <div className="w-2.5 h-2.5 rounded-full" style={{ background: "var(--napoli-red)" }} />}
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold" style={{ color: "oklch(0.25 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
+                        Half & Half
+                      </div>
+                      <div className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+                        Different toppings on each half · half-toppings at ½ price
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              )}
+
+              {/* Normal topping picker */}
+              {!halfAndHalf && (
+                <div className="flex flex-wrap gap-2">
+                  {PIZZA_30_TOPPINGS.map((t) => {
+                    const isSelected = selectedToppings.includes(t);
+                    return (
+                      <ToppingChip
+                        key={t}
+                        label={t}
+                        selected={isSelected}
+                        disabled={false}
+                        onClick={() => toggleTopping(t)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Half & Half picker */}
+              {halfAndHalf && (
+                <div className="flex flex-col gap-4">
+                  {/* First half */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-3 h-3 rounded-full" style={{ background: "var(--napoli-red)" }} />
+                      <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>
+                        1st Half ({firstHalf.length} toppings)
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {PIZZA_30_TOPPINGS.map((t) => (
+                        <ToppingChip
+                          key={t}
+                          label={t}
+                          selected={firstHalf.includes(t)}
+                          disabled={false}
+                          onClick={() => toggleHalfTopping("first", t)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-px" style={{ background: "oklch(0.88 0.015 80)" }} />
+                    <span className="text-xs font-bold px-2" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
+                      2ND HALF
+                    </span>
+                    <div className="flex-1 h-px" style={{ background: "oklch(0.88 0.015 80)" }} />
+                  </div>
+
+                  {/* Second half */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-3 h-3 rounded-full" style={{ background: "oklch(0.45 0.10 145)" }} />
+                      <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "oklch(0.45 0.10 145)", fontFamily: "'Oswald', sans-serif" }}>
+                        2nd Half ({secondHalf.length} toppings)
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {PIZZA_30_TOPPINGS.map((t) => (
+                        <ToppingChip
+                          key={t}
+                          label={t}
+                          selected={secondHalf.includes(t)}
+                          disabled={false}
+                          onClick={() => toggleHalfTopping("second", t)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -459,21 +646,61 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
                       {CUT_OPTIONS.find((c) => c.id === selectedCut)?.label}
                     </span>
                   </div>
-                  {selectedToppings.length > 0 && (
-                    <div className="flex justify-between items-start gap-2">
-                      <span style={{ color: "oklch(0.45 0.03 30)" }}>Toppings ({selectedToppings.length})</span>
-                      <span className="font-semibold text-right" style={{ color: "oklch(0.25 0.04 30)", maxWidth: "60%" }}>
-                        {selectedToppings.join(", ")}
-                      </span>
-                    </div>
+
+                  {/* Toppings summary */}
+                  {!halfAndHalf && selectedToppings.length > 0 && (
+                    <>
+                      {freeToppings > 0 && (
+                        <div className="flex justify-between items-start gap-2">
+                          <span style={{ color: "oklch(0.45 0.03 30)" }}>Included ({Math.min(selectedToppings.length, freeToppings)})</span>
+                          <span className="font-semibold text-right" style={{ color: "var(--napoli-green)", maxWidth: "60%" }}>
+                            {selectedToppings.slice(0, freeToppings).join(", ")}
+                          </span>
+                        </div>
+                      )}
+                      {selectedToppings.length > freeToppings && (
+                        <div className="flex justify-between items-start gap-2">
+                          <span style={{ color: "oklch(0.45 0.03 30)" }}>Extra ({selectedToppings.length - freeToppings})</span>
+                          <span className="font-semibold text-right" style={{ color: "oklch(0.25 0.04 30)", maxWidth: "60%" }}>
+                            {selectedToppings.slice(freeToppings).join(", ")}
+                          </span>
+                        </div>
+                      )}
+                      {freeToppings === 0 && (
+                        <div className="flex justify-between items-start gap-2">
+                          <span style={{ color: "oklch(0.45 0.03 30)" }}>Toppings ({selectedToppings.length})</span>
+                          <span className="font-semibold text-right" style={{ color: "oklch(0.25 0.04 30)", maxWidth: "60%" }}>
+                            {selectedToppings.join(", ")}
+                          </span>
+                        </div>
+                      )}
+                    </>
                   )}
+
+                  {halfAndHalf && (
+                    <>
+                      <div className="flex justify-between items-start gap-2">
+                        <span style={{ color: "oklch(0.45 0.03 30)" }}>1st Half</span>
+                        <span className="font-semibold text-right" style={{ color: "oklch(0.25 0.04 30)", maxWidth: "60%" }}>
+                          {firstHalf.length > 0 ? firstHalf.join(", ") : "Plain"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-start gap-2">
+                        <span style={{ color: "oklch(0.45 0.03 30)" }}>2nd Half</span>
+                        <span className="font-semibold text-right" style={{ color: "oklch(0.25 0.04 30)", maxWidth: "60%" }}>
+                          {secondHalf.length > 0 ? secondHalf.join(", ") : "Plain"}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
                   <div className="border-t pt-2 mt-1 flex justify-between font-bold" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-                    <span style={{ color: "oklch(0.30 0.04 30)" }}>Base</span>
+                    <span style={{ color: "oklch(0.30 0.04 30)" }}>Base{freeToppings > 0 ? ` (incl. ${freeToppings} toppings)` : ""}</span>
                     <span style={{ color: "oklch(0.30 0.04 30)" }}>{formatPrice(basePrice)}</span>
                   </div>
                   {toppingsTotal > 0 && (
                     <div className="flex justify-between" style={{ color: "var(--napoli-green)" }}>
-                      <span>Toppings</span>
+                      <span>Extra Toppings</span>
                       <span>+{formatPrice(toppingsTotal)}</span>
                     </div>
                   )}

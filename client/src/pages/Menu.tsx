@@ -749,7 +749,15 @@ export default function Menu() {
                     ))}
                     <td className="px-3 py-3">
                       <button
-                        onClick={() => { setPizzaModalKey(k => k + 1); setPizzaSelection({ pizzaName: name, isSpecialty: false }); }}
+                        onClick={() => {
+                          setPizzaModalKey(k => k + 1);
+                          setPizzaSelection({
+                            pizzaName: name,
+                            isSpecialty: false,
+                            freeToppings: name === "4 Topping Combo" ? 4 : 0,
+                            allowHalfAndHalf: true,
+                          });
+                        }}
                         className="flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all active:scale-95"
                         style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
                       >
@@ -781,7 +789,15 @@ export default function Menu() {
               <p className="napoli-price text-sm mt-1" style={{ color: "var(--napoli-red)" }}>$12.75 · Add Topping $2.75</p>
             </div>
             <button
-              onClick={() => setGlutenFreeModalOpen(true)}
+              onClick={() => {
+              setPizzaModalKey(k => k + 1);
+              setPizzaSelection({
+                pizzaName: "Gluten Free Pizza 14\"",
+                isSpecialty: false,
+                freeToppings: 0,
+                allowHalfAndHalf: false,
+              });
+            }}
               className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
               style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
             >
