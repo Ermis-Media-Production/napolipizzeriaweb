@@ -709,9 +709,34 @@ export default function Menu() {
             </table>
           </div>
 
-          {/* Gluten free + Sicilian + Chicago Deep Dish */}
-          <div className="px-5 py-3 border-t" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
-            <span className="napoli-badge-green text-xs mr-2">Gluten Free Pizza 14" — $12.75</span>
+          {/* Gluten Free Pizza */}
+          <div
+            className="napoli-menu-item flex items-center gap-3 px-5 py-4 border-t"
+            style={{ borderColor: "oklch(0.88 0.015 80)" }}
+          >
+            <img
+              src="https://cloverstatic.com/menu-assets/items/Q5P394HBCYWV6.jpeg"
+              alt="Gluten Free Pizza 14 inch"
+              className="w-14 h-14 rounded object-cover shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>Gluten Free Pizza 14"</span>
+                <span className="napoli-badge-green text-xs">Gluten Free</span>
+              </div>
+              <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>Hand-tossed 14" gluten-free crust — includes cheese. Add toppings to customize.</p>
+              <p className="napoli-price text-sm mt-1" style={{ color: "var(--napoli-red)" }}>$12.75 · Add Topping $2.75</p>
+            </div>
+            <button
+              onClick={() => {
+                addItem({ id: `gluten-free-pizza-${Date.now()}`, name: 'Gluten Free Pizza 14"', price: 12.75, quantity: 1, category: "pizza" });
+                toast.success('Gluten Free Pizza 14" added to cart', { description: "Add toppings at checkout or call us!" });
+              }}
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
+              style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+            >
+              <Plus size={13} /> Order
+            </button>
           </div>
 
           {/* Sicilian */}
