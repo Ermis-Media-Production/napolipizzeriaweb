@@ -1130,30 +1130,30 @@ export default function Menu() {
             <div>
               <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Classic Pasta</p>
               {PASTA.classic.map((item) => PASTA_MODAL_ITEMS.includes(item.name) ? (
-                <AppetizersItemRow key={item.name} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
+                <AppetizersItemRow key={`classic-${item.name}`} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
               ) : (
-                <ItemRow key={item.name} name={item.name} price={item.price} />
+                <ItemRow key={`classic-${item.name}`} name={item.name} price={item.price} />
               ))}
             </div>
             <div>
               <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Ravioli</p>
               {PASTA.ravioli.map((item) => PASTA_MODAL_ITEMS.includes(item.name) ? (
-                <AppetizersItemRow key={item.name} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
+                <AppetizersItemRow key={`ravioli-${item.name}`} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
               ) : (
-                <ItemRow key={item.name} name={item.name} price={item.price} />
+                <ItemRow key={`ravioli-${item.name}`} name={item.name} price={item.price} />
               ))}
             </div>
             <div>
               <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Tortellini & Parmigiana</p>
               {PASTA.tortellini.map((item) => PASTA_MODAL_ITEMS.includes(item.name) ? (
-                <AppetizersItemRow key={item.name} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
+                <AppetizersItemRow key={`tortellini-${item.name}`} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
               ) : (
-                <ItemRow key={item.name} name={item.name} price={item.price} />
+                <ItemRow key={`tortellini-${item.name}`} name={item.name} price={item.price} />
               ))}
               {PASTA.parmigiana.map((item) => PASTA_MODAL_ITEMS.includes(item.name) ? (
-                <AppetizersItemRow key={item.name} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
+                <AppetizersItemRow key={`parmigiana-${item.name}`} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
               ) : (
-                <ItemRow key={item.name} name={item.name} price={item.price} />
+                <ItemRow key={`parmigiana-${item.name}`} name={item.name} price={item.price} />
               ))}
             </div>
           </div>

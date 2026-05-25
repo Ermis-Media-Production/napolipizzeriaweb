@@ -653,13 +653,6 @@ export default function Home() {
             >
               <Phone size={15} /> Call Us
             </a>
-            <a
-              href={`tel:${RESTAURANT_INFO.phone}`}
-              className="flex items-center gap-2 px-8 py-3.5 rounded text-sm font-semibold napoli-label border-2 transition-colors"
-              style={{ borderColor: "oklch(0.60 0.015 80)", color: "white" }}
-            >
-              <Phone size={15} /> Call {RESTAURANT_INFO.phone}
-            </a>
           </div>
         </div>
       </section>
