@@ -2,16 +2,68 @@
  * Napoli Pizzeria Navbar
  * Design: Italian trattoria — red top bar, cream body, green accents
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Phone, MapPin, Clock, Menu, X, ShoppingCart } from "lucide-react";
+import {
+  Phone, MapPin, Clock, Menu, X, ShoppingCart,
+  UtensilsCrossed, ShoppingBag, Truck, CalendarClock, ChevronDown
+} from "lucide-react";
 import { RESTAURANT_INFO } from "@/lib/napoliData";
-import { useCart } from "@/contexts/CartContext";
+import { useCart, type OrderType } from "@/contexts/CartContext";
+
+const ORDER_TYPES: {
+  type: OrderType;
+  label: string;
+  sublabel: string;
+  icon: React.ReactNode;
+  color: string;
+  bg: string;
+  border: string;
+}[] = [
+  {
+    type: "dine-in",
+    label: "Dine-In",
+    sublabel: "Enjoy at our restaurant",
+    icon: <UtensilsCrossed size={22} />,
+    color: "oklch(0.38 0.12 145)",
+    bg: "oklch(0.96 0.04 145)",
+    border: "oklch(0.75 0.12 145)",
+  },
+  {
+    type: "pickup",
+    label: "To Go / Pick Up",
+    sublabel: "Ready in 15–20 min",
+    icon: <ShoppingBag size={22} />,
+    color: "oklch(0.42 0.18 25)",
+    bg: "oklch(0.97 0.04 25)",
+    border: "oklch(0.75 0.15 25)",
+  },
+  {
+    type: "delivery",
+    label: "Delivery",
+    sublabel: "We bring it to your door",
+    icon: <Truck size={22} />,
+    color: "oklch(0.46 0.18 264)",
+    bg: "oklch(0.97 0.03 264)",
+    border: "oklch(0.75 0.15 264)",
+  },
+  {
+    type: "scheduled",
+    label: "Schedule Order",
+    sublabel: "Pick a future date & time",
+    icon: <CalendarClock size={22} />,
+    color: "oklch(0.48 0.18 310)",
+    bg: "oklch(0.97 0.03 310)",
+    border: "oklch(0.75 0.15 310)",
+  },
+];
 
 export default function NapoliNavbar() {
   const [open, setOpen] = useState(false);
+  const [orderPopupOpen, setOrderPopupOpen] = useState(false);
   const [location] = useLocation();
-  const { totalItems, openCart } = useCart();
+  const { totalItems, openCartWithType } = useCart();
+  const popupRef = useRef<HTMLDivElement>(null);
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -19,6 +71,34 @@ export default function NapoliNavbar() {
     { href: "/specials", label: "Specials" },
     { href: "/catering", label: "Catering" },
   ];
+
+  // Close popup when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
+        setOrderPopupOpen(false);
+      }
+    }
+    if (orderPopupOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [orderPopupOpen]);
+
+  // Close popup on Escape
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOrderPopupOpen(false);
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, []);
+
+  function handleSelectOrderType(type: OrderType) {
+    setOrderPopupOpen(false);
+    setOpen(false);
+    openCartWithType(type);
+  }
 
   return (
     <header>
@@ -92,22 +172,19 @@ export default function NapoliNavbar() {
           <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => {
               const isActive = location === link.href;
-              const isOrder = link.href === "/order";
               const isCatering = link.href === "/catering";
               return (
                 <Link key={link.href} href={link.href}>
                   <span
                     className={`px-4 py-2 rounded text-sm font-semibold napoli-label transition-colors ${
-                      isOrder
-                        ? "napoli-btn-red px-5 py-2 rounded"
-                        : isCatering
+                      isCatering
                         ? "px-5 py-2 rounded"
                         : isActive
                         ? "bg-napoli-red text-white"
                         : "hover:bg-napoli-cream-dark"
                     }`}
                     style={{
-                      color: isOrder ? "white" : isCatering ? "white" : isActive ? "white" : "var(--napoli-dark)",
+                      color: isCatering ? "white" : isActive ? "white" : "var(--napoli-dark)",
                       background: isCatering ? "oklch(0.45 0.15 145)" : undefined,
                       fontFamily: "'Oswald', sans-serif",
                       fontSize: "0.8rem",
@@ -119,9 +196,89 @@ export default function NapoliNavbar() {
               );
             })}
 
+            {/* Order Now button with popup */}
+            <div className="relative ml-1" ref={popupRef}>
+              <button
+                onClick={() => setOrderPopupOpen((v) => !v)}
+                className="flex items-center gap-1.5 px-5 py-2 rounded text-sm font-semibold transition-all active:scale-95"
+                style={{
+                  background: "var(--napoli-red)",
+                  color: "white",
+                  fontFamily: "'Oswald', sans-serif",
+                  fontSize: "0.8rem",
+                  boxShadow: orderPopupOpen ? "0 0 0 3px oklch(0.65 0.18 25 / 0.35)" : undefined,
+                }}
+                aria-haspopup="true"
+                aria-expanded={orderPopupOpen}
+              >
+                <ShoppingBag size={14} />
+                Order Now
+                <ChevronDown
+                  size={13}
+                  className="transition-transform"
+                  style={{ transform: orderPopupOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                />
+              </button>
+
+              {/* Order type popup */}
+              {orderPopupOpen && (
+                <div
+                  className="absolute right-0 top-full mt-2 w-72 rounded-xl border shadow-xl overflow-hidden"
+                  style={{
+                    background: "white",
+                    borderColor: "oklch(0.88 0.015 80)",
+                    zIndex: 100,
+                    transformOrigin: "top right",
+                    animation: "scaleIn 150ms cubic-bezier(0.23, 1, 0.32, 1)",
+                  }}
+                >
+                  <div
+                    className="px-4 py-3 border-b"
+                    style={{ borderColor: "oklch(0.92 0.015 80)", background: "oklch(0.985 0.01 80)" }}
+                  >
+                    <p
+                      className="text-sm font-bold"
+                      style={{ color: "var(--napoli-dark)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.04em" }}
+                    >
+                      How would you like to order?
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: "oklch(0.55 0.03 30)" }}>
+                      Choose an option to get started
+                    </p>
+                  </div>
+                  <div className="p-2 space-y-1">
+                    {ORDER_TYPES.map((opt) => (
+                      <button
+                        key={opt.type}
+                        onClick={() => handleSelectOrderType(opt.type)}
+                        className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
+                        style={{
+                          background: opt.bg,
+                          border: `1px solid ${opt.border}`,
+                        }}
+                      >
+                        <span style={{ color: opt.color, flexShrink: 0 }}>{opt.icon}</span>
+                        <div>
+                          <p
+                            className="text-sm font-bold leading-tight"
+                            style={{ color: opt.color, fontFamily: "'Oswald', sans-serif" }}
+                          >
+                            {opt.label}
+                          </p>
+                          <p className="text-xs mt-0.5" style={{ color: "oklch(0.50 0.03 30)" }}>
+                            {opt.sublabel}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Cart button */}
             <button
-              onClick={openCart}
+              onClick={() => openCartWithType("pickup")}
               className="relative ml-2 p-2.5 rounded-full transition-colors hover:bg-red-50"
               style={{ color: "var(--napoli-red)" }}
               aria-label={`Cart with ${totalItems} items`}
@@ -141,7 +298,16 @@ export default function NapoliNavbar() {
           {/* Mobile: cart + hamburger */}
           <div className="md:hidden flex items-center gap-2">
             <button
-              onClick={openCart}
+              onClick={() => setOrderPopupOpen((v) => !v)}
+              className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold"
+              style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+            >
+              <ShoppingBag size={13} />
+              Order
+              <ChevronDown size={11} style={{ transform: orderPopupOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
+            </button>
+            <button
+              onClick={() => openCartWithType("pickup")}
               className="relative p-2 rounded"
               style={{ color: "var(--napoli-red)" }}
             >
@@ -165,7 +331,50 @@ export default function NapoliNavbar() {
           </div>
         </div>
 
-        {/* Mobile menu */}
+        {/* Mobile order type popup (full-width) */}
+        {orderPopupOpen && (
+          <div
+            className="md:hidden border-t"
+            style={{ borderColor: "oklch(0.88 0.015 80)", background: "white" }}
+          >
+            <div className="container py-3">
+              <p
+                className="text-xs font-bold mb-2 px-1"
+                style={{ color: "var(--napoli-dark)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}
+              >
+                HOW WOULD YOU LIKE TO ORDER?
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {ORDER_TYPES.map((opt) => (
+                  <button
+                    key={opt.type}
+                    onClick={() => handleSelectOrderType(opt.type)}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-left transition-all active:scale-95"
+                    style={{
+                      background: opt.bg,
+                      border: `1px solid ${opt.border}`,
+                    }}
+                  >
+                    <span style={{ color: opt.color, flexShrink: 0 }}>{opt.icon}</span>
+                    <div>
+                      <p
+                        className="text-xs font-bold leading-tight"
+                        style={{ color: opt.color, fontFamily: "'Oswald', sans-serif" }}
+                      >
+                        {opt.label}
+                      </p>
+                      <p className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontSize: "0.65rem" }}>
+                        {opt.sublabel}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile nav links */}
         {open && (
           <div
             className="md:hidden border-t py-3"
@@ -178,8 +387,8 @@ export default function NapoliNavbar() {
                     className="block px-4 py-3 rounded text-sm font-semibold napoli-label"
                     style={{
                       fontFamily: "'Oswald', sans-serif",
-                      color: link.href === "/order" || link.href === "/catering" ? "white" : "var(--napoli-dark)",
-                      background: link.href === "/order" ? "var(--napoli-red)" : link.href === "/catering" ? "oklch(0.45 0.15 145)" : "transparent",
+                      color: link.href === "/catering" ? "white" : "var(--napoli-dark)",
+                      background: link.href === "/catering" ? "oklch(0.45 0.15 145)" : "transparent",
                     }}
                     onClick={() => setOpen(false)}
                   >
@@ -191,6 +400,14 @@ export default function NapoliNavbar() {
           </div>
         )}
       </nav>
+
+      {/* Popup animation keyframe */}
+      <style>{`
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+          to   { opacity: 1; transform: scale(1)    translateY(0); }
+        }
+      `}</style>
     </header>
   );
 }

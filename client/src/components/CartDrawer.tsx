@@ -28,9 +28,9 @@ declare global {
 type PaymentMethod = "stripe" | "authorizenet";
 
 export default function CartDrawer() {
-  const { items, isOpen, closeCart, removeItem, updateQuantity, clearCart, totalItems, totalPrice } = useCart();
+  const { items, isOpen, closeCart, removeItem, updateQuantity, clearCart, totalItems, totalPrice, pendingOrderType, clearPendingOrderType } = useCart();
   const [, navigate] = useLocation();
-  const [orderType, setOrderType] = useState<"delivery" | "pickup" | "dine-in">("pickup");
+  const [orderType, setOrderType] = useState<"delivery" | "pickup" | "dine-in" | "scheduled">("pickup");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("stripe");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -101,6 +101,14 @@ export default function CartDrawer() {
       setUberQuoteId(null); setUberFee(null); setUberEta(null);
     }
   }, [orderType]);
+
+  // When cart opens with a pre-selected order type (from the Order Now popup), apply it
+  useEffect(() => {
+    if (isOpen && pendingOrderType) {
+      setOrderType(pendingOrderType);
+      clearPendingOrderType();
+    }
+  }, [isOpen, pendingOrderType, clearPendingOrderType]);
 
   // tRPC mutations
   const getUberQuote = trpc.uber.getQuote.useMutation({
@@ -196,8 +204,10 @@ export default function CartDrawer() {
     const isAsap = resolvedSchedule.type === "asap";
 
     try {
+      // Map "scheduled" to "pickup" for the orders API (scheduled is a UI concept, not a DB enum value)
+      const apiOrderType = orderType === "scheduled" ? "pickup" : orderType;
       const result = await createOrder.mutateAsync({
-        orderType,
+        orderType: apiOrderType,
         scheduledAt,
         isAsap,
         customerName,
@@ -352,11 +362,13 @@ export default function CartDrawer() {
         setIsProcessingAuthNet(false);
         return;
       }
+      // Map "scheduled" to "pickup" for the payment API
+      const chargeOrderType = orderType === "scheduled" ? "pickup" : orderType;
       chargeCard.mutate({
         opaqueDataDescriptor: response.opaqueData.dataDescriptor,
         opaqueDataValue: response.opaqueData.dataValue,
         items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category })),
-        orderType,
+        orderType: chargeOrderType,
         customerName,
         customerPhone: customerPhone || undefined,
         couponCode: appliedCoupon?.code || undefined,
@@ -384,11 +396,13 @@ export default function CartDrawer() {
     const resolvedSchedule: ScheduleSelection = schedule ?? { type: "asap" };
     const scheduledAt = resolvedSchedule.type === "asap" ? Date.now() : resolvedSchedule.scheduledAt;
     const isAsap = resolvedSchedule.type === "asap";
+    // Map "scheduled" to "pickup" for the Stripe API
+    const stripeOrderType = orderType === "scheduled" ? "pickup" : orderType;
     createStripeCheckout.mutate({
       items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category })),
       successUrl: `${window.location.origin}/order-success?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${window.location.origin}/menu`,
-      orderType,
+      orderType: stripeOrderType,
       customerName,
       customerPhone: customerPhone || undefined,
       customerEmail: customerEmail || undefined,
@@ -567,12 +581,17 @@ export default function CartDrawer() {
               <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
                 ORDER TYPE
               </p>
-              <div className="grid grid-cols-3 gap-1.5">
-                {(["pickup", "delivery", "dine-in"] as const).map((type) => (
+              <div className="grid grid-cols-2 gap-1.5">
+                {([
+                  { type: "pickup",    label: "To Go / Pick Up" },
+                  { type: "delivery",  label: "Delivery" },
+                  { type: "dine-in",   label: "Dine-In" },
+                  { type: "scheduled", label: "Schedule" },
+                ] as const).map(({ type, label }) => (
                   <button
                     key={type}
                     onClick={() => setOrderType(type)}
-                    className="py-2 rounded text-xs font-semibold capitalize border transition-all"
+                    className="py-2 px-2 rounded text-xs font-semibold border transition-all"
                     style={{
                       background: orderType === type ? "var(--napoli-red, #c0392b)" : "transparent",
                       color: orderType === type ? "white" : "oklch(0.42 0.03 30)",
@@ -580,19 +599,31 @@ export default function CartDrawer() {
                       fontFamily: "'Oswald', sans-serif",
                     }}
                   >
-                    {type}
+                    {label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Schedule selector */}
-            <div>
-              <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
-                WHEN
-              </p>
-              <OrderScheduler value={schedule} onChange={setSchedule} />
-            </div>
+            {/* Schedule selector — full picker when scheduled, ASAP note otherwise */}
+            {orderType === "scheduled" ? (
+              <div>
+                <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
+                  SCHEDULE DATE & TIME
+                </p>
+                <OrderScheduler value={schedule} onChange={setSchedule} />
+              </div>
+            ) : (
+              <div
+                className="flex items-center gap-2 px-3 py-2 rounded border"
+                style={{ borderColor: "oklch(0.82 0.015 80)", background: "oklch(0.985 0.01 80)" }}
+              >
+                <span className="text-base">⏱</span>
+                <p className="text-xs" style={{ color: "oklch(0.45 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+                  <strong>Order ASAP</strong> — or select <em>Schedule</em> above to pick a future date &amp; time.
+                </p>
+              </div>
+            )}
 
             {/* Delivery section */}
             {orderType === "delivery" && (

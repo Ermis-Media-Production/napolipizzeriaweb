@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useCallback } from "react";
+import { createContext, useCallback, useContext, useReducer } from "react";
 
 export interface CartItem {
   id: string;
@@ -9,9 +9,12 @@ export interface CartItem {
   description?: string;
 }
 
+export type OrderType = "pickup" | "delivery" | "dine-in" | "scheduled";
+
 interface CartState {
   items: CartItem[];
   isOpen: boolean;
+  pendingOrderType: OrderType | null;
 }
 
 type CartAction =
@@ -21,7 +24,9 @@ type CartAction =
   | { type: "CLEAR_CART" }
   | { type: "TOGGLE_CART" }
   | { type: "OPEN_CART" }
-  | { type: "CLOSE_CART" };
+  | { type: "OPEN_CART_WITH_TYPE"; orderType: OrderType }
+  | { type: "CLOSE_CART" }
+  | { type: "CLEAR_PENDING_ORDER_TYPE" };
 
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
@@ -55,8 +60,12 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       return { ...state, isOpen: !state.isOpen };
     case "OPEN_CART":
       return { ...state, isOpen: true };
+    case "OPEN_CART_WITH_TYPE":
+      return { ...state, isOpen: true, pendingOrderType: action.orderType };
     case "CLOSE_CART":
       return { ...state, isOpen: false };
+    case "CLEAR_PENDING_ORDER_TYPE":
+      return { ...state, pendingOrderType: null };
     default:
       return state;
   }
@@ -67,19 +76,26 @@ interface CartContextValue {
   isOpen: boolean;
   totalItems: number;
   totalPrice: number;
+  pendingOrderType: OrderType | null;
   addItem: (item: CartItem) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
   toggleCart: () => void;
   openCart: () => void;
+  openCartWithType: (orderType: OrderType) => void;
   closeCart: () => void;
+  clearPendingOrderType: () => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(cartReducer, { items: [], isOpen: false });
+  const [state, dispatch] = useReducer(cartReducer, {
+    items: [],
+    isOpen: false,
+    pendingOrderType: null,
+  });
 
   const addItem = useCallback((item: CartItem) => {
     dispatch({ type: "ADD_ITEM", item });
@@ -96,7 +112,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const clearCart = useCallback(() => dispatch({ type: "CLEAR_CART" }), []);
   const toggleCart = useCallback(() => dispatch({ type: "TOGGLE_CART" }), []);
   const openCart = useCallback(() => dispatch({ type: "OPEN_CART" }), []);
+  const openCartWithType = useCallback((orderType: OrderType) => {
+    dispatch({ type: "OPEN_CART_WITH_TYPE", orderType });
+  }, []);
   const closeCart = useCallback(() => dispatch({ type: "CLOSE_CART" }), []);
+  const clearPendingOrderType = useCallback(() => dispatch({ type: "CLEAR_PENDING_ORDER_TYPE" }), []);
 
   const totalItems = state.items.reduce((sum, i) => sum + i.quantity, 0);
   const totalPrice = state.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
@@ -108,13 +128,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         isOpen: state.isOpen,
         totalItems,
         totalPrice,
+        pendingOrderType: state.pendingOrderType,
         addItem,
         removeItem,
         updateQuantity,
         clearCart,
         toggleCart,
         openCart,
+        openCartWithType,
         closeCart,
+        clearPendingOrderType,
       }}
     >
       {children}
