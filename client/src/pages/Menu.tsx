@@ -3,6 +3,8 @@
  * All categories: Appetizers, Lunch Specials, Pizzeria, Wings, Pasta, Subs, Burgers, Salads, Desserts, Specials
  */
 import { useState } from "react";
+import { useLunchTimer } from "@/hooks/useLunchTimer";
+import LunchTimerBadge from "@/components/LunchTimerBadge";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
@@ -341,12 +343,12 @@ function AnytimeSpecialRow({ item }: { item: { num: number; name: string; price:
   );
 }
 
-function LunchSpecialRow({ item, isLeft }: { item: { num: number; name: string; price: string }; isLeft: boolean }) {
+function LunchSpecialRow({ item, isLeft, isLunchOpen }: { item: { num: number; name: string; price: string }; isLeft: boolean; isLunchOpen: boolean }) {
   const { addItem, openCart } = useCart();
   const numericPrice = parsePrice(item.price);
 
   const handleAdd = () => {
-    if (!numericPrice) return;
+    if (!numericPrice || !isLunchOpen) return;
     addItem({
       id: `lunch-${item.num}-${Date.now()}`,
       name: `#${item.num} ${item.name}`,
@@ -365,24 +367,31 @@ function LunchSpecialRow({ item, isLeft }: { item: { num: number; name: string; 
       style={{
         borderColor: "oklch(0.93 0.012 80)",
         borderRight: isLeft ? "1px solid oklch(0.93 0.012 80)" : "none",
+        opacity: isLunchOpen ? 1 : 0.45,
+        transition: "opacity 0.3s ease",
       }}
     >
       <span
         className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 napoli-price"
-        style={{ background: "var(--napoli-red)", color: "white" }}
+        style={{ background: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)", color: "white" }}
       >
         {item.num}
       </span>
       <div className="flex-1 min-w-0">
         <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
       </div>
-      <span className="napoli-price text-sm shrink-0" style={{ color: "var(--napoli-red)" }}>{item.price}</span>
+      <span className="napoli-price text-sm shrink-0" style={{ color: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)" }}>{item.price}</span>
       {numericPrice && (
         <button
           onClick={handleAdd}
-          className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90 hover:opacity-90 shrink-0"
-          style={{ background: "var(--napoli-red)", color: "white" }}
-          title={`Add #${item.num} ${item.name} to cart`}
+          disabled={!isLunchOpen}
+          className="w-7 h-7 rounded-full flex items-center justify-center transition-all shrink-0"
+          style={{
+            background: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)",
+            color: "white",
+            cursor: isLunchOpen ? "pointer" : "not-allowed",
+          }}
+          title={isLunchOpen ? `Add #${item.num} ${item.name} to cart` : "Lunch Special not available after 3 PM"}
         >
           <Plus size={14} />
         </button>
@@ -553,6 +562,7 @@ function AppetizersItemRow({
 
 export default function Menu() {
   const { addItem } = useCart();
+  const lunchTimer = useLunchTimer();
   const [activeCategory, setActiveCategory] = useState("appetizers");
   const [showAllToppings, setShowAllToppings] = useState(false);
   const [wingsSelection, setWingsSelection] = useState<WingsSelection | null>(null);
@@ -657,18 +667,38 @@ export default function Menu() {
         {/* ── LUNCH SPECIALS ─────────────────────────────────── */}
         <SectionHeader id="lunch" title="Lunch Specials" emoji="🕙" photo="/manus-storage/napoli-lunch_94df386a.jpg" />
         <MenuCard>
+          {/* Timer bar */}
           <div
-            className="px-5 py-3 border-b flex flex-col md:flex-row items-start md:items-center gap-2"
+            className="px-5 py-3 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2"
             style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}
           >
-            <span className="napoli-badge-green">Mon–Fri 9AM–3PM Only</span>
-            <span className="napoli-label text-xs font-bold" style={{ color: "var(--napoli-green)" }}>
-              🥤 FREE Can of Soda with any Lunch Special!
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="napoli-badge-green">Mon–Fri 10AM–3PM Only</span>
+              <span className="napoli-label text-xs font-bold" style={{ color: "var(--napoli-green)" }}>
+                🥤 FREE Can of Soda with any Lunch Special!
+              </span>
+            </div>
+            <LunchTimerBadge />
           </div>
+
+          {/* Closed overlay message */}
+          {!lunchTimer.isOpen && lunchTimer.hasStarted && (
+            <div
+              className="px-5 py-4 text-center"
+              style={{ background: "oklch(0.96 0.01 30)" }}
+            >
+              <p className="napoli-label text-sm font-bold" style={{ color: "oklch(0.45 0.06 30)" }}>
+                🔒 Lunch Specials are only available 10 AM – 3 PM
+              </p>
+              <p className="napoli-body text-xs mt-1" style={{ color: "oklch(0.55 0.04 30)" }}>
+                Come back tomorrow! Our full menu is available all day.
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2">
             {LUNCH_SPECIALS.items.map((item, i) => (
-              <LunchSpecialRow key={item.num} item={item} isLeft={i % 2 === 0} />
+              <LunchSpecialRow key={item.num} item={item} isLeft={i % 2 === 0} isLunchOpen={lunchTimer.isOpen} />
             ))}
           </div>
         </MenuCard>
