@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { NV_SALES_TAX_RATE } from "@shared/const";
 
-type PaymentMethod = "stripe" | "authorizenet";
 
 declare global {
   interface Window {
@@ -31,8 +30,6 @@ export default function CartDrawer() {
   const [orderType, setOrderType] = useState<"delivery" | "pickup" | "dine-in">("pickup");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("stripe");
-
   // Delivery address fields
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [deliveryCity, setDeliveryCity] = useState("North Las Vegas");
@@ -69,12 +66,12 @@ export default function CartDrawer() {
   // Debounce timer ref for auto-quote
   const quoteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load Accept.js script when Authorize.net is selected
+  // Load Accept.js script for Authorize.net
   const acceptJsLoaded = useRef(false);
   const { data: authnetConfig } = trpc.authorizenet.getClientKey.useQuery();
 
   useEffect(() => {
-    if (paymentMethod !== "authorizenet" || acceptJsLoaded.current) return;
+    if (acceptJsLoaded.current) return;
     const isSandbox = authnetConfig?.isSandbox ?? true;
     const src = isSandbox
       ? "https://jstest.authorize.net/v1/Accept.js"
@@ -87,7 +84,7 @@ export default function CartDrawer() {
       document.body.appendChild(script);
     }
     acceptJsLoaded.current = true;
-  }, [paymentMethod, authnetConfig]);
+  }, [authnetConfig]);
 
   // Reset quotes when order type changes away from delivery
   useEffect(() => {
@@ -160,13 +157,6 @@ export default function CartDrawer() {
     }
   };
 
-  const createCheckout = trpc.stripe.createCheckoutSession.useMutation({
-    onSuccess: (data) => {
-      if (data.url) window.location.href = data.url;
-    },
-    onError: (err) => toast.error("Could not start checkout: " + err.message),
-  });
-
   const chargeCard = trpc.authorizenet.chargeCard.useMutation({
     onSuccess: async (data) => {
       // Redeem coupon usage after successful payment
@@ -221,45 +211,6 @@ export default function CartDrawer() {
       setIsProcessingAuthNet(false);
     },
   });
-
-  const handleStripeCheckout = () => {
-    if (items.length === 0) return;
-    if (orderType === "delivery" && !deliveryAddress.trim()) {
-      toast.error("Please enter your delivery address.");
-      return;
-    }
-    if (orderType === "delivery" && !uberQuoteId) {
-      toast.error("Please wait for the delivery quote to load.");
-      return;
-    }
-
-    const deliveryMeta =
-      orderType === "delivery" && uberQuoteId
-        ? {
-            uberQuoteId,
-            dropoffAddress: deliveryAddress,
-            dropoffCity: deliveryCity,
-            dropoffState: deliveryState,
-            dropoffZip: deliveryZip,
-            dropoffNotes: deliveryNotes || undefined,
-          }
-        : {};
-
-    createCheckout.mutate({
-      items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category })),
-      successUrl: `${window.location.origin}/order-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${window.location.origin}/menu`,
-      orderType,
-      customerName: customerName || undefined,
-      customerPhone: customerPhone || undefined,
-      couponCode: appliedCoupon?.code || undefined,
-      discountPercent: appliedCoupon?.discountPercent || undefined,
-      deliveryFeeCents: selectedDeliveryFee !== null ? selectedDeliveryFee : undefined,
-      convenienceFeeCents: Math.round(convenienceFee * 100),
-      salesTaxCents: Math.round(salesTax * 100),
-      ...deliveryMeta,
-    });
-  };
 
   const handleAuthorizeNetCheckout = () => {
     if (!authnetConfig?.configured) {
@@ -331,12 +282,10 @@ export default function CartDrawer() {
   };
 
   const handleCheckout = () => {
-    if (paymentMethod === "stripe") handleStripeCheckout();
-    else handleAuthorizeNetCheckout();
+    handleAuthorizeNetCheckout();
   };
 
   const isLoading =
-    createCheckout.isPending ||
     isProcessingAuthNet ||
     chargeCard.isPending ||
     createUberDelivery.isPending ||
@@ -635,44 +584,8 @@ export default function CartDrawer() {
               />
             </div>
 
-            {/* Payment method selector */}
-            <div>
-              <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
-                PAYMENT METHOD
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setPaymentMethod("stripe")}
-                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded border text-xs font-semibold transition-all"
-                  style={{
-                    background: paymentMethod === "stripe" ? "oklch(0.46 0.18 264)" : "transparent",
-                    color: paymentMethod === "stripe" ? "white" : "oklch(0.42 0.03 30)",
-                    borderColor: paymentMethod === "stripe" ? "oklch(0.46 0.18 264)" : "oklch(0.82 0.015 80)",
-                    fontFamily: "'Oswald', sans-serif",
-                  }}
-                >
-                  <CreditCard size={14} />
-                  Stripe
-                </button>
-                <button
-                  onClick={() => setPaymentMethod("authorizenet")}
-                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded border text-xs font-semibold transition-all"
-                  style={{
-                    background: paymentMethod === "authorizenet" ? "oklch(0.38 0.12 145)" : "transparent",
-                    color: paymentMethod === "authorizenet" ? "white" : "oklch(0.42 0.03 30)",
-                    borderColor: paymentMethod === "authorizenet" ? "oklch(0.38 0.12 145)" : "oklch(0.82 0.015 80)",
-                    fontFamily: "'Oswald', sans-serif",
-                  }}
-                >
-                  <Lock size={14} />
-                  Authorize.net
-                </button>
-              </div>
-            </div>
-
             {/* Authorize.net card fields */}
-            {paymentMethod === "authorizenet" && (
-              <div className="space-y-2 p-3 rounded-lg border" style={{ borderColor: "oklch(0.82 0.015 80)", background: "oklch(0.98 0.005 80)" }}>
+            <div className="space-y-2 p-3 rounded-lg border" style={{ borderColor: "oklch(0.82 0.015 80)", background: "oklch(0.98 0.005 80)" }}>
                 <div className="flex items-center gap-1.5 mb-1">
                   <Lock size={12} style={{ color: "oklch(0.38 0.12 145)" }} />
                   <span className="text-xs font-semibold" style={{ color: "oklch(0.38 0.12 145)", fontFamily: "'Oswald', sans-serif" }}>
@@ -716,8 +629,7 @@ export default function CartDrawer() {
                     Authorize.net credentials not configured. Add API Login ID and Transaction Key in Secrets.
                   </p>
                 )}
-              </div>
-            )}
+            </div>
 
             {/* Coupon code input */}
             <div className="space-y-1.5">
@@ -819,12 +731,10 @@ export default function CartDrawer() {
               onClick={handleCheckout}
               disabled={isLoading || (orderType === "delivery" && isFetchingUberQuote)}
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded font-bold text-sm transition-all active:scale-[0.98]"
-              style={{
+                style={{
                 background: isLoading || (orderType === "delivery" && isFetchingUberQuote)
                   ? "oklch(0.55 0.03 30)"
-                  : paymentMethod === "authorizenet"
-                  ? "oklch(0.38 0.12 145)"
-                  : "var(--napoli-red, #c0392b)",
+                  : "oklch(0.38 0.12 145)",
                 color: "white",
                 fontFamily: "'Oswald', sans-serif",
                 letterSpacing: "0.05em",
@@ -835,9 +745,7 @@ export default function CartDrawer() {
                   <Loader2 size={16} className="animate-spin" />
                   {createUberDelivery.isPending
                     ? "Dispatching Uber Direct..."
-                    : paymentMethod === "authorizenet"
-                    ? "Processing Payment..."
-                    : "Redirecting to Payment..."}
+                    : "Processing Payment..."}
                 </>
               ) : orderType === "delivery" && isFetchingUberQuote ? (
                 <>
@@ -846,18 +754,16 @@ export default function CartDrawer() {
                 </>
               ) : (
                 <>
-                  {paymentMethod === "authorizenet" ? <Lock size={15} /> : <CreditCard size={15} />}
-                  {paymentMethod === "authorizenet" ? "Pay Securely" : "Pay with Stripe"}
+                  <Lock size={15} />
+                  Pay Securely
                   <ChevronRight size={16} />
                 </>
               )}
             </button>
             <p className="text-center text-xs" style={{ color: "oklch(0.60 0.03 30)" }}>
               {orderType === "delivery"
-                ? `Delivery by Uber Direct · ${paymentMethod === "authorizenet" ? "Secured by Authorize.net" : "Secured by Stripe"}`
-                : paymentMethod === "authorizenet"
-                ? "Secured by Authorize.net · PCI Compliant"
-                : "Secured by Stripe"}
+                ? "Delivery by Uber Direct · Secured by Authorize.net"
+                : "Secured by Authorize.net · PCI Compliant"}
             </p>
           </div>
         )}
