@@ -9,6 +9,7 @@
 import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { AUTHNET_ENV } from "./_core/env";
+import { notifyOwner } from "./_core/notification";
 import { TRPCError } from "@trpc/server";
 import { pushOrderToClover } from "./cloverSync";
 
@@ -239,6 +240,27 @@ export const authorizeNetRouter = router({
           orderDescription,
           orderType: input.orderType,
         });
+
+        // Fire-and-forget: notify owner of successful payment
+        notifyOwner({
+          title: `💳 New Order — $${amount.toFixed(2)} (${input.orderType})`,
+          content: [
+            `Customer: ${input.customerName}`,
+            input.customerPhone ? `Phone: ${input.customerPhone}` : null,
+            input.customerEmail ? `Email: ${input.customerEmail}` : null,
+            `Order Type: ${input.orderType}`,
+            `Total Charged: $${amount.toFixed(2)}`,
+            input.discountPercent ? `Coupon: ${input.couponCode} (${input.discountPercent}% off)` : null,
+            ``,
+            `Items:`,
+            ...input.items.map((i) => `  • ${i.quantity}x ${i.name} — $${(i.price * i.quantity).toFixed(2)}`),
+            ``,
+            `Transaction ID: ${result.transactionId}`,
+            `Auth Code: ${result.authCode}`,
+          ].filter(Boolean).join("\n"),
+        }).catch((err) =>
+          console.error("[Notification] Failed to send payment notification:", err)
+        );
 
         // Fire-and-forget: push order to Clover POS (non-blocking)
         pushOrderToClover({
