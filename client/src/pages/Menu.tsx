@@ -2,7 +2,7 @@
  * Napoli Pizzeria — Full Menu Page
  * All categories: Appetizers, Lunch Specials, Pizzeria, Wings, Pasta, Subs, Burgers, Salads, Desserts, Specials
  */
-import { useState } from "react";
+import React, { useState } from "react";
 import { useLunchTimer } from "@/hooks/useLunchTimer";
 import LunchTimerBadge from "@/components/LunchTimerBadge";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
@@ -1428,7 +1428,7 @@ export default function Menu() {
             {BEVERAGES.map((bev) => {
               const bevPhoto = getMenuPhoto(bev.name);
               if ((bev as any).prices) {
-                return (bev as any).prices.map((p: any) => (
+                return <React.Fragment key={bev.name}>{(bev as any).prices.map((p: any) => (
                   <div
                     key={p.size}
                     className="flex items-center gap-3 px-4 py-3 border-b border-r"
@@ -1453,7 +1453,7 @@ export default function Menu() {
                       </button>
                     </div>
                   </div>
-                ));
+                ))}</React.Fragment>;
               }
               if ((bev as any).price) {
                 const price = parseFloat(((bev as any).price as string).replace("$",""));
