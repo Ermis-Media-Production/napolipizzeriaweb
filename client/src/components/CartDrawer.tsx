@@ -245,7 +245,7 @@ export default function CartDrawer() {
     setIsProcessingAuthNet(true);
     const secureData = {
       authData: {
-        clientKey: authnetConfig.apiLoginId,
+        clientKey: authnetConfig.clientKey,
         apiLoginID: authnetConfig.apiLoginId,
       },
       cardData: {

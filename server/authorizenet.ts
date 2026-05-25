@@ -171,8 +171,9 @@ export const authorizeNetRouter = router({
   getClientKey: publicProcedure.query(() => {
     return {
       apiLoginId: AUTHNET_ENV.apiLoginId,
+      clientKey: AUTHNET_ENV.clientKey,
       isSandbox: AUTHNET_ENV.isSandbox,
-      configured: Boolean(AUTHNET_ENV.apiLoginId && AUTHNET_ENV.transactionKey),
+      configured: Boolean(AUTHNET_ENV.apiLoginId && AUTHNET_ENV.transactionKey && AUTHNET_ENV.clientKey),
     };
   }),
 

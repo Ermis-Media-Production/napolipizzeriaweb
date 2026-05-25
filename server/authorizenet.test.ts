@@ -20,6 +20,7 @@ vi.mock("./_core/env", () => ({
   AUTHNET_ENV: {
     apiLoginId: "test-login-id",
     transactionKey: "test-transaction-key",
+    clientKey: "test-client-key",
     isSandbox: true,
   },
 }));

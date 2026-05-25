@@ -13,6 +13,7 @@ export const ENV = {
 export const AUTHNET_ENV = {
   apiLoginId: process.env.AUTHNET_API_LOGIN_ID ?? "",
   transactionKey: process.env.AUTHNET_TRANSACTION_KEY ?? "",
+  clientKey: process.env.VITE_AUTHNET_CLIENT_KEY ?? "",
   isSandbox: process.env.AUTHNET_IS_SANDBOX === "true", // default to production
 };
 
