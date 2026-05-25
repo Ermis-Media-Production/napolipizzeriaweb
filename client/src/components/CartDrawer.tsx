@@ -8,30 +8,13 @@ import { NV_SALES_TAX_RATE } from "@shared/const";
 import { OrderScheduler, OrderPoliciesNote, type ScheduleSelection } from "./OrderScheduler";
 
 
-declare global {
-  interface Window {
-    Accept?: {
-      dispatchData: (
-        secureData: {
-          authData: { clientKey: string; apiLoginID: string };
-          cardData: { cardNumber: string; month: string; year: string; cardCode: string };
-        },
-        callback: (response: {
-          opaqueData?: { dataDescriptor: string; dataValue: string };
-          messages?: { resultCode: string; message: Array<{ text: string }> };
-        }) => void
-      ) => void;
-    };
-  }
-}
-
-type PaymentMethod = "stripe" | "authorizenet";
+// Clover is the sole payment method
 
 export default function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, clearCart, totalItems, totalPrice, pendingOrderType, clearPendingOrderType } = useCart();
   const [, navigate] = useLocation();
   const [orderType, setOrderType] = useState<"delivery" | "pickup" | "dine-in" | "scheduled">("pickup");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("stripe");
+  const [isRedirectingToClover, setIsRedirectingToClover] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -56,12 +39,6 @@ export default function CartDrawer() {
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountPercent: number; description: string } | null>(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
-  // Authorize.net card fields
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvc, setCardCvc] = useState("");
-  const [isProcessingAuthNet, setIsProcessingAuthNet] = useState(false);
-
   // Live convenience fee config from DB
   const { data: feeConfig, isLoading: feeConfigLoading } = trpc.settings.getConvenienceFee.useQuery();
   // While loading, fall back to 3% so totals are never shown as $0 fee
@@ -73,27 +50,6 @@ export default function CartDrawer() {
 
   // Debounce timer ref for auto-quote
   const quoteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Load Accept.js script for Authorize.net (only when selected)
-  const acceptJsLoaded = useRef(false);
-  const { data: authnetConfig } = trpc.authorizenet.getClientKey.useQuery();
-
-  useEffect(() => {
-    if (paymentMethod !== "authorizenet") return;
-    if (acceptJsLoaded.current) return;
-    const isSandbox = authnetConfig?.isSandbox ?? true;
-    const src = isSandbox
-      ? "https://jstest.authorize.net/v1/Accept.js"
-      : "https://js.authorize.net/v1/Accept.js";
-    const existing = document.querySelector(`script[src="${src}"]`);
-    if (!existing) {
-      const script = document.createElement("script");
-      script.src = src;
-      script.charset = "utf-8";
-      document.body.appendChild(script);
-    }
-    acceptJsLoaded.current = true;
-  }, [authnetConfig, paymentMethod]);
 
   // Reset quotes when order type changes away from delivery
   useEffect(() => {
@@ -151,12 +107,14 @@ export default function CartDrawer() {
 
   const createUberDelivery = trpc.uber.createDelivery.useMutation();
   const redeemCoupon = trpc.coupon.redeem.useMutation();
-  const createOrder = trpc.orders.createOrder.useMutation();
-  const createStripeCheckout = trpc.stripe.createCheckoutSession.useMutation({
+  const createCloverSession = trpc.cloverCheckout.createSession.useMutation({
     onSuccess: (data) => {
-      if (data.url) window.location.href = data.url;
+      window.location.href = data.href;
     },
-    onError: (err) => toast.error("Could not start checkout: " + err.message),
+    onError: (err) => {
+      toast.error("Could not start checkout: " + err.message);
+      setIsRedirectingToClover(false);
+    },
   });
 
   const utils = trpc.useUtils();
@@ -191,195 +149,7 @@ export default function CartDrawer() {
   const deliveryFeeDollars = selectedDeliveryFee !== null ? selectedDeliveryFee / 100 : 0;
   const grandTotal = discountedSubtotal + convenienceFee + salesTax + deliveryFeeDollars;
 
-  /** After successful payment, create the scheduled order record */
-  const handlePostPaymentCreateOrder = async (
-    transactionId: string,
-    authCode: string | undefined,
-    resolvedSchedule: ScheduleSelection
-  ) => {
-    const scheduledAt =
-      resolvedSchedule.type === "asap"
-        ? Date.now()
-        : resolvedSchedule.scheduledAt;
-    const isAsap = resolvedSchedule.type === "asap";
-
-    try {
-      // Map "scheduled" to "pickup" for the orders API (scheduled is a UI concept, not a DB enum value)
-      const apiOrderType = orderType === "scheduled" ? "pickup" : orderType;
-      const result = await createOrder.mutateAsync({
-        orderType: apiOrderType,
-        scheduledAt,
-        isAsap,
-        customerName,
-        customerPhone: customerPhone || "N/A",
-        customerEmail: customerEmail || undefined,
-        deliveryAddress:
-          orderType === "delivery"
-            ? `${deliveryAddress}, ${deliveryCity}, ${deliveryState} ${deliveryZip}`
-            : undefined,
-        items: items.map((i) => ({
-          id: i.id,
-          name: i.name,
-          description: i.description,
-          price: i.price,
-          quantity: i.quantity,
-          category: i.category,
-        })),
-        subtotal,
-        discountAmount,
-        convenienceFee,
-        salesTax,
-        total: grandTotal,
-        couponCode: appliedCoupon?.code || undefined,
-        transactionId,
-        authCode,
-      });
-      return result.orderRef;
-    } catch (err) {
-      // Non-blocking: order record creation failure shouldn't block the success page
-      console.error("Failed to create order record:", err);
-      return null;
-    }
-  };
-
-  const chargeCard = trpc.authorizenet.chargeCard.useMutation({
-    onSuccess: async (data) => {
-      // Redeem coupon usage after successful payment
-      if (data.couponCode) {
-        redeemCoupon.mutate({ code: data.couponCode });
-      }
-
-      // Resolve schedule: default to ASAP if nothing was selected
-      const resolvedSchedule: ScheduleSelection = schedule ?? { type: "asap" };
-
-      // Create the scheduled order record
-      const orderRef = await handlePostPaymentCreateOrder(
-        data.transactionId,
-        data.authCode,
-        resolvedSchedule
-      );
-
-      if (orderType === "delivery") {
-        try {
-          if (uberQuoteId) {
-            const delivery = await createUberDelivery.mutateAsync({
-              quoteId: uberQuoteId,
-              dropoffAddress: deliveryAddress,
-              dropoffCity: deliveryCity,
-              dropoffState: deliveryState,
-              dropoffZip: deliveryZip,
-              dropoffName: customerName,
-              dropoffPhone: customerPhone || "+17025550000",
-              dropoffNotes: deliveryNotes || undefined,
-              orderItems: items.map((i) => ({ name: i.name, quantity: i.quantity })),
-              externalId: data.transactionId,
-            });
-            clearCart();
-            closeCart();
-            navigate(
-              `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}&delivery_id=${encodeURIComponent(delivery.deliveryId)}&tracking_url=${encodeURIComponent(delivery.trackingUrl)}${orderRef ? `&ref=${encodeURIComponent(orderRef)}` : ""}`
-            );
-          } else {
-            clearCart();
-            closeCart();
-            navigate(
-              `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}${orderRef ? `&ref=${encodeURIComponent(orderRef)}` : ""}`
-            );
-          }
-        } catch {
-          clearCart();
-          closeCart();
-          navigate(
-            `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}${orderRef ? `&ref=${encodeURIComponent(orderRef)}` : ""}`
-          );
-          toast.warning("Payment successful, but delivery dispatch failed. We'll contact you shortly.");
-        }
-      } else {
-        clearCart();
-        closeCart();
-        navigate(
-          `/order-success?txn=${data.transactionId}&method=authorizenet&name=${encodeURIComponent(data.customerName)}&total=${data.amount.toFixed(2)}&type=${data.orderType}${orderRef ? `&ref=${encodeURIComponent(orderRef)}` : ""}`
-        );
-      }
-    },
-    onError: (err) => {
-      toast.error("Payment failed: " + err.message);
-      setIsProcessingAuthNet(false);
-    },
-  });
-
-  const handleAuthorizeNetCheckout = () => {
-    if (!authnetConfig?.configured) {
-      toast.error("Authorize.net is not configured.");
-      return;
-    }
-    if (!customerName.trim()) {
-      toast.error("Please enter your name.");
-      return;
-    }
-    if (orderType === "delivery" && !deliveryAddress.trim()) {
-      toast.error("Please enter your delivery address.");
-      return;
-    }
-    if (orderType === "delivery" && !uberQuoteId) {
-      toast.error("Please wait for the delivery quote to load.");
-      return;
-    }
-    if (!cardNumber || !cardExpiry || !cardCvc) {
-      toast.error("Please fill in all card fields.");
-      return;
-    }
-    const [expMonth, expYear] = cardExpiry.split("/").map((s) => s.trim());
-    if (!expMonth || !expYear) {
-      toast.error("Please enter expiry as MM/YY.");
-      return;
-    }
-    if (!window.Accept) {
-      toast.error("Payment library not loaded. Please try again.");
-      return;
-    }
-    setIsProcessingAuthNet(true);
-    const secureData = {
-      authData: {
-        clientKey: authnetConfig.clientKey,
-        apiLoginID: authnetConfig.apiLoginId,
-      },
-      cardData: {
-        cardNumber: cardNumber.replace(/\s/g, ""),
-        month: expMonth.padStart(2, "0"),
-        year: expYear.length === 2 ? `20${expYear}` : expYear,
-        cardCode: cardCvc,
-      },
-    };
-    window.Accept.dispatchData(secureData, (response) => {
-      if (response.messages?.resultCode === "Error") {
-        toast.error(response.messages.message?.[0]?.text ?? "Tokenization failed");
-        setIsProcessingAuthNet(false);
-        return;
-      }
-      if (!response.opaqueData) {
-        toast.error("Could not tokenize card. Please try again.");
-        setIsProcessingAuthNet(false);
-        return;
-      }
-      // Map "scheduled" to "pickup" for the payment API
-      const chargeOrderType = orderType === "scheduled" ? "pickup" : orderType;
-      chargeCard.mutate({
-        opaqueDataDescriptor: response.opaqueData.dataDescriptor,
-        opaqueDataValue: response.opaqueData.dataValue,
-        items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category })),
-        orderType: chargeOrderType,
-        customerName,
-        customerPhone: customerPhone || undefined,
-        couponCode: appliedCoupon?.code || undefined,
-        discountPercent: appliedCoupon?.discountPercent || undefined,
-        convenienceFeeCents: Math.round(convenienceFee * 100),
-        salesTaxCents: Math.round(salesTax * 100),
-      });
-    });
-  };
-
-  const handleStripeCheckout = () => {
+  const handleCloverCheckout = () => {
     if (items.length === 0) return;
     if (!customerName.trim()) {
       toast.error("Please enter your name.");
@@ -396,59 +166,36 @@ export default function CartDrawer() {
     const resolvedSchedule: ScheduleSelection = schedule ?? { type: "asap" };
     const scheduledAt = resolvedSchedule.type === "asap" ? Date.now() : resolvedSchedule.scheduledAt;
     const isAsap = resolvedSchedule.type === "asap";
-    // Map "scheduled" to "pickup" for the Stripe API
-    const stripeOrderType = orderType === "scheduled" ? "pickup" : orderType;
-    createStripeCheckout.mutate({
-      items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category })),
-      successUrl: `${window.location.origin}/order-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${window.location.origin}/menu`,
-      orderType: stripeOrderType,
+    const apiOrderType = orderType === "scheduled" ? "pickup" : orderType;
+    const scheduledLabel = resolvedSchedule.type === "scheduled" ? resolvedSchedule.label : undefined;
+    setIsRedirectingToClover(true);
+    createCloverSession.mutate({
+      items: items.map((i) => ({ id: i.id, name: i.name, description: i.description, price: i.price, quantity: i.quantity, category: i.category })),
+      orderType: apiOrderType,
       customerName,
-      customerPhone: customerPhone || undefined,
+      customerPhone: customerPhone || "",
       customerEmail: customerEmail || undefined,
-      scheduledAt,
+      deliveryAddress: orderType === "delivery" ? `${deliveryAddress}, ${deliveryCity}, ${deliveryState} ${deliveryZip}` : undefined,
       isAsap,
-      specialInstructions: undefined,
-      couponCode: appliedCoupon?.code || undefined,
-      discountPercent: appliedCoupon?.discountPercent || undefined,
-      convenienceFeeCents: Math.round(convenienceFee * 100),
-      salesTaxCents: Math.round(salesTax * 100),
-      convenienceFee,
-      salesTax,
+      scheduledAt,
+      scheduledLabel,
       subtotal,
       discountAmount,
+      convenienceFee,
+      salesTax,
       total: grandTotal,
-      ...(orderType === "delivery" && uberQuoteId ? {
-        uberQuoteId,
-        dropoffAddress: deliveryAddress,
-        dropoffCity: deliveryCity,
-        dropoffState: deliveryState,
-        dropoffZip: deliveryZip,
-        dropoffNotes: deliveryNotes || undefined,
-        deliveryFeeCents: uberFee ?? undefined,
-      } : {}),
+      couponCode: appliedCoupon?.code || undefined,
+      uberQuoteId: orderType === "delivery" && uberQuoteId ? uberQuoteId : undefined,
+      origin: window.location.origin,
     });
   };
 
-  const handleCheckout = () => {
-    if (paymentMethod === "stripe") handleStripeCheckout();
-    else handleAuthorizeNetCheckout();
-  };
+  const handleCheckout = () => handleCloverCheckout();
 
   const isLoading =
-    isProcessingAuthNet ||
-    chargeCard.isPending ||
-    createStripeCheckout.isPending ||
-    createUberDelivery.isPending ||
+    isRedirectingToClover ||
+    createCloverSession.isPending ||
     feeConfigLoading;
-
-  const formatCardNumber = (val: string) =>
-    val.replace(/\D/g, "").replace(/(.{4})/g, "$1 ").trim().slice(0, 19);
-  const formatExpiry = (val: string) => {
-    const digits = val.replace(/\D/g, "").slice(0, 4);
-    if (digits.length >= 3) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-    return digits;
-  };
 
   return (
     <>
@@ -761,39 +508,12 @@ export default function CartDrawer() {
               style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
             />
 
-            {/* Payment method selector */}
-            <div>
-              <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
-                PAYMENT METHOD
+            {/* Clover payment info */}
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded border" style={{ borderColor: "oklch(0.70 0.15 145)", background: "oklch(0.97 0.03 145)" }}>
+              <CreditCard size={13} style={{ color: "oklch(0.38 0.12 145)", flexShrink: 0 }} />
+              <p className="text-xs" style={{ color: "oklch(0.30 0.10 145)", fontFamily: "'Lato', sans-serif" }}>
+                You'll be redirected to Clover's secure checkout page to complete your payment.
               </p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setPaymentMethod("stripe")}
-                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded border text-xs font-semibold transition-all"
-                  style={{
-                    background: paymentMethod === "stripe" ? "oklch(0.46 0.18 264)" : "transparent",
-                    color: paymentMethod === "stripe" ? "white" : "oklch(0.42 0.03 30)",
-                    borderColor: paymentMethod === "stripe" ? "oklch(0.46 0.18 264)" : "oklch(0.82 0.015 80)",
-                    fontFamily: "'Oswald', sans-serif",
-                  }}
-                >
-                  <CreditCard size={14} />
-                  Stripe
-                </button>
-                <button
-                  onClick={() => setPaymentMethod("authorizenet")}
-                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded border text-xs font-semibold transition-all"
-                  style={{
-                    background: paymentMethod === "authorizenet" ? "oklch(0.38 0.12 145)" : "transparent",
-                    color: paymentMethod === "authorizenet" ? "white" : "oklch(0.42 0.03 30)",
-                    borderColor: paymentMethod === "authorizenet" ? "oklch(0.38 0.12 145)" : "oklch(0.82 0.015 80)",
-                    fontFamily: "'Oswald', sans-serif",
-                  }}
-                >
-                  <Lock size={14} />
-                  Authorize.net
-                </button>
-              </div>
             </div>
 
             {/* Accepted cards row */}
@@ -820,8 +540,8 @@ export default function CartDrawer() {
                   </div>
                 </div>
               </div>
-              {/* Digital wallets row — shown only when Stripe is selected */}
-              {paymentMethod === "stripe" && (
+              {/* Digital wallets row */}
+              {true && (
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>Also:</span>
                   <div className="flex items-center gap-1.5">
@@ -861,62 +581,7 @@ export default function CartDrawer() {
               )}
             </div>
 
-            {/* Authorize.net card fields */}
-            {paymentMethod === "authorizenet" && <div className="space-y-2 p-3 rounded-lg border" style={{ borderColor: "oklch(0.82 0.015 80)", background: "oklch(0.98 0.005 80)" }}>
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Lock size={12} style={{ color: "oklch(0.38 0.12 145)" }} />
-                  <span className="text-xs font-semibold" style={{ color: "oklch(0.38 0.12 145)", fontFamily: "'Oswald', sans-serif" }}>
-                    Card Details — Secured by Authorize.net
-                  </span>
-                </div>
-                <input
-                  type="text"
-                  placeholder="Card number"
-                  value={cardNumber}
-                  onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                  maxLength={19}
-                  className="w-full text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-                  style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
-                  autoComplete="cc-number"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    placeholder="MM/YY"
-                    value={cardExpiry}
-                    onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
-                    maxLength={5}
-                    className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
-                    autoComplete="cc-exp"
-                  />
-                  <input
-                    type="text"
-                    placeholder="CVV"
-                    value={cardCvc}
-                    onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                    maxLength={4}
-                    className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
-                    autoComplete="cc-csc"
-                  />
-                </div>
-                {!authnetConfig?.configured && (
-                  <p className="text-xs text-amber-700 bg-amber-50 px-2 py-1.5 rounded border border-amber-200">
-                    Authorize.net credentials not configured. Add API Login ID and Transaction Key in Secrets.
-                  </p>
-                )}
-            </div>}
 
-            {/* Stripe info note */}
-            {paymentMethod === "stripe" && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded border" style={{ borderColor: "oklch(0.70 0.15 264)", background: "oklch(0.97 0.03 264)" }}>
-                <CreditCard size={13} style={{ color: "oklch(0.46 0.18 264)", flexShrink: 0 }} />
-                <p className="text-xs" style={{ color: "oklch(0.35 0.12 264)", fontFamily: "'Lato', sans-serif" }}>
-                  You'll be redirected to Stripe's secure checkout page to complete your payment.
-                </p>
-              </div>
-            )}
 
             {/* Coupon code input */}
             <div className="space-y-1.5">
@@ -1033,11 +698,7 @@ export default function CartDrawer() {
               {isLoading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  {createStripeCheckout.isPending
-                    ? "Redirecting to Stripe..."
-                    : createUberDelivery.isPending
-                    ? "Dispatching Uber Direct..."
-                    : "Processing Payment..."}
+                  {"Redirecting to Clover..."}
                 </>
               ) : orderType === "delivery" && isFetchingUberQuote ? (
                 <>
@@ -1053,13 +714,9 @@ export default function CartDrawer() {
               )}
             </button>
             <p className="text-center text-xs" style={{ color: "oklch(0.60 0.03 30)" }}>
-              {paymentMethod === "stripe"
-                ? orderType === "delivery"
-                  ? "Delivery by Uber Direct · Secured by Stripe"
-                  : "Secured by Stripe · PCI Compliant"
-                : orderType === "delivery"
-                ? "Delivery by Uber Direct · Secured by Authorize.net"
-                : "Secured by Authorize.net · PCI Compliant"}
+              {orderType === "delivery"
+                ? "Delivery by Uber Direct · Secured by Clover"
+                : "Secured by Clover · PCI Compliant"}
             </p>
           </div>
         )}

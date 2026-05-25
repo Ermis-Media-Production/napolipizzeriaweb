@@ -12,6 +12,7 @@ import { settingsRouter } from "./settings";
 import { cateringRouter } from "./catering";
 import { ordersRouter } from "./orders";
 import { orderRefundsRouter } from "./orderRefunds";
+import { cloverCheckoutRouter } from "./cloverCheckout";
 
 export const appRouter = router({
   system: systemRouter,
@@ -35,6 +36,7 @@ export const appRouter = router({
   catering: cateringRouter,
   orders: ordersRouter,
   orderRefunds: orderRefundsRouter,
+  cloverCheckout: cloverCheckoutRouter,
 });
 
 export type AppRouter = typeof appRouter;

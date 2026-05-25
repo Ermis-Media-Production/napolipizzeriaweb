@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { handleStripeWebhook } from "../stripe";
+import { handleCloverWebhook } from "../cloverCheckout";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -43,6 +44,17 @@ async function startServer() {
       handleStripeWebhook(req, res);
     }
   );
+
+  // Clover webhook — JSON body (no raw body needed, no signature verification required)
+  app.post("/api/clover/webhook", express.json(), async (req, res) => {
+    try {
+      await handleCloverWebhook(req.body);
+      res.json({ received: true });
+    } catch (err) {
+      console.error("[CloverWebhook] Error:", err);
+      res.status(500).json({ error: "Webhook processing failed" });
+    }
+  });
 
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));

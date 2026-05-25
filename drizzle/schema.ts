@@ -87,7 +87,7 @@ export const scheduledOrders = mysqlTable("scheduledOrders", {
   /** Unique public-facing order reference (e.g. "NPZ-20260525-0042") */
   orderRef: varchar("orderRef", { length: 32 }).notNull().unique(),
   /** Order status lifecycle */
-  status: mysqlEnum("status", ["pending", "confirmed", "preparing", "ready", "completed", "cancelled"])
+  status: mysqlEnum("status", ["pending_payment", "pending", "confirmed", "preparing", "ready", "completed", "cancelled"])
     .default("confirmed")
     .notNull(),
   /** Order type */
@@ -114,9 +114,17 @@ export const scheduledOrders = mysqlTable("scheduledOrders", {
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   /** Coupon used (if any) */
   couponCode: varchar("couponCode", { length: 64 }),
+  /** Payment method used */
+  paymentMethod: mysqlEnum("paymentMethod", ["stripe", "authorizenet", "clover", "cash"]).default("clover"),
+  /** Payment status */
+  paymentStatus: mysqlEnum("paymentStatus", ["pending", "paid", "refunded", "failed"]).default("paid"),
   /** Authorize.net transaction reference (for refunds) */
   transactionId: varchar("transactionId", { length: 64 }),
   authCode: varchar("authCode", { length: 16 }),
+  /** Clover Hosted Checkout session ID */
+  cloverSessionId: varchar("cloverSessionId", { length: 128 }),
+  /** Clover payment/charge ID after successful payment */
+  cloverPaymentId: varchar("cloverPaymentId", { length: 128 }),
   /** Total amount already refunded */
   refundedAmount: decimal("refundedAmount", { precision: 10, scale: 2 }).default("0").notNull(),
   /** Special instructions from customer */

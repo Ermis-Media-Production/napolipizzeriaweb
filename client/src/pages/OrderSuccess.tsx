@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { CheckCircle, Phone, MapPin, Clock, ArrowRight, Loader2, Shield, Truck, ExternalLink } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -8,207 +8,161 @@ import { useCart } from "@/contexts/CartContext";
 import { RESTAURANT_INFO } from "@/lib/napoliData";
 import { toast } from "sonner";
 
-type OrderInfo = {
-  method: "stripe" | "authorizenet";
-  transactionId?: string;
-  customerName?: string;
-  amountTotal?: number;
-  orderType?: string;
-  deliveryId?: string;
-  trackingUrl?: string;
-  deliveryProvider?: "uber" | "doordash";
-  orderRef?: string;
-};
-
 export default function OrderSuccess() {
   const { clearCart } = useCart();
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [authNetOrder, setAuthNetOrder] = useState<OrderInfo | null>(null);
+
+  // Clover session ID (primary payment method)
+  const [cloverSessionId, setCloverSessionId] = useState<string | null>(null);
+
+  // Legacy Authorize.net support (kept for historical orders)
+  const [authNetInfo, setAuthNetInfo] = useState<{
+    transactionId: string;
+    customerName?: string;
+    amountTotal?: number;
+    orderType?: string;
+    deliveryId?: string;
+    trackingUrl?: string;
+    orderRef?: string;
+  } | null>(null);
+
   const [orderRef, setOrderRef] = useState<string | null>(null);
 
-  // Delivery dispatch state (for Stripe delivery orders)
+  // Delivery dispatch state (for Clover delivery orders)
   const [deliveryId, setDeliveryId] = useState<string | null>(null);
   const [trackingUrl, setTrackingUrl] = useState<string | null>(null);
-  const [activeProvider, setActiveProvider] = useState<"uber" | "doordash" | null>(null);
   const [isDispatching, setIsDispatching] = useState(false);
   const dispatchedRef = useRef(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sid = params.get("session_id");
+    const payment = params.get("payment");
     const txn = params.get("txn");
     const method = params.get("method");
 
-    if (sid) {
-      setSessionId(sid);
+    if (sid && payment === "clover") {
+      // Clover Hosted Checkout return
+      setCloverSessionId(sid);
       clearCart();
     } else if (txn && method === "authorizenet") {
+      // Legacy Authorize.net
       clearCart();
       const ref = params.get("ref");
       if (ref) setOrderRef(ref);
-      const provider = params.get("provider") as "uber" | "doordash" | null;
-      setAuthNetOrder({
-        method: "authorizenet",
+      setAuthNetInfo({
         transactionId: txn,
         customerName: params.get("name") ?? undefined,
         amountTotal: params.get("total") ? parseFloat(params.get("total")!) : undefined,
         orderType: params.get("type") ?? undefined,
         deliveryId: params.get("delivery_id") ?? undefined,
         trackingUrl: params.get("tracking_url") ? decodeURIComponent(params.get("tracking_url")!) : undefined,
-        deliveryProvider: provider ?? "uber",
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const { data: stripeSession, isLoading } = trpc.stripe.getSession.useQuery(
-    { sessionId: sessionId! },
-    { enabled: !!sessionId }
-  );
-
-  // Poll for orderRef after Stripe payment (webhook creates it asynchronously)
-  const { data: stripeOrderRefData } = trpc.stripe.getOrderRefBySession.useQuery(
-    { sessionId: sessionId! },
+  // Poll for order ref after Clover payment (webhook creates it asynchronously)
+  const { data: cloverOrderData, isLoading: cloverLoading } = trpc.cloverCheckout.getOrderRefBySession.useQuery(
+    { sessionId: cloverSessionId! },
     {
-      enabled: !!sessionId,
+      enabled: !!cloverSessionId,
       refetchInterval: (query) => {
-        // Stop polling once we have an orderRef
-        if (query.state.data?.orderRef) return false;
-        return 3000; // poll every 3 seconds
+        const d = query.state.data;
+        if (d?.orderRef && d?.paymentStatus === "paid") return false;
+        return 3000;
       },
       refetchIntervalInBackground: false,
     }
   );
 
-  // Set orderRef when Stripe webhook has created the order
+  // Set orderRef when Clover webhook has confirmed the order
   useEffect(() => {
-    if (stripeOrderRefData?.orderRef && !orderRef) {
-      setOrderRef(stripeOrderRefData.orderRef);
+    if (cloverOrderData?.orderRef && !orderRef) {
+      setOrderRef(cloverOrderData.orderRef);
     }
-  }, [stripeOrderRefData, orderRef]);
+  }, [cloverOrderData, orderRef]);
 
   const createUberDelivery = trpc.uber.createDelivery.useMutation();
-  const createDdDelivery = trpc.doordash.createDelivery.useMutation();
 
-  // Auto-dispatch delivery when Stripe session loads.
-  // Uses sessionStorage to prevent re-dispatch on page reload/revisit.
+  // Auto-dispatch Uber delivery when Clover order is confirmed
   useEffect(() => {
     if (
-      !stripeSession ||
-      stripeSession.orderType !== "delivery" ||
-      !stripeSession.dropoffAddress ||
+      !cloverOrderData ||
+      cloverOrderData.paymentStatus !== "paid" ||
+      !cloverOrderData.orderType ||
+      cloverOrderData.orderType !== "delivery" ||
+      !cloverOrderData.deliveryAddress ||
       dispatchedRef.current
     ) return;
 
-    const provider = stripeSession.deliveryProvider ?? "uber";
-    const storageKey = `delivery_dispatched_${sessionId}`;
+    const storageKey = `delivery_dispatched_clover_${cloverSessionId}`;
     const alreadyDispatched = sessionStorage.getItem(storageKey);
 
     if (alreadyDispatched) {
       try {
-        const saved = JSON.parse(alreadyDispatched) as { deliveryId: string; trackingUrl: string; provider: "uber" | "doordash" };
+        const saved = JSON.parse(alreadyDispatched) as { deliveryId: string; trackingUrl: string };
         setDeliveryId(saved.deliveryId);
         setTrackingUrl(saved.trackingUrl);
-        setActiveProvider(saved.provider);
       } catch { /* ignore */ }
+      dispatchedRef.current = true;
+      return;
+    }
+
+    if (!cloverOrderData.uberQuoteId) {
       dispatchedRef.current = true;
       return;
     }
 
     dispatchedRef.current = true;
     setIsDispatching(true);
-    setActiveProvider(provider);
 
-    if (provider === "uber" && stripeSession.uberQuoteId) {
-      createUberDelivery.mutate(
-        {
-          quoteId: stripeSession.uberQuoteId,
-          dropoffAddress: stripeSession.dropoffAddress,
-          dropoffCity: stripeSession.dropoffCity ?? "North Las Vegas",
-          dropoffState: stripeSession.dropoffState ?? "NV",
-          dropoffZip: stripeSession.dropoffZip ?? "89032",
-          dropoffName: stripeSession.customerName ?? "Customer",
-          dropoffPhone: stripeSession.customerPhone ?? "+17025550000",
-          dropoffNotes: stripeSession.dropoffNotes ?? undefined,
-          orderItems: (stripeSession.cartItems ?? []).map((i) => ({ name: i.name, quantity: i.quantity })),
-          externalId: sessionId ?? undefined,
+    createUberDelivery.mutate(
+      {
+        quoteId: cloverOrderData.uberQuoteId,
+        dropoffAddress: cloverOrderData.deliveryAddress,
+        dropoffCity: "North Las Vegas",
+        dropoffState: "NV",
+        dropoffZip: "89032",
+        dropoffName: cloverOrderData.customerName ?? "Customer",
+        dropoffPhone: cloverOrderData.customerPhone ?? "+17025550000",
+        orderItems: (Array.isArray(cloverOrderData.items) ? cloverOrderData.items : []).map((i: { name: string; quantity: number }) => ({ name: i.name, quantity: i.quantity })),
+        externalId: cloverSessionId ?? undefined,
+      },
+      {
+        onSuccess: (data) => {
+          setDeliveryId(data.deliveryId);
+          setTrackingUrl(data.trackingUrl);
+          setIsDispatching(false);
+          sessionStorage.setItem(storageKey, JSON.stringify({ deliveryId: data.deliveryId, trackingUrl: data.trackingUrl }));
+          toast.success("Delivery dispatched via Uber Direct! Track your order in real time.");
         },
-        {
-          onSuccess: (data) => {
-            setDeliveryId(data.deliveryId);
-            setTrackingUrl(data.trackingUrl);
-            setIsDispatching(false);
-            sessionStorage.setItem(storageKey, JSON.stringify({ deliveryId: data.deliveryId, trackingUrl: data.trackingUrl, provider: "uber" }));
-            toast.success("Delivery dispatched via Uber Direct! Track your order in real time.");
-          },
-          onError: (err) => {
-            setIsDispatching(false);
-            dispatchedRef.current = false;
-            console.error("[Uber Direct] Dispatch failed:", err);
-            toast.warning("Payment confirmed! We'll arrange your delivery shortly.");
-          },
-        }
-      );
-    } else if (provider === "doordash" && stripeSession.doordashExternalId) {
-      const customerName = stripeSession.customerName ?? "Customer";
-      const [firstName, ...rest] = customerName.trim().split(" ");
-      const totalCents = stripeSession.amountTotal ? Math.round(stripeSession.amountTotal * 100) : 0;
-      createDdDelivery.mutate(
-        {
-          externalDeliveryId: stripeSession.doordashExternalId,
-          dropoffAddress: `${stripeSession.dropoffAddress}, ${stripeSession.dropoffCity ?? "North Las Vegas"}, ${stripeSession.dropoffState ?? "NV"} ${stripeSession.dropoffZip ?? "89032"}`,
-          dropoffContactGivenName: firstName || customerName,
-          dropoffContactFamilyName: rest.join(" ") || undefined,
-          dropoffPhone: stripeSession.customerPhone ?? "+17025550000",
-          dropoffInstructions: stripeSession.dropoffNotes ?? undefined,
-          orderValue: totalCents,
-          items: (stripeSession.cartItems ?? []).map((i) => ({
-            name: i.name,
-            quantity: i.quantity,
-            price: Math.round(i.price * 100),
-          })),
+        onError: (err) => {
+          setIsDispatching(false);
+          dispatchedRef.current = false;
+          console.error("[Uber Direct] Dispatch failed:", err);
+          toast.warning("Payment confirmed! We'll arrange your delivery shortly.");
         },
-        {
-          onSuccess: (data) => {
-            setDeliveryId(data.deliveryId);
-            setTrackingUrl(data.trackingUrl);
-            setIsDispatching(false);
-            sessionStorage.setItem(storageKey, JSON.stringify({ deliveryId: data.deliveryId, trackingUrl: data.trackingUrl, provider: "doordash" }));
-            toast.success("Delivery dispatched via DoorDash Drive! Track your order in real time.");
-          },
-          onError: (err) => {
-            setIsDispatching(false);
-            dispatchedRef.current = false;
-            console.error("[DoorDash] Dispatch failed:", err);
-            toast.warning("Payment confirmed! We'll arrange your delivery shortly.");
-          },
-        }
-      );
-    } else {
-      // No valid quote ID — skip dispatch
-      setIsDispatching(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stripeSession]);
-
-  // Resolve display data from either payment method
-  const orderData = stripeSession
-    ? {
-        method: "stripe" as const,
-        transactionId: sessionId ?? "N/A",
-        customerName: stripeSession.customerName,
-        amountTotal: stripeSession.amountTotal,
-        orderType: stripeSession.orderType,
-        deliveryId: deliveryId ?? undefined,
-        trackingUrl: trackingUrl ?? undefined,
-        deliveryProvider: activeProvider ?? undefined,
       }
-    : authNetOrder;
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloverOrderData]);
 
-  const isAuthNet = orderData?.method === "authorizenet";
-  const hasDelivery = !!orderData?.trackingUrl;
-  const isStripeDelivery = stripeSession?.orderType === "delivery" && !!stripeSession?.dropoffAddress;
-  const resolvedProvider = orderData?.deliveryProvider ?? activeProvider ?? "uber";
+  // Resolve display data
+  const isClover = !!cloverSessionId;
+  const isLoading = isClover && cloverLoading && !cloverOrderData;
+  // paymentStatus enum: "pending" | "paid" | "refunded" | "failed"
+  const isPending = isClover && cloverOrderData && cloverOrderData.paymentStatus === "pending";
+
+  const displayName = isClover ? cloverOrderData?.customerName : authNetInfo?.customerName;
+  const displayTotal = isClover ? cloverOrderData?.total : authNetInfo?.amountTotal;
+  const displayOrderType = isClover ? cloverOrderData?.orderType : authNetInfo?.orderType;
+  const displayTxnId = isClover ? cloverSessionId : authNetInfo?.transactionId;
+  const displayDeliveryId = isClover ? deliveryId : authNetInfo?.deliveryId;
+  const displayTrackingUrl = isClover ? (trackingUrl ?? authNetInfo?.trackingUrl) : authNetInfo?.trackingUrl;
+  const hasDelivery = !!displayTrackingUrl;
+  const isDelivery = displayOrderType === "delivery";
+
+  const hasData = isClover ? !!cloverOrderData : !!authNetInfo;
 
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">
@@ -225,22 +179,28 @@ export default function OrderSuccess() {
             style={{ background: "var(--napoli-green, #1e6b3c)" }}
           >
             <div className="flex justify-center mb-4">
-              <CheckCircle size={64} className="text-white" />
+              {isPending ? (
+                <Loader2 size={64} className="text-white animate-spin" />
+              ) : (
+                <CheckCircle size={64} className="text-white" />
+              )}
             </div>
             <h1
               className="text-3xl font-bold text-white mb-2"
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
-              Order Confirmed!
+              {isPending ? "Confirming Payment…" : "Order Confirmed!"}
             </h1>
             <p className="text-white/80 text-sm" style={{ fontFamily: "'Lato', sans-serif" }}>
-              Thank you for ordering from The Original Napoli Pizzeria
+              {isPending
+                ? "We're waiting for payment confirmation from Clover. This usually takes a few seconds."
+                : "Thank you for ordering from The Original Napoli Pizzeria"}
             </p>
-            {orderData && (
+            {hasData && !isPending && (
               <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-xs font-semibold"
                 style={{ background: "oklch(0.25 0.08 145)", color: "oklch(0.85 0.08 145)" }}>
                 <Shield size={11} />
-                {isAuthNet ? "Paid via Authorize.net" : "Paid via Stripe"}
+                {isClover ? "Paid via Clover" : "Paid via Authorize.net"}
               </div>
             )}
           </div>
@@ -253,45 +213,60 @@ export default function OrderSuccess() {
               </div>
             )}
 
-            {orderData && (
+            {isPending && (
+              <div className="rounded-lg p-4 border flex items-center gap-3"
+                style={{ background: "oklch(0.97 0.04 80)", borderColor: "oklch(0.82 0.015 80)" }}>
+                <Loader2 size={20} className="animate-spin shrink-0" style={{ color: "oklch(0.55 0.03 30)" }} />
+                <div>
+                  <p className="text-sm font-bold" style={{ color: "oklch(0.30 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
+                    Waiting for Payment Confirmation
+                  </p>
+                  <p className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>
+                    Clover is processing your payment. This page will update automatically.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {hasData && !isPending && (
               <div
                 className="rounded-lg p-4 border"
                 style={{ background: "oklch(0.97 0.012 80)", borderColor: "oklch(0.88 0.015 80)" }}
               >
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  {orderData.customerName && (
+                  {displayName && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
                         Name
                       </p>
-                      <p style={{ color: "oklch(0.22 0.04 30)" }}>{orderData.customerName}</p>
+                      <p style={{ color: "oklch(0.22 0.04 30)" }}>{displayName}</p>
                     </div>
                   )}
-                  {orderData.transactionId && (
+                  {displayTxnId && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
-                        {isAuthNet ? "Transaction ID" : "Payment ID"}
+                        Payment ID
                       </p>
                       <p className="text-xs truncate" style={{ color: "oklch(0.42 0.03 30)" }}>
-                        {orderData.transactionId}
+                        {displayTxnId}
                       </p>
                     </div>
                   )}
-                  {orderData.orderType && (
+                  {displayOrderType && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
                         Order Type
                       </p>
-                      <p className="capitalize" style={{ color: "oklch(0.22 0.04 30)" }}>{orderData.orderType}</p>
+                      <p className="capitalize" style={{ color: "oklch(0.22 0.04 30)" }}>{displayOrderType}</p>
                     </div>
                   )}
-                  {orderData.amountTotal != null && (
+                  {displayTotal != null && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
                         Total Paid
                       </p>
                       <p className="font-bold" style={{ color: "var(--napoli-red)" }}>
-                        ${orderData.amountTotal.toFixed(2)}
+                        ${Number(displayTotal).toFixed(2)}
                       </p>
                     </div>
                   )}
@@ -300,75 +275,59 @@ export default function OrderSuccess() {
             )}
 
             {/* Delivery dispatching spinner */}
-            {isStripeDelivery && isDispatching && (
+            {isDelivery && isDispatching && (
               <div
                 className="rounded-lg p-4 border flex items-center gap-3"
-                style={{
-                  background: resolvedProvider === "doordash" ? "oklch(0.97 0.04 25)" : "oklch(0.96 0.015 220)",
-                  borderColor: resolvedProvider === "doordash" ? "oklch(0.75 0.15 25)" : "oklch(0.75 0.12 220)",
-                }}
+                style={{ background: "oklch(0.96 0.015 220)", borderColor: "oklch(0.75 0.12 220)" }}
               >
-                <Loader2 size={20} className="animate-spin shrink-0" style={{ color: resolvedProvider === "doordash" ? "oklch(0.52 0.20 25)" : "oklch(0.40 0.15 220)" }} />
+                <Loader2 size={20} className="animate-spin shrink-0" style={{ color: "oklch(0.40 0.15 220)" }} />
                 <div>
-                  <p className="text-sm font-bold" style={{ color: resolvedProvider === "doordash" ? "oklch(0.35 0.18 25)" : "oklch(0.28 0.12 220)", fontFamily: "'Oswald', sans-serif" }}>
+                  <p className="text-sm font-bold" style={{ color: "oklch(0.28 0.12 220)", fontFamily: "'Oswald', sans-serif" }}>
                     Dispatching Your Courier…
                   </p>
-                  <p className="text-xs" style={{ color: resolvedProvider === "doordash" ? "oklch(0.50 0.12 25)" : "oklch(0.45 0.10 220)" }}>
-                    Connecting with {resolvedProvider === "doordash" ? "DoorDash Drive" : "Uber Direct"} — this takes a few seconds
+                  <p className="text-xs" style={{ color: "oklch(0.45 0.10 220)" }}>
+                    Connecting with Uber Direct — this takes a few seconds
                   </p>
                 </div>
               </div>
             )}
 
             {/* Delivery Tracking Section */}
-            {hasDelivery && orderData?.trackingUrl && (
+            {hasDelivery && displayTrackingUrl && (
               <div
                 className="rounded-lg p-4 border"
-                style={{
-                  background: resolvedProvider === "doordash" ? "oklch(0.97 0.04 25)" : "oklch(0.96 0.015 220)",
-                  borderColor: resolvedProvider === "doordash" ? "oklch(0.75 0.15 25)" : "oklch(0.75 0.12 220)",
-                }}
+                style={{ background: "oklch(0.96 0.015 220)", borderColor: "oklch(0.75 0.12 220)" }}
               >
                 <div className="flex items-center gap-2 mb-3">
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                    style={{ background: resolvedProvider === "doordash" ? "oklch(0.52 0.20 25)" : "oklch(0.40 0.15 220)" }}
-                  >
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                    style={{ background: "oklch(0.40 0.15 220)" }}>
                     <Truck size={16} className="text-white" />
                   </div>
                   <div>
-                    <p
-                      className="text-sm font-bold"
-                      style={{ color: resolvedProvider === "doordash" ? "oklch(0.35 0.18 25)" : "oklch(0.28 0.12 220)", fontFamily: "'Oswald', sans-serif" }}
-                    >
+                    <p className="text-sm font-bold" style={{ color: "oklch(0.28 0.12 220)", fontFamily: "'Oswald', sans-serif" }}>
                       Your Order is On Its Way!
                     </p>
-                    <p className="text-xs" style={{ color: resolvedProvider === "doordash" ? "oklch(0.50 0.12 25)" : "oklch(0.45 0.10 220)" }}>
-                      {resolvedProvider === "doordash" ? "Powered by DoorDash Drive" : "Powered by Uber Direct"} · Real-time tracking available
+                    <p className="text-xs" style={{ color: "oklch(0.45 0.10 220)" }}>
+                      Powered by Uber Direct · Real-time tracking available
                     </p>
                   </div>
                 </div>
 
-                {orderData.deliveryId && (
-                  <p className="text-xs mb-3" style={{ color: resolvedProvider === "doordash" ? "oklch(0.50 0.12 25)" : "oklch(0.50 0.08 220)" }}>
-                    Delivery ID: <span className="font-mono font-semibold">{orderData.deliveryId}</span>
+                {displayDeliveryId && (
+                  <p className="text-xs mb-3" style={{ color: "oklch(0.50 0.08 220)" }}>
+                    Delivery ID: <span className="font-mono font-semibold">{displayDeliveryId}</span>
                   </p>
                 )}
 
                 <a
-                  href={orderData.trackingUrl}
+                  href={displayTrackingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 w-full py-3 rounded font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98]"
-                  style={{
-                    background: resolvedProvider === "doordash" ? "oklch(0.52 0.20 25)" : "oklch(0.40 0.15 220)",
-                    color: "white",
-                    fontFamily: "'Oswald', sans-serif",
-                    letterSpacing: "0.05em",
-                  }}
+                  style={{ background: "oklch(0.40 0.15 220)", color: "white", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}
                 >
                   <Truck size={15} />
-                  Track Your Delivery ({resolvedProvider === "doordash" ? "DoorDash" : "Uber Direct"})
+                  Track Your Delivery (Uber Direct)
                   <ExternalLink size={13} />
                 </a>
               </div>
@@ -401,9 +360,9 @@ export default function OrderSuccess() {
             </div>
 
             {/* Order tracking link */}
-            {orderRef && (
+            {orderRef && !isPending && (
               <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
-                <p className="text-xs font-semibold text-blue-800 mb-1">Track & Manage Your Order</p>
+                <p className="text-xs font-semibold text-blue-800 mb-1">Track &amp; Manage Your Order</p>
                 <p className="text-xs text-blue-700 mb-3">
                   Use this link to view your order status, cancel items, or cancel the entire order (up to 1 hour before your scheduled time).
                 </p>
