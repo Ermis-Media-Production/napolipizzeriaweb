@@ -8,7 +8,8 @@ import { ArrowRight, Star, Phone, MapPin, Clock, Truck, UtensilsCrossed, Shoppin
 import { toast } from "sonner";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
-import { RESTAURANT_INFO, LUNCH_SPECIALS, PIZZA_SPECIALS, APPETIZERS } from "@/lib/napoliData";
+import { RESTAURANT_INFO, LUNCH_SPECIALS, PIZZA_SPECIALS, APPETIZERS, ANYTIME_SPECIALS } from "@/lib/napoliData";
+import SpecialCustomizerModal from "@/components/SpecialCustomizerModal";
 import LunchTimerBadge from "@/components/LunchTimerBadge";
 
 const handleOrder = () => toast.info("Order online at napolipizzerianorthlasvegas.com or call 725-204-0379!");
@@ -58,6 +59,111 @@ function StarRating({ count }: { count: number }) {
         <Star key={i} size={14} fill="#FBBC04" stroke="none" />
       ))}
     </div>
+  );
+}
+
+// ── FEATURED SPECIALS PICKED FOR HOME ────────────────────────────────────────
+const FEATURED_SPECIALS = [
+  { num: 1,  name: "Two 16\" Pizzas 1 Topping",                          price: "$32.99",  tag: "Fan Favorite",   badge: "napoli-badge-red" },
+  { num: 7,  name: "Two 16\" Pizzas 2 Toppings/ea + (1) 2 Liter Soda",  price: "$39.99",  tag: "Best Value",     badge: "napoli-badge-gold" },
+  { num: 9,  name: "16\" Pizza 1 Topping + 20 Wings + (1) 2 Liter Soda",price: "$43.99",  tag: "Pizza + Wings",   badge: "napoli-badge-green" },
+  { num: 5,  name: "24\" Cheese Pizza + 20 Wings + (1) 2 Liter Soda",   price: "$52.99",  tag: "Party Size",     badge: "napoli-badge-red" },
+  { num: 15, name: "Two 18\" Pizzas 2 Toppings + Two 2 Liter Sodas",    price: "$100.99", tag: "Family Deal",    badge: "napoli-badge-gold" },
+  { num: 19, name: "36\" Pizza 4 Toppings + 40 Wings + Garlic Balls + Two 2L Sodas", price: "$129.99", tag: "Ultimate Feast", badge: "napoli-badge-green" },
+];
+
+function AnytimeSpecialsFeatured() {
+  const [activeSpecial, setActiveSpecial] = useState<number | null>(null);
+
+  return (
+    <section
+      className="py-14 border-t"
+      style={{ background: "oklch(0.14 0.04 27)", borderColor: "oklch(0.22 0.05 27)" }}
+    >
+      <div className="container">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+          <div>
+            <p className="napoli-label text-xs mb-2" style={{ color: "var(--napoli-gold)", letterSpacing: "0.2em" }}>
+              Available Any Time
+            </p>
+            <h2 className="napoli-display text-3xl md:text-4xl" style={{ color: "oklch(0.99 0.015 80)" }}>
+              Anytime Specials
+            </h2>
+            <p className="napoli-body text-sm mt-2" style={{ color: "oklch(0.68 0.015 80)" }}>
+              19 combo deals — pizzas, wings, sodas & more at unbeatable prices
+            </p>
+          </div>
+          <Link href="/specials">
+            <button
+              className="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded text-sm napoli-label transition-colors"
+              style={{ background: "var(--napoli-red)", color: "white" }}
+            >
+              See All 19 Specials <ArrowRight size={14} />
+            </button>
+          </Link>
+        </div>
+
+        {/* Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {FEATURED_SPECIALS.map((s) => (
+            <div
+              key={s.num}
+              className="rounded-md border p-5 flex flex-col gap-3 transition-all cursor-pointer"
+              style={{
+                borderColor: "oklch(0.28 0.06 27)",
+                background: "oklch(0.19 0.05 27)",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--napoli-gold)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "oklch(0.28 0.06 27)"; }}
+            >
+              {/* Number + tag */}
+              <div className="flex items-center justify-between">
+                <span
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold napoli-price shrink-0"
+                  style={{ background: "var(--napoli-red)", color: "white" }}
+                >
+                  {s.num}
+                </span>
+                <span className={s.badge} style={{ fontSize: "0.65rem" }}>{s.tag}</span>
+              </div>
+
+              {/* Name */}
+              <p className="napoli-body text-sm font-semibold flex-1" style={{ color: "oklch(0.90 0.015 80)" }}>
+                {s.name}
+              </p>
+
+              {/* Price + Order button */}
+              <div className="flex items-center justify-between">
+                <span className="napoli-price text-xl" style={{ color: "var(--napoli-gold)" }}>
+                  {s.price}
+                </span>
+                <button
+                  onClick={() => setActiveSpecial(s.num)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded text-xs napoli-label transition-all active:scale-95"
+                  style={{ background: "var(--napoli-red)", color: "white" }}
+                >
+                  Order <ChevronRight size={12} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Disclaimer */}
+        <p className="text-center text-xs napoli-body mt-6" style={{ color: "oklch(0.50 0.03 27)" }}>
+          Taxes not included · Offers cannot be combined · Prices subject to change
+        </p>
+      </div>
+
+      {/* Customizer modal */}
+      {activeSpecial !== null && (
+        <SpecialCustomizerModal
+          specialNum={activeSpecial}
+          onClose={() => setActiveSpecial(null)}
+        />
+      )}
+    </section>
   );
 }
 
@@ -889,6 +995,9 @@ export default function Home() {
 
       {/* ── GOOGLE REVIEWS ───────────────────────────────────── */}
       <GoogleReviewsSection />
+
+      {/* ── ANYTIME SPECIALS FEATURED ─────────────────────── */}
+      <AnytimeSpecialsFeatured />
 
       {/* ── CTA BAND ─────────────────────────────────────────── */}
       <section

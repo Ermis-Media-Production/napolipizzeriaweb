@@ -286,4 +286,9 @@
 ## Home Page Follow-up Fixes
 - [x] Add rotating Daily Special banner at the top of the Home page
 - [x] Update "CATERING" icon/label in the services strip on Home to "RESERVATIONS" (link to /reservations)
+- [x] Checkpoint saved
+
+## Follow-up Suggestions (from last delivery)
+- [x] Add interactive customizer (LunchCustomizerModal) to Lunch Specials so customers can order from /menu and /specials
+- [x] Add Anytime Specials featured section on Home page with top specials, prices, and "Order" button linking to /specials
 - [ ] Checkpoint saved

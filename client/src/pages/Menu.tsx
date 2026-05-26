@@ -18,6 +18,7 @@ import { CalzoneCustomizerModal, type CalzoneTrigger } from "@/components/Calzon
 import BurgerCustomizerModal, { type BurgerTrigger } from "@/components/BurgerCustomizerModal";
 import AppetizersCustomizerModal, { type AppetizersModalTrigger, APPETIZER_MODAL_ITEMS } from "@/components/AppetizersCustomizerModal";
 import SpecialCustomizerModal from "@/components/SpecialCustomizerModal";
+import LunchCustomizerModal from "@/components/LunchCustomizerModal";
 import SaladsCustomizerModal, { type SaladsModalTrigger, SALAD_MODAL_ITEMS } from "@/components/SaladsCustomizerModal";
 import PastaCustomizerModal, { type PastaModalTrigger, PASTA_MODAL_ITEMS } from "@/components/PastaCustomizerModal";
 import GlutenFreePizzaModal from "@/components/GlutenFreePizzaModal";
@@ -326,15 +327,26 @@ function AnytimeSpecialRow({
 function LunchSpecialRow({ item, isLeft, isLunchOpen }: { item: { num: number; name: string; price: string }; isLeft: boolean; isLunchOpen: boolean }) {
   const { addItem, openCart } = useCart();
   const numericPrice = parsePrice(item.price);
+  const [showCustomizer, setShowCustomizer] = useState(false);
+
+  // Items that need customization (choice, topping, or wing sauce)
+  const NEEDS_CUSTOMIZER = new Set([2, 3, 4, 6, 9, 13, 16, 19, 24]);
+  const needsCustomizer = NEEDS_CUSTOMIZER.has(item.num);
 
   const handleAdd = () => {
     if (!numericPrice || !isLunchOpen) return;
+    if (needsCustomizer) {
+      setShowCustomizer(true);
+      return;
+    }
+    // Simple items: just add with free soda note
     addItem({
       id: `lunch-${item.num}-${Date.now()}`,
       name: `#${item.num} ${item.name}`,
       price: numericPrice,
       quantity: 1,
       category: "lunch",
+      description: "Includes free can of soda",
     });
     toast.success(`#${item.num} ${item.name} added to cart`, {
       action: { label: "View Cart", onClick: openCart },
@@ -342,41 +354,49 @@ function LunchSpecialRow({ item, isLeft, isLunchOpen }: { item: { num: number; n
   };
 
   return (
-    <div
-      className="napoli-menu-item flex items-center gap-3 px-5 py-3 border-b"
-      style={{
-        borderColor: "oklch(0.93 0.012 80)",
-        borderRight: isLeft ? "1px solid oklch(0.93 0.012 80)" : "none",
-        opacity: isLunchOpen ? 1 : 0.45,
-        transition: "opacity 0.3s ease",
-      }}
-    >
-      <span
-        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 napoli-price"
-        style={{ background: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)", color: "white" }}
+    <>
+      <div
+        className="napoli-menu-item flex items-center gap-3 px-5 py-3 border-b"
+        style={{
+          borderColor: "oklch(0.93 0.012 80)",
+          borderRight: isLeft ? "1px solid oklch(0.93 0.012 80)" : "none",
+          opacity: isLunchOpen ? 1 : 0.45,
+          transition: "opacity 0.3s ease",
+        }}
       >
-        {item.num}
-      </span>
-      <div className="flex-1 min-w-0">
-        <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
-      </div>
-      <span className="napoli-price text-sm shrink-0" style={{ color: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)" }}>{item.price}</span>
-      {numericPrice && (
-        <button
-          onClick={handleAdd}
-          disabled={!isLunchOpen}
-          className="w-7 h-7 rounded-full flex items-center justify-center transition-all shrink-0"
-          style={{
-            background: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)",
-            color: "white",
-            cursor: isLunchOpen ? "pointer" : "not-allowed",
-          }}
-          title={isLunchOpen ? `Add #${item.num} ${item.name} to cart` : "Lunch Special not available after 3 PM"}
+        <span
+          className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 napoli-price"
+          style={{ background: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)", color: "white" }}
         >
-          <Plus size={14} />
-        </button>
+          {item.num}
+        </span>
+        <div className="flex-1 min-w-0">
+          <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
+        </div>
+        <span className="napoli-price text-sm shrink-0" style={{ color: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)" }}>{item.price}</span>
+        {numericPrice && (
+          <button
+            onClick={handleAdd}
+            disabled={!isLunchOpen}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-all shrink-0"
+            style={{
+              background: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)",
+              color: "white",
+              cursor: isLunchOpen ? "pointer" : "not-allowed",
+            }}
+            title={isLunchOpen ? `Add #${item.num} ${item.name} to cart` : "Lunch Special not available after 3 PM"}
+          >
+            <Plus size={14} />
+          </button>
+        )}
+      </div>
+      {showCustomizer && (
+        <LunchCustomizerModal
+          item={item}
+          onClose={() => setShowCustomizer(false)}
+        />
       )}
-    </div>
+    </>
   );
 }
 
