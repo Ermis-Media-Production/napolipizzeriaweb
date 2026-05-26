@@ -51,6 +51,19 @@ export const TWILIO_ENV = {
   phoneNumber: process.env.TWILIO_PHONE_NUMBER ?? "",
 };
 
+// Elavon Payment Gateway
+export const ELAVON_ENV = {
+  merchantAlias: process.env.ELAVON_MERCHANT_ALIAS ?? "",
+  secretKey: process.env.ELAVON_SECRET_KEY ?? "",
+  publicKey: process.env.ELAVON_PUBLIC_KEY ?? "",
+  isSandbox: process.env.ELAVON_IS_SANDBOX !== "false", // default to sandbox
+  // Sandbox: https://api.sandbox.elavonpayments.com
+  // Production: https://api.elavonpayments.com
+  baseUrl: process.env.ELAVON_IS_SANDBOX !== "false"
+    ? "https://api.sandbox.elavonpayments.com"
+    : "https://api.elavonpayments.com",
+};
+
 // Stripe
 export const STRIPE_ENV = {
   secretKey: process.env.STRIPE_SECRET_KEY ?? "",

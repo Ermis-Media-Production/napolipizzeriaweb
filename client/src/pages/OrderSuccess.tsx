@@ -11,8 +11,16 @@ import { toast } from "sonner";
 export default function OrderSuccess() {
   const { clearCart } = useCart();
 
+  // Payment provider detected from URL
+  const [paymentProvider, setPaymentProvider] = useState<"stripe" | "elavon" | null>(null);
+
+  // Stripe state
   const [stripeSessionId, setStripeSessionId] = useState<string | null>(null);
   const [stripePaymentIntentId, setStripePaymentIntentId] = useState<string | null>(null);
+
+  // Elavon state
+  const [elavonSessionId, setElavonSessionId] = useState<string | null>(null);
+
   const [orderRef, setOrderRef] = useState<string | null>(null);
 
   // Delivery dispatch state
@@ -23,17 +31,28 @@ export default function OrderSuccess() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
     const sid = params.get("session_id");
     const pi = params.get("payment_intent");
-    const payment = params.get("payment");
+    const eSession = params.get("session_id"); // Elavon may also use session_id
 
     if (payment === "stripe") {
+      setPaymentProvider("stripe");
       if (sid) setStripeSessionId(sid);
       if (pi) setStripePaymentIntentId(pi);
+      clearCart();
+    } else if (payment === "elavon") {
+      setPaymentProvider("elavon");
+      // Elavon passes the session ID back in the return URL
+      // We stored it as ?payment=elavon&session_id=<elavonSessionId>
+      const esid = params.get("session_id") ?? params.get("elavon_session_id");
+      if (esid) setElavonSessionId(esid);
       clearCart();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ─── Stripe queries ────────────────────────────────────────────────────────
 
   // Poll for order ref after Stripe Checkout Session (legacy redirect flow)
   const { data: stripeOrderData, isLoading: stripeOrderLoading } = trpc.stripe.getOrderRefBySession.useQuery(
@@ -75,18 +94,52 @@ export default function OrderSuccess() {
     { enabled: !!stripePaymentIntentId }
   );
 
-  // Merge session data — prefer PaymentIntent details when available
-  const activeSession = piSession ?? stripeSession;
+  // Merge Stripe session data — prefer PaymentIntent details when available
+  const stripeActiveSession = piSession ?? stripeSession;
 
-  // Set orderRef when webhook has confirmed the order
+  // ─── Elavon queries ────────────────────────────────────────────────────────
+
+  // Poll for Elavon order ref (also confirms the order on first poll)
+  const { data: elavonOrderData, isLoading: elavonOrderLoading } = trpc.elavon.getOrderRefBySession.useQuery(
+    { sessionId: elavonSessionId! },
+    {
+      enabled: !!elavonSessionId,
+      refetchInterval: (query) => {
+        const d = query.state.data;
+        if (d?.orderRef) return false;
+        return 3000;
+      },
+      refetchIntervalInBackground: false,
+    }
+  );
+
+  // Elavon order details for display
+  const { data: elavonSession } = trpc.elavon.getOrderDetails.useQuery(
+    { sessionId: elavonSessionId! },
+    { enabled: !!elavonSessionId }
+  );
+
+  // ─── Unified active session ────────────────────────────────────────────────
+
+  const activeSession = paymentProvider === "elavon"
+    ? elavonSession
+    : stripeActiveSession;
+
+  // ─── Set orderRef ──────────────────────────────────────────────────────────
+
   useEffect(() => {
-    const ref = piOrderData?.orderRef ?? stripeOrderData?.orderRef;
+    let ref: string | null | undefined = null;
+    if (paymentProvider === "stripe") {
+      ref = piOrderData?.orderRef ?? stripeOrderData?.orderRef;
+    } else if (paymentProvider === "elavon") {
+      ref = elavonOrderData?.orderRef;
+    }
     if (ref && !orderRef) setOrderRef(ref);
-  }, [piOrderData, stripeOrderData, orderRef]);
+  }, [piOrderData, stripeOrderData, elavonOrderData, orderRef, paymentProvider]);
 
   const createUberDelivery = trpc.uber.createDelivery.useMutation();
 
-  // Auto-dispatch Uber delivery when Stripe order is confirmed
+  // Auto-dispatch Uber delivery when order is confirmed
   useEffect(() => {
     if (
       !activeSession ||
@@ -97,7 +150,7 @@ export default function OrderSuccess() {
       dispatchedRef.current
     ) return;
 
-    const storageKey = `delivery_dispatched_stripe_${stripeSessionId ?? stripePaymentIntentId}`;
+    const storageKey = `delivery_dispatched_${paymentProvider}_${stripeSessionId ?? stripePaymentIntentId ?? elavonSessionId}`;
     const alreadyDispatched = sessionStorage.getItem(storageKey);
 
     if (alreadyDispatched) {
@@ -117,13 +170,13 @@ export default function OrderSuccess() {
       {
         quoteId: activeSession.uberQuoteId,
         dropoffAddress: activeSession.dropoffAddress,
-        dropoffCity: activeSession.dropoffCity ?? "North Las Vegas",
-        dropoffState: activeSession.dropoffState ?? "NV",
-        dropoffZip: activeSession.dropoffZip ?? "89032",
+        dropoffCity: (activeSession as { dropoffCity?: string | null }).dropoffCity ?? "North Las Vegas",
+        dropoffState: (activeSession as { dropoffState?: string | null }).dropoffState ?? "NV",
+        dropoffZip: (activeSession as { dropoffZip?: string | null }).dropoffZip ?? "89032",
         dropoffName: activeSession.customerName ?? "Customer",
-        dropoffPhone: activeSession.customerPhone ?? "+17025550000",
-        orderItems: (activeSession.cartItems ?? []).map((i: { name: string; quantity: number }) => ({ name: i.name, quantity: i.quantity })),
-        externalId: stripeSessionId ?? stripePaymentIntentId ?? undefined,
+        dropoffPhone: (activeSession as { customerPhone?: string | null }).customerPhone ?? "+17025550000",
+        orderItems: ((activeSession as { cartItems?: Array<{ name: string; quantity: number }> }).cartItems ?? []).map((i) => ({ name: i.name, quantity: i.quantity })),
+        externalId: stripeSessionId ?? stripePaymentIntentId ?? elavonSessionId ?? undefined,
       },
       {
         onSuccess: (data) => {
@@ -136,7 +189,7 @@ export default function OrderSuccess() {
         onError: (err) => {
           setIsDispatching(false);
           dispatchedRef.current = false;
-          console.error("[Uber Direct] Stripe dispatch failed:", err);
+          console.error("[Uber Direct] dispatch failed:", err);
           toast.warning("Payment confirmed! We'll arrange your delivery shortly.");
         },
       }
@@ -144,14 +197,34 @@ export default function OrderSuccess() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession]);
 
-  // Derived display values
-  const isLoading = (!!stripeSessionId && stripeOrderLoading && !stripeOrderData) ||
-    (!!stripePaymentIntentId && !piOrderData && !piSession);
-  const isPending = (!!stripeSessionId && !!stripeOrderData && !stripeOrderData.orderRef) ||
-    (!!stripePaymentIntentId && !!piOrderData && !piOrderData.orderRef);
+  // ─── Derived display values ────────────────────────────────────────────────
+
+  const isLoading =
+    (paymentProvider === "stripe" && (
+      (!!stripeSessionId && stripeOrderLoading && !stripeOrderData) ||
+      (!!stripePaymentIntentId && !piOrderData && !piSession)
+    )) ||
+    (paymentProvider === "elavon" && !!elavonSessionId && elavonOrderLoading && !elavonOrderData);
+
+  const isPending =
+    (paymentProvider === "stripe" && (
+      (!!stripeSessionId && !!stripeOrderData && !stripeOrderData.orderRef) ||
+      (!!stripePaymentIntentId && !!piOrderData && !piOrderData.orderRef)
+    )) ||
+    (paymentProvider === "elavon" && !!elavonSessionId && !!elavonOrderData && !elavonOrderData.orderRef);
+
   const hasData = !!activeSession;
   const isDelivery = activeSession?.orderType === "delivery";
   const hasDelivery = !!trackingUrl;
+
+  const paymentBadgeLabel = paymentProvider === "elavon" ? "Paid via Elavon" : "Paid via Stripe";
+  const paymentBadgeColor = paymentProvider === "elavon"
+    ? { bg: "oklch(0.22 0.10 220)", text: "oklch(0.85 0.10 220)" }
+    : { bg: "oklch(0.25 0.08 145)", text: "oklch(0.85 0.08 145)" };
+
+  const paymentIdDisplay = paymentProvider === "elavon"
+    ? elavonSessionId
+    : (stripePaymentIntentId ?? stripeSessionId);
 
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">
@@ -186,10 +259,12 @@ export default function OrderSuccess() {
                 : "Thank you for ordering from The Original Napoli Pizzeria"}
             </p>
             {hasData && !isPending && (
-              <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-xs font-semibold"
-                style={{ background: "oklch(0.25 0.08 145)", color: "oklch(0.85 0.08 145)" }}>
+              <div
+                className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-xs font-semibold"
+                style={{ background: paymentBadgeColor.bg, color: paymentBadgeColor.text }}
+              >
                 <Shield size={11} />
-                Paid via Stripe
+                {paymentBadgeLabel}
               </div>
             )}
           </div>
@@ -211,7 +286,7 @@ export default function OrderSuccess() {
                     Waiting for Payment Confirmation
                   </p>
                   <p className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>
-                    Stripe is processing your payment. This page will update automatically.
+                    {paymentProvider === "elavon" ? "Elavon" : "Stripe"} is processing your payment. This page will update automatically.
                   </p>
                 </div>
               </div>
@@ -231,13 +306,13 @@ export default function OrderSuccess() {
                       <p style={{ color: "oklch(0.22 0.04 30)" }}>{activeSession.customerName}</p>
                     </div>
                   )}
-                  {(stripeSessionId ?? stripePaymentIntentId) && (
+                  {paymentIdDisplay && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
                         Payment ID
                       </p>
                       <p className="text-xs truncate" style={{ color: "oklch(0.42 0.03 30)" }}>
-                        {stripePaymentIntentId ?? stripeSessionId}
+                        {paymentIdDisplay}
                       </p>
                     </div>
                   )}
@@ -336,7 +411,7 @@ export default function OrderSuccess() {
               </a>
               <div className="flex items-center gap-3" style={{ color: "oklch(0.42 0.03 30)" }}>
                 <Phone size={16} style={{ color: "var(--napoli-red)", flexShrink: 0 }} />
-                <a href={`tel:${RESTAURANT_INFO.phone}`} className="hover:underline font-semibold">
+                <a href={`tel:${RESTAURANT_INFO.phone}`} className="hover:underline font-medium">
                   {RESTAURANT_INFO.phone}
                 </a>
               </div>

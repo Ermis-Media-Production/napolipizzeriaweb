@@ -17,6 +17,7 @@ import SubsCustomizerModal, { type SubsTrigger } from "@/components/SubsCustomiz
 import { CalzoneCustomizerModal, type CalzoneTrigger } from "@/components/CalzoneCustomizerModal";
 import BurgerCustomizerModal, { type BurgerTrigger } from "@/components/BurgerCustomizerModal";
 import AppetizersCustomizerModal, { type AppetizersModalTrigger, APPETIZER_MODAL_ITEMS } from "@/components/AppetizersCustomizerModal";
+import SpecialCustomizerModal from "@/components/SpecialCustomizerModal";
 import SaladsCustomizerModal, { type SaladsModalTrigger, SALAD_MODAL_ITEMS } from "@/components/SaladsCustomizerModal";
 import PastaCustomizerModal, { type PastaModalTrigger, PASTA_MODAL_ITEMS } from "@/components/PastaCustomizerModal";
 import GlutenFreePizzaModal from "@/components/GlutenFreePizzaModal";
@@ -288,24 +289,13 @@ function BurgerRow({
   );
 }
 
-function AnytimeSpecialRow({ item }: { item: { num: number; name: string; price: string } }) {
-  const { addItem, openCart } = useCart();
-  const numericPrice = parsePrice(item.price);
-
-  const handleAdd = () => {
-    if (!numericPrice) return;
-    addItem({
-      id: `anytime-${item.num}-${Date.now()}`,
-      name: `#${item.num} ${item.name}`,
-      price: numericPrice,
-      quantity: 1,
-      category: "specials",
-    });
-    toast.success(`#${item.num} ${item.name} added to cart`, {
-      action: { label: "View Cart", onClick: openCart },
-    });
-  };
-
+function AnytimeSpecialRow({
+  item,
+  onCustomize,
+}: {
+  item: { num: number; name: string; price: string };
+  onCustomize: (num: number) => void;
+}) {
   return (
     <div
       className="napoli-menu-item flex items-center gap-3 px-5 py-4 border-b"
@@ -321,16 +311,14 @@ function AnytimeSpecialRow({ item }: { item: { num: number; name: string; price:
         <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
       </div>
       <span className="napoli-price text-sm shrink-0" style={{ color: "var(--napoli-red)" }}>{item.price}</span>
-      {numericPrice && (
-        <button
-          onClick={handleAdd}
-          className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90 hover:opacity-90 shrink-0"
-          style={{ background: "var(--napoli-green)", color: "white" }}
-          title={`Add #${item.num} ${item.name} to cart`}
-        >
-          <Plus size={14} />
-        </button>
-      )}
+      <button
+        onClick={() => onCustomize(item.num)}
+        className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-bold transition-all active:scale-95 hover:opacity-90 shrink-0"
+        style={{ background: "var(--napoli-green)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+        title={`Customize #${item.num} ${item.name}`}
+      >
+        <Plus size={11} /> Order
+      </button>
     </div>
   );
 }
@@ -573,6 +561,7 @@ export default function Menu() {
   const [saladsModalTrigger, setSaladsModalTrigger] = useState<SaladsModalTrigger | null>(null);
   const [pastaModalTrigger, setPastaModalTrigger] = useState<PastaModalTrigger | null>(null);
   const [glutenFreeModalOpen, setGlutenFreeModalOpen] = useState(false);
+  const [specialNum, setSpecialNum] = useState<number | null>(null);
 
   const scrollTo = (id: string) => {
     setActiveCategory(id);
@@ -1148,6 +1137,13 @@ export default function Menu() {
           onClose={() => setGlutenFreeModalOpen(false)}
         />
 
+        {/* Anytime Specials Customizer Modal */}
+        <SpecialCustomizerModal
+          key={specialNum}
+          specialNum={specialNum}
+          onClose={() => setSpecialNum(null)}
+        />
+
         {/* ── PASTA ──────────────────────────────────────────── */}
         <SectionHeader id="pasta" title="Pasta" emoji="🍝" photo="/manus-storage/napoli-lunch_94df386a.jpg" />
         <MenuCard>
@@ -1519,7 +1515,7 @@ export default function Menu() {
         <MenuCard>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0">
             {ANYTIME_SPECIALS.map((item) => (
-              <AnytimeSpecialRow key={item.num} item={item} />
+              <AnytimeSpecialRow key={item.num} item={item} onCustomize={setSpecialNum} />
             ))}
           </div>
           <div className="px-5 py-3 border-t text-xs napoli-body" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)", color: "oklch(0.52 0.03 30)" }}>

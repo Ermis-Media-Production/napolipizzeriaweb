@@ -115,7 +115,7 @@ export const scheduledOrders = mysqlTable("scheduledOrders", {
   /** Coupon used (if any) */
   couponCode: varchar("couponCode", { length: 64 }),
   /** Payment method used */
-  paymentMethod: mysqlEnum("paymentMethod", ["stripe", "authorizenet", "clover", "cash"]).default("clover"),
+  paymentMethod: mysqlEnum("paymentMethod", ["stripe", "authorizenet", "clover", "cash", "elavon"]).default("stripe"),
   /** Payment status */
   paymentStatus: mysqlEnum("paymentStatus", ["pending", "paid", "refunded", "failed"]).default("paid"),
   /** Authorize.net transaction reference (for refunds) */
@@ -127,6 +127,10 @@ export const scheduledOrders = mysqlTable("scheduledOrders", {
   cloverPaymentId: varchar("cloverPaymentId", { length: 128 }),
   /** Clover POS order ID (for linking to Clover Dashboard) */
   cloverOrderId: varchar("cloverOrderId", { length: 128 }),
+  /** Elavon EPG payment session ID */
+  elavonSessionId: varchar("elavonSessionId", { length: 256 }),
+  /** Elavon transaction/order ID after successful payment */
+  elavonTransactionId: varchar("elavonTransactionId", { length: 128 }),
   /** Total amount already refunded */
   refundedAmount: decimal("refundedAmount", { precision: 10, scale: 2 }).default("0").notNull(),
   /** Special instructions from customer */

@@ -225,3 +225,28 @@
 - [x] Visual feedback: MapPin icon → CheckCircle2 when address confirmed
 - [x] "Powered by Google" attribution in dropdown (required by ToS)
 - [x] TypeScript: 0 errors, 66/67 tests passing
+
+## Elavon Payment Gateway Integration (Sandbox Mode)
+- [x] Add ELAVON_ENV to server/_core/env.ts (merchantAlias, secretKey, publicKey, baseUrl)
+- [x] Set Elavon sandbox credentials as project secrets
+- [x] Update drizzle schema: add "elavon" to paymentMethod enum + elavonSessionId + elavonTransactionId columns
+- [x] Run pnpm db:push to apply schema migration
+- [x] Create server/elavon.ts: createPaymentSession (POST to Elavon /orders + /payment-sessions), getOrderRefBySession, getOrderDetails procedures
+- [x] Register elavonRouter in server/routers.ts
+- [x] CartDrawer: add Elavon as payment option alongside Stripe (payment method selector)
+- [x] CartDrawer: Elavon flow calls trpc.elavon.createPaymentSession and redirects to Elavon hosted page
+- [x] OrderSuccess: detect payment=elavon in URL params, poll trpc.elavon.getOrderRefBySession
+- [x] OrderSuccess: show "Paid via Elavon" badge for Elavon payments
+- [x] TypeScript: 0 errors after integration
+- [x] Tests: 66/67 passing (1 legacy Authorize.net prod test unrelated to Elavon)
+
+## Anytime Specials Interactive Customizer
+- [x] Research Clover soda can flavors and existing pizza customizer logic
+- [x] Build SpecialCustomizerModal: multi-step flow for all 19 specials
+  - [x] Multi-pizza step: size/crust/cut/toppings/half-&-half per pizza (1 free topping, extras priced by size)
+  - [x] Soda step: 2L bottle flavors (Coca Cola, Sprite, Diet Coke, Dr Pepper) and can flavors from Clover
+  - [x] Wings/fingers step: sauce selector + half & half for ≥10pc orders
+  - [x] Other combo components: extras auto-added to order description
+- [x] Wire SpecialCustomizerModal into Menu.tsx AnytimeSpecialRow (replace + button with modal trigger)
+- [x] TypeScript: 0 errors after changes
+- [x] Checkpoint saved
