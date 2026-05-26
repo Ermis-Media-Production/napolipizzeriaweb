@@ -256,4 +256,13 @@
 - [x] Wire SpecialCustomizerModal into /specials page (Specials.tsx) so customers can order from there too
 - [x] Add header photo to Anytime Specials section in Menu.tsx (pizza + wings combo photo)
 - [x] TypeScript: 0 errors after changes
+- [x] Checkpoint saved
+
+## Daily Special Rotating Banner (Home Page)
+- [ ] Define list of featured specials (top picks from ANYTIME_SPECIALS) with emoji/icon
+- [ ] Build DailySpecialBanner component: auto-rotates every 4s, smooth slide/fade transition, shows special number, name, price, and "Order Now" CTA
+- [ ] Add prev/next arrow controls and dot indicators for manual navigation
+- [ ] Clicking "Order Now" opens SpecialCustomizerModal for that special
+- [ ] Place banner at the very top of Home.tsx (below NapoliNavbar, above hero)
+- [ ] TypeScript: 0 errors
 - [ ] Checkpoint saved

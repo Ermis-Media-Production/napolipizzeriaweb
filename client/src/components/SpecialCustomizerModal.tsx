@@ -627,16 +627,19 @@ function SpecialCustomizerInner({ cfg, onClose }: { cfg: SpecialConfig; onClose:
         {/* Header info */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
-              {free > 0 ? `${free} topping${free > 1 ? "s" : ""} included free` : "Add toppings (all charged)"}
+            <p className="text-sm font-bold" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>
+              {pizzaCfg.label}
             </p>
-            <p className="text-xs" style={{ color: "oklch(0.58 0.03 30)" }}>
-              Extra toppings: ${unitPrice.toFixed(2)}/each · {pizzaCfg.size} pizza
+            <p className="text-xs" style={{ color: "oklch(0.42 0.03 30)" }}>
+              {free > 0
+                ? `${free} topping${free > 1 ? "s" : ""} included free · extras $${unitPrice.toFixed(2)}/each`
+                : `All toppings charged · $${unitPrice.toFixed(2)}/each`
+              }
             </p>
           </div>
           {extraCost > 0 && (
             <span className="text-sm font-bold" style={{ color: "var(--napoli-red)" }}>
-              +${extraCost.toFixed(2)}
+              +${extraCost.toFixed(2)} this pizza
             </span>
           )}
         </div>
@@ -644,13 +647,20 @@ function SpecialCustomizerInner({ cfg, onClose }: { cfg: SpecialConfig; onClose:
         {/* Free remaining badge */}
         {!ps.halfAndHalf && free > 0 && (
           <div
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold"
             style={{
-              background: freeRemaining > 0 ? "oklch(0.95 0.08 145)" : "oklch(0.95 0.04 30)",
-              color: freeRemaining > 0 ? "var(--napoli-green)" : "oklch(0.52 0.03 30)",
+              background: freeRemaining > 0 ? "oklch(0.93 0.10 145)" : "oklch(0.95 0.04 30)",
+              color: freeRemaining > 0 ? "oklch(0.30 0.12 145)" : "oklch(0.52 0.03 30)",
+              border: `1px solid ${freeRemaining > 0 ? "oklch(0.80 0.12 145)" : "oklch(0.85 0.015 80)"}`,
             }}
           >
-            {freeRemaining > 0 ? `${freeRemaining} free topping${freeRemaining > 1 ? "s" : ""} remaining` : "All free toppings used"}
+            <span className="text-base">{freeRemaining > 0 ? "🎁" : "✅"}</span>
+            <span>
+              {freeRemaining > 0
+                ? `${freeRemaining} free topping${freeRemaining > 1 ? "s" : ""} remaining — pick now!`
+                : `Free topping${free > 1 ? "s" : ""} used — additional toppings: $${(PIZZA_TOPPING_PRICES[pizzaCfg.size] ?? 3).toFixed(2)}/each`
+              }
+            </span>
           </div>
         )}
 
@@ -1105,8 +1115,12 @@ function SpecialCustomizerInner({ cfg, onClose }: { cfg: SpecialConfig; onClose:
               </p>
             </div>
             <p className="text-white/80 text-xs" style={{ fontFamily: "'Lato', sans-serif" }}>
-              Base price: ${cfg.price.toFixed(2)}
-              {totalExtraCost > 0 ? ` + $${totalExtraCost.toFixed(2)} extras = $${grandTotal.toFixed(2)}` : ""}
+              ${cfg.price.toFixed(2)} base
+              {totalExtraCost > 0 ? (
+                <span className="text-white/90 font-semibold"> + ${totalExtraCost.toFixed(2)} extras = <span style={{ color: 'oklch(0.95 0.12 80)' }}>${grandTotal.toFixed(2)}</span></span>
+              ) : (
+                <span className="text-white/60"> — no extras yet</span>
+              )}
             </p>
           </div>
           <button
