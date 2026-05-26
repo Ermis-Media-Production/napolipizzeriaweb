@@ -2,8 +2,9 @@
  * Napoli Pizzeria — Home Page
  * Design: Authentic Italian trattoria — red/cream/green, Playfair Display headings
  */
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Star, Phone, MapPin, Clock, Truck, UtensilsCrossed, ShoppingBag, ChevronRight, Quote } from "lucide-react";
+import { ArrowRight, Star, Phone, MapPin, Clock, Truck, UtensilsCrossed, ShoppingBag, ChevronRight, Quote, CalendarClock, Flame, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
@@ -180,16 +181,153 @@ function GoogleReviewsSection() {
 }
 
 const SERVICES = [
-  { icon: <Truck size={22} />, label: "Delivery", desc: "Fast delivery to your door" },
-  { icon: <UtensilsCrossed size={22} />, label: "Dine-In", desc: "Enjoy the full Italian experience" },
-  { icon: <ShoppingBag size={22} />, label: "Pick Up", desc: "Order ahead, skip the wait" },
-  { icon: <Phone size={22} />, label: "Catering", desc: "Events big & small" },
+  { icon: <Truck size={22} />, label: "Delivery", desc: "Fast delivery to your door", href: null },
+  { icon: <UtensilsCrossed size={22} />, label: "Dine-In", desc: "Enjoy the full Italian experience", href: null },
+  { icon: <ShoppingBag size={22} />, label: "Pick Up", desc: "Order ahead, skip the wait", href: null },
+  { icon: <CalendarClock size={22} />, label: "Reservations", desc: "Book your table or event", href: "/reservations" },
 ];
+
+// ── DAILY SPECIALS for rotating banner ────────────────────────────────────────
+const DAILY_SPECIALS = [
+  { num: 1,  name: "Two 16\" Pizzas 1 Topping",                                         price: "$32.99", tag: "🍕 Fan Favorite" },
+  { num: 7,  name: "Two 16\" Pizzas 2 Toppings/ea + (1) 2 Liter Soda",                  price: "$39.99", tag: "🔥 Best Value" },
+  { num: 9,  name: "16\" Pizza 1 Topping + 20 Wings + (1) 2 Liter Soda",                price: "$43.99", tag: "🍗 Pizza + Wings" },
+  { num: 13, name: "16\" Specialty Pizza + 20 Wings + (1) 2 Liter Soda",               price: "$55.99", tag: "⭐ Specialty Combo" },
+  { num: 5,  name: "24\" Cheese Pizza + 20 Wings + (1) 2 Liter Soda",                  price: "$52.99", tag: "🎉 Party Size" },
+  { num: 15, name: "Two 18\" Pizzas 2 Toppings + Two 2 Liter Sodas",                   price: "$100.99", tag: "👨‍👩‍👧‍👦 Family Deal" },
+  { num: 19, name: "36\" Pizza 4 Toppings + 40 Wings + Garlic Balls + Two 2L Sodas",   price: "$129.99", tag: "🏆 Ultimate Feast" },
+  { num: 3,  name: "18\" Pizza 2 Toppings",                                              price: "$22.99", tag: "💰 Great Price" },
+];
+
+function DailySpecialBanner() {
+  const [idx, setIdx] = useState(0);
+  const [animating, setAnimating] = useState(false);
+  const [direction, setDirection] = useState<"left" | "right">("left");
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      goTo((idx + 1) % DAILY_SPECIALS.length, "left");
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [idx]);
+
+  function goTo(newIdx: number, dir: "left" | "right") {
+    if (animating) return;
+    setDirection(dir);
+    setAnimating(true);
+    setTimeout(() => {
+      setIdx(newIdx);
+      setAnimating(false);
+    }, 220);
+  }
+
+  const special = DAILY_SPECIALS[idx];
+
+  return (
+    <div
+      className="relative overflow-hidden"
+      style={{ background: "oklch(0.22 0.06 27)", borderBottom: "2px solid var(--napoli-gold)" }}
+    >
+      <div className="container py-2.5 flex items-center justify-between gap-3">
+        {/* Left: label */}
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
+          <Flame size={15} style={{ color: "var(--napoli-gold)" }} />
+          <span
+            className="napoli-label text-xs font-bold"
+            style={{ color: "var(--napoli-gold)", letterSpacing: "0.15em" }}
+          >
+            ANYTIME SPECIALS
+          </span>
+        </div>
+
+        {/* Center: rotating special */}
+        <div className="flex-1 flex items-center justify-center gap-3 min-w-0 overflow-hidden">
+          <button
+            onClick={() => goTo((idx - 1 + DAILY_SPECIALS.length) % DAILY_SPECIALS.length, "right")}
+            className="shrink-0 p-1 rounded hover:bg-white/10 transition-colors"
+            style={{ color: "oklch(0.65 0.015 80)" }}
+            aria-label="Previous special"
+          >
+            <ChevronLeft size={14} />
+          </button>
+
+          <div
+            className="flex items-center gap-2 min-w-0 transition-all"
+            style={{
+              opacity: animating ? 0 : 1,
+              transform: animating
+                ? `translateX(${direction === "left" ? "-12px" : "12px"})`
+                : "translateX(0)",
+              transition: "opacity 220ms ease-out, transform 220ms ease-out",
+            }}
+          >
+            <span
+              className="napoli-badge-gold shrink-0 hidden md:inline"
+              style={{ fontSize: "0.65rem", padding: "2px 8px" }}
+            >
+              {special.tag}
+            </span>
+            <span
+              className="napoli-label text-xs font-semibold truncate"
+              style={{ color: "oklch(0.92 0.015 80)" }}
+            >
+              #{special.num} · {special.name}
+            </span>
+            <span
+              className="napoli-price text-sm shrink-0"
+              style={{ color: "var(--napoli-gold)" }}
+            >
+              {special.price}
+            </span>
+          </div>
+
+          <button
+            onClick={() => goTo((idx + 1) % DAILY_SPECIALS.length, "left")}
+            className="shrink-0 p-1 rounded hover:bg-white/10 transition-colors"
+            style={{ color: "oklch(0.65 0.015 80)" }}
+            aria-label="Next special"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+
+        {/* Right: CTA */}
+        <Link href="/specials">
+          <span
+            className="shrink-0 napoli-label text-xs font-bold px-3 py-1.5 rounded transition-colors hover:opacity-90"
+            style={{ background: "var(--napoli-red)", color: "white" }}
+          >
+            Order Now
+          </span>
+        </Link>
+      </div>
+
+      {/* Dot indicators */}
+      <div className="flex justify-center gap-1 pb-1.5">
+        {DAILY_SPECIALS.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => goTo(i, i > idx ? "left" : "right")}
+            className="w-1.5 h-1.5 rounded-full transition-all"
+            style={{
+              background: i === idx ? "var(--napoli-gold)" : "oklch(0.45 0.04 27)",
+              transform: i === idx ? "scale(1.3)" : "scale(1)",
+            }}
+            aria-label={`Go to special ${i + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">
       <NapoliNavbar />
+
+      {/* ── DAILY SPECIAL BANNER ─────────────────────────────── */}
+      <DailySpecialBanner />
 
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section className="relative overflow-hidden" style={{ minHeight: "580px" }}>
@@ -292,18 +430,35 @@ export default function Home() {
         <div className="container">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {SERVICES.map((s) => (
-              <div key={s.label} className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                  style={{ background: "oklch(0.35 0.18 27)", color: "white" }}
-                >
-                  {s.icon}
+              s.href ? (
+                <Link key={s.label} href={s.href}>
+                  <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                      style={{ background: "oklch(0.35 0.18 27)", color: "white" }}
+                    >
+                      {s.icon}
+                    </div>
+                    <div>
+                      <div className="napoli-label text-xs text-white">{s.label}</div>
+                      <div className="text-xs napoli-body" style={{ color: "oklch(0.85 0.015 80)" }}>{s.desc}</div>
+                    </div>
+                  </div>
+                </Link>
+              ) : (
+                <div key={s.label} className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                    style={{ background: "oklch(0.35 0.18 27)", color: "white" }}
+                  >
+                    {s.icon}
+                  </div>
+                  <div>
+                    <div className="napoli-label text-xs text-white">{s.label}</div>
+                    <div className="text-xs napoli-body" style={{ color: "oklch(0.85 0.015 80)" }}>{s.desc}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="napoli-label text-xs text-white">{s.label}</div>
-                  <div className="text-xs napoli-body" style={{ color: "oklch(0.85 0.015 80)" }}>{s.desc}</div>
-                </div>
-              </div>
+              )
             ))}
           </div>
         </div>

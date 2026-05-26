@@ -282,3 +282,8 @@
 - [ ] Update App.tsx route: /catering → /reservations (keep /catering as redirect)
 - [ ] TypeScript: 0 errors
 - [ ] Checkpoint saved
+
+## Home Page Follow-up Fixes
+- [x] Add rotating Daily Special banner at the top of the Home page
+- [x] Update "CATERING" icon/label in the services strip on Home to "RESERVATIONS" (link to /reservations)
+- [ ] Checkpoint saved
