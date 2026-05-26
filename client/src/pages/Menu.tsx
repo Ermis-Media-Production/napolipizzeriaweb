@@ -1511,7 +1511,7 @@ export default function Menu() {
         </div>
 
         {/* ── ANYTIME SPECIALS ───────────────────────────────── */}
-        <SectionHeader id="specials" title="Anytime Specials" emoji="⭐" />
+        <SectionHeader id="specials" title="Anytime Specials" emoji="⭐" photo="/manus-storage/napoli-specials-header_30ef5751.jpg" />
         <MenuCard>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0">
             {ANYTIME_SPECIALS.map((item) => (

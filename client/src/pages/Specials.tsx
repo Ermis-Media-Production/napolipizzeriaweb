@@ -1,17 +1,18 @@
 /**
  * Napoli Pizzeria — Specials Page
  */
+import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Star } from "lucide-react";
-import { toast } from "sonner";
+import { ArrowRight, Star, Plus } from "lucide-react";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
 import { ANYTIME_SPECIALS, LUNCH_SPECIALS, RESTAURANT_INFO } from "@/lib/napoliData";
 import LunchTimerBadge from "@/components/LunchTimerBadge";
-
-const handleOrder = () => toast.info("Order online at napolipizzerianorthlasvegas.com or call 725-204-0379!");
+import SpecialCustomizerModal from "@/components/SpecialCustomizerModal";
 
 export default function Specials() {
+  const [specialNum, setSpecialNum] = useState<number | null>(null);
+
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">
       <NapoliNavbar />
@@ -39,9 +40,11 @@ export default function Specials() {
           </div>
           <div className="text-center">
             <div className="napoli-price text-5xl" style={{ color: "var(--napoli-red)" }}>{RESTAURANT_INFO.pickupSpecial.price}</div>
-            <button onClick={handleOrder} className="napoli-btn-red flex items-center gap-2 px-6 py-3 rounded text-sm mt-3">
-              Order Now <ArrowRight size={15} />
-            </button>
+            <Link href="/menu">
+              <button className="napoli-btn-red flex items-center gap-2 px-6 py-3 rounded text-sm mt-3">
+                Order Now <ArrowRight size={15} />
+              </button>
+            </Link>
           </div>
         </div>
 
@@ -97,12 +100,32 @@ export default function Specials() {
                 <div className="flex-1">
                   <div className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</div>
                 </div>
-                <div className="napoli-price text-base shrink-0" style={{ color: "var(--napoli-red)" }}>{item.price}</div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="napoli-price text-base" style={{ color: "var(--napoli-red)" }}>{item.price}</div>
+                  <button
+                    onClick={() => setSpecialNum(item.num)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-bold transition-all active:scale-95 hover:opacity-90"
+                    style={{ background: "var(--napoli-green)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+                    title={`Order #${item.num}`}
+                  >
+                    <Plus size={11} /> Order
+                  </button>
+                </div>
               </div>
             ))}
           </div>
+          <p className="text-xs napoli-body mt-4 px-1" style={{ color: "oklch(0.52 0.03 30)" }}>
+            Taxes not included. Offers cannot be combined. Management reserves all rights. Prices are subject to change without notice. $1.99 Starting delivery charge. No Personal Checks.
+          </p>
         </div>
       </div>
+
+      {/* Anytime Specials Customizer Modal */}
+      <SpecialCustomizerModal
+        key={specialNum}
+        specialNum={specialNum}
+        onClose={() => setSpecialNum(null)}
+      />
 
       <NapoliFooter />
     </div>

@@ -250,3 +250,10 @@
 - [x] Wire SpecialCustomizerModal into Menu.tsx AnytimeSpecialRow (replace + button with modal trigger)
 - [x] TypeScript: 0 errors after changes
 - [x] Checkpoint saved
+
+## Anytime Specials — Follow-up Improvements
+- [x] Fix Special #12: already correct (10" pizza) — no change needed
+- [x] Wire SpecialCustomizerModal into /specials page (Specials.tsx) so customers can order from there too
+- [x] Add header photo to Anytime Specials section in Menu.tsx (pizza + wings combo photo)
+- [x] TypeScript: 0 errors after changes
+- [ ] Checkpoint saved
