@@ -69,7 +69,7 @@ export default function NapoliNavbar() {
     { href: "/", label: "Home" },
     { href: "/menu", label: "Menu" },
     { href: "/specials", label: "Specials" },
-    { href: "/catering", label: "Catering" },
+    { href: "/reservations", label: "Reservations" },
   ];
 
   // Close popup when clicking outside
@@ -172,7 +172,7 @@ export default function NapoliNavbar() {
           <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => {
               const isActive = location === link.href;
-              const isCatering = link.href === "/catering";
+              const isCatering = link.href === "/reservations";
               return (
                 <Link key={link.href} href={link.href}>
                   <span
@@ -298,8 +298,8 @@ export default function NapoliNavbar() {
                     className="block px-4 py-3 rounded text-sm font-semibold napoli-label"
                     style={{
                       fontFamily: "'Oswald', sans-serif",
-                      color: link.href === "/catering" ? "white" : "var(--napoli-dark)",
-                      background: link.href === "/catering" ? "oklch(0.45 0.15 145)" : "transparent",
+                      color: link.href === "/reservations" ? "white" : "var(--napoli-dark)",
+                      background: link.href === "/reservations" ? "oklch(0.45 0.15 145)" : "transparent",
                     }}
                     onClick={() => setOpen(false)}
                   >

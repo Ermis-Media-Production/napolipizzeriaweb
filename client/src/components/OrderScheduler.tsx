@@ -141,10 +141,10 @@ export function OrderScheduler({ value, onChange, orderType = "pickup" }: OrderS
           <p className="text-xs text-amber-700">
             Need service outside our hours?{" "}
             <a
-              href="/catering"
+              href="/reservations"
               className="font-semibold underline hover:text-amber-900"
             >
-              View our Catering options →
+              View our Reservations →
             </a>
           </p>
         </div>
@@ -207,7 +207,7 @@ export function OrderScheduler({ value, onChange, orderType = "pickup" }: OrderS
           <p className="text-xs text-amber-700">
             Scheduled orders are available <strong>10:00 AM – 10:00 PM</strong> daily.
             For events outside these hours, please visit our{" "}
-            <a href="/catering" className="underline font-medium">Catering</a> page.
+            <a href="/reservations" className="underline font-medium">Reservations</a> page.
           </p>
         </div>
 

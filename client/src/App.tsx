@@ -19,6 +19,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminMenuManager from "./pages/AdminMenuManager";
 import AdminModifierManager from "./pages/AdminModifierManager";
 import Catering from "./pages/Catering";
+import Reservations from "./pages/Reservations";
 import MyOrder from "./pages/MyOrder";
 
 function Router() {
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/menu" component={Menu} />
       <Route path="/specials" component={Specials} />
       <Route path="/catering" component={Catering} />
+      <Route path="/reservations" component={Reservations} />
       <Route path="/order" component={Order} />
       <Route path="/order-success" component={OrderSuccess} />
       <Route path="/my-order/:orderRef" component={MyOrder} />

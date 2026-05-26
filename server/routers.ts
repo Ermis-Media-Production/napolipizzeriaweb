@@ -14,6 +14,7 @@ import { orderRefundsRouter } from "./orderRefunds";
 import { menuItemsRouter } from "./menuItems";
 import { modifiersRouter } from "./modifiers";
 import { elavonRouter } from "./elavon";
+import { reservationsRouter } from "./reservations";
 
 export const appRouter = router({
   system: systemRouter,
@@ -39,6 +40,7 @@ export const appRouter = router({
   menuItems: menuItemsRouter,
   modifiers: modifiersRouter,
   elavon: elavonRouter,
+  reservations: reservationsRouter,
 });
 
 export type AppRouter = typeof appRouter;

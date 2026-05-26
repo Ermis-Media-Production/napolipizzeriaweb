@@ -263,3 +263,37 @@ export const itemModifierGroups = mysqlTable("itemModifierGroups", {
 
 export type ItemModifierGroup = typeof itemModifierGroups.$inferSelect;
 export type InsertItemModifierGroup = typeof itemModifierGroups.$inferInsert;
+
+/**
+ * Reservations table — covers both same-day scheduled orders and future reservations.
+ * Same-day orders: type = "order", scheduledDate = today (Las Vegas time), cutoff 9:30 PM.
+ * Future reservations: type = "reservation", scheduledDate = future date.
+ */
+export const reservations = mysqlTable("reservations", {
+  id: int("id").autoincrement().primaryKey(),
+  /** "order" = same-day order, "reservation" = future reservation */
+  type: mysqlEnum("type", ["order", "reservation"]).notNull(),
+  /** Service type */
+  serviceType: mysqlEnum("serviceType", ["dine-in", "pickup", "delivery"]).notNull(),
+  /** Scheduled date as YYYY-MM-DD string (Las Vegas local date) */
+  scheduledDate: varchar("scheduledDate", { length: 10 }).notNull(),
+  /** Scheduled time as HH:MM string (Las Vegas local time, 24h) */
+  scheduledTime: varchar("scheduledTime", { length: 5 }).notNull(),
+  /** Number of guests (for dine-in reservations) */
+  partySize: int("partySize"),
+  /** Customer contact info */
+  customerName: varchar("customerName", { length: 128 }).notNull(),
+  customerPhone: varchar("customerPhone", { length: 32 }).notNull(),
+  customerEmail: varchar("customerEmail", { length: 320 }),
+  /** Delivery address (only for delivery) */
+  deliveryAddress: text("deliveryAddress"),
+  /** Any special requests or notes from the customer */
+  notes: text("notes"),
+  /** Reservation/order status */
+  status: mysqlEnum("status", ["pending", "confirmed", "cancelled", "completed"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Reservation = typeof reservations.$inferSelect;
+export type InsertReservation = typeof reservations.$inferInsert;

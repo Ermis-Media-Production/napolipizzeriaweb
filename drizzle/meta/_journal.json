@@ -57,6 +57,13 @@
       "when": 1779807948617,
       "tag": "0007_dear_falcon",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1779810719233,
+      "tag": "0008_wild_titanium_man",
+      "breakpoints": true
     }
   ]
 }

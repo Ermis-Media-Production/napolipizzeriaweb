@@ -266,3 +266,19 @@
 - [ ] Place banner at the very top of Home.tsx (below NapoliNavbar, above hero)
 - [ ] TypeScript: 0 errors
 - [ ] Checkpoint saved
+
+## Reservations System (Rename Catering → Reservations)
+- [ ] Read existing Catering page, schema, and routers
+- [ ] Add reservations table to drizzle schema (id, type: dine-in/pickup/delivery, date, time, partySize, name, phone, email, notes, status, createdAt)
+- [ ] Run pnpm db:push to apply migration
+- [ ] Build server/reservations.ts: createReservation, listReservations (admin), updateStatus procedures
+- [ ] Register reservationsRouter in server/routers.ts
+- [ ] Build Reservations page: two-tab layout (Today's Order / Future Reservation)
+  - [ ] Today tab: same-day order with time picker (10 AM–9:30 PM Las Vegas time), service type, contact info
+  - [ ] Future tab: calendar date picker + time picker, party size, service type, full contact form, notes
+  - [ ] Las Vegas timezone validation (America/Los_Angeles), cutoff 9:30 PM for same-day
+  - [ ] Owner notification on new reservation submission
+- [ ] Rename Catering → Reservations in NapoliNavbar.tsx
+- [ ] Update App.tsx route: /catering → /reservations (keep /catering as redirect)
+- [ ] TypeScript: 0 errors
+- [ ] Checkpoint saved
