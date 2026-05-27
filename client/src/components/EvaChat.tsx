@@ -68,7 +68,7 @@ export default function EvaChat() {
       {/* ── Expanded panel ── */}
       {open && (
         <div
-          className="fixed bottom-24 left-4 sm:left-auto sm:right-4 z-50 flex flex-col rounded-2xl shadow-2xl overflow-hidden"
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col rounded-2xl shadow-2xl overflow-hidden"
           style={{
             width: "min(340px, calc(100vw - 2rem))",
             background: "white",
@@ -216,7 +216,7 @@ export default function EvaChat() {
       )}
 
       {/* ── Floating bubble button ── */}
-      <div className="fixed bottom-4 left-4 sm:left-auto sm:right-4 z-50 flex flex-col items-end gap-2">
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2">
         {/* Dismiss × when collapsed */}
         {!open && (
           <button
