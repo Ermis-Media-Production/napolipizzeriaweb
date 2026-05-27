@@ -331,3 +331,11 @@
 - [x] Custom message input sends via SMS
 - [x] Dismiss (X) button hides widget for the session (sessionStorage)
 - [x] Mounted site-wide in App.tsx
+
+## Eva AI Real Chat (LLM-powered)
+- [x] Server: evaChatRouter with Napoli Pizzeria persona and full restaurant knowledge base
+- [x] Client: EvaChat rewritten as real chat UI with message history, typing indicator, quick questions
+- [x] LLM responses streamed via tRPC mutation (trpc.eva.chat)
+- [x] Conversation context: last 10 messages sent to LLM for coherent multi-turn chat
+- [x] Error fallback: directs to call 725-204-0379 if LLM fails
+- [x] SMS fallback: phone icon in header for direct call

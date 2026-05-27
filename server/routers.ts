@@ -13,6 +13,7 @@ import { orderRefundsRouter } from "./orderRefunds";
 import { menuItemsRouter } from "./menuItems";
 import { modifiersRouter } from "./modifiers";
 import { reservationsRouter } from "./reservations";
+import { evaChatRouter } from "./evaChat";
 
 export const appRouter = router({
   system: systemRouter,
@@ -37,6 +38,7 @@ export const appRouter = router({
   menuItems: menuItemsRouter,
   modifiers: modifiersRouter,
   reservations: reservationsRouter,
+  eva: evaChatRouter,
 });
 
 export type AppRouter = typeof appRouter;
