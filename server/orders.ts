@@ -21,8 +21,10 @@ import { TRPCError } from "@trpc/server";
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const STORE_TIMEZONE = "America/Los_Angeles";
-const STORE_OPEN_HOUR = 10; // 10 AM
-const STORE_CLOSE_HOUR = 22; // 10 PM
+const STORE_OPEN_HOUR = 10;   // 10:00 AM
+const STORE_CLOSE_HOUR = 22;  // 10:00 PM (last schedulable slot is 9:30 PM)
+const STORE_LAST_SLOT_HOUR = 21;   // 9 PM
+const STORE_LAST_SLOT_MINUTE = 30; // :30 → last slot is 9:30 PM
 const PIZZA_CAPACITY_PER_HOUR = 80;
 const SLOT_INTERVAL_MINUTES = 30;
 
@@ -35,6 +37,34 @@ function nowInStoreTimezone(): Date {
   return storeTime;
 }
 
+/**
+ * Build a UTC timestamp for a specific hour:minute in the store timezone on the given date.
+ * This correctly handles PDT/PST transitions.
+ */
+function buildStoreTimestamp(dateMs: number, hour: number, minute = 0): number {
+  const d = new Date(dateMs);
+  // Get the current store-local date string
+  const storeStr = d.toLocaleString("en-US", {
+    timeZone: STORE_TIMEZONE,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  // storeStr format: "05/27/2026, 10:30:00"
+  const [datePart] = storeStr.split(", ");
+  const [m, day, year] = datePart.split("/");
+  // Compute the UTC offset: difference between real UTC and the "fake local" date
+  const fakeLocal = new Date(storeStr.replace(/(\d+)\/(\d+)\/(\d+), /, "$3-$1-$2T"));
+  const offsetMs = d.getTime() - fakeLocal.getTime();
+  // Build target store-local ISO string and shift by offset to get UTC
+  const targetIso = `${year}-${m.padStart(2, "0")}-${day.padStart(2, "0")}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`;
+  return new Date(targetIso).getTime() + offsetMs;
+}
+
 /** Check if the store is currently open */
 function isStoreOpen(): boolean {
   const storeNow = nowInStoreTimezone();
@@ -44,21 +74,18 @@ function isStoreOpen(): boolean {
 
 /** Get the next opening time as UTC ms timestamp */
 function getNextOpeningTime(): number {
+  const nowMs = Date.now();
   const storeNow = nowInStoreTimezone();
   const hour = storeNow.getHours();
 
   // If before opening today, open at 10 AM today
   if (hour < STORE_OPEN_HOUR) {
-    const openToday = new Date(storeNow);
-    openToday.setHours(STORE_OPEN_HOUR, 0, 0, 0);
-    return openToday.getTime();
+    return buildStoreTimestamp(nowMs, STORE_OPEN_HOUR, 0);
   }
 
   // Otherwise, open at 10 AM tomorrow
-  const openTomorrow = new Date(storeNow);
-  openTomorrow.setDate(openTomorrow.getDate() + 1);
-  openTomorrow.setHours(STORE_OPEN_HOUR, 0, 0, 0);
-  return openTomorrow.getTime();
+  const tomorrowMs = nowMs + 24 * 60 * 60 * 1000;
+  return buildStoreTimestamp(tomorrowMs, STORE_OPEN_HOUR, 0);
 }
 
 /** Generate a unique order reference like NPZ-20260525-0042 */
@@ -161,17 +188,18 @@ export const ordersRouter = router({
     .query(async ({ input }) => {
       const db = await requireDb();
       const storeNow = nowInStoreTimezone();
-      const queryDate = new Date(input.dateMs);
-      const queryDateLocal = new Date(
-        queryDate.toLocaleString("en-US", { timeZone: STORE_TIMEZONE })
-      );
 
-      const isToday =
-        queryDateLocal.getFullYear() === storeNow.getFullYear() &&
-        queryDateLocal.getMonth() === storeNow.getMonth() &&
-        queryDateLocal.getDate() === storeNow.getDate();
+      // Build correct UTC timestamps for 10 AM and 10 PM in Las Vegas timezone
+      const dayStartMs = buildStoreTimestamp(input.dateMs, STORE_OPEN_HOUR, 0);
+      // Last slot is 9:30 PM; dayEnd is exclusive so use 10:00 PM
+      const dayEndMs = buildStoreTimestamp(input.dateMs, STORE_CLOSE_HOUR, 0);
 
-      // Build slot list for the day (30-min intervals, 10 AM – 10 PM)
+      // Determine if the queried date is today in store timezone
+      const queryDateLA = new Date(input.dateMs).toLocaleDateString("en-US", { timeZone: STORE_TIMEZONE });
+      const todayLA = new Date().toLocaleDateString("en-US", { timeZone: STORE_TIMEZONE });
+      const isToday = queryDateLA === todayLA;
+
+      // Build slot list for the day (30-min intervals, 10 AM – 9:30 PM)
       const slots: {
         slotMs: number;
         label: string;
@@ -179,17 +207,6 @@ export const ordersRouter = router({
         pizzasCapacity: number;
         available: boolean;
       }[] = [];
-
-      // Start of day in store timezone
-      const dayStart = new Date(queryDateLocal);
-      dayStart.setHours(STORE_OPEN_HOUR, 0, 0, 0);
-
-      const dayEnd = new Date(queryDateLocal);
-      dayEnd.setHours(STORE_CLOSE_HOUR, 0, 0, 0);
-
-      // Query pizza bookings for this day
-      const dayStartMs = dayStart.getTime();
-      const dayEndMs = dayEnd.getTime();
 
       const bookings = await db
         .select({
@@ -205,30 +222,26 @@ export const ordersRouter = router({
           )
         );
 
-      // Aggregate pizza counts per hour slot
-      const pizzasByHour: Record<number, number> = {};
+      // Aggregate pizza counts per slot (keyed by slot UTC ms)
+      const pizzasBySlot: Record<number, number> = {};
       for (const booking of bookings) {
-        const slotDate = new Date(booking.scheduledAt);
-        const slotDateLocal = new Date(
-          slotDate.toLocaleString("en-US", { timeZone: STORE_TIMEZONE })
-        );
-        const hour = slotDateLocal.getHours();
-        pizzasByHour[hour] = (pizzasByHour[hour] ?? 0) + booking.pizzaCount;
+        // Round booking time down to the nearest 30-min slot
+        const slotMs = Math.floor(booking.scheduledAt / (SLOT_INTERVAL_MINUTES * 60 * 1000)) * (SLOT_INTERVAL_MINUTES * 60 * 1000);
+        pizzasBySlot[slotMs] = (pizzasBySlot[slotMs] ?? 0) + booking.pizzaCount;
       }
 
-      // Generate 30-min slots
-      const current = new Date(dayStart);
-      while (current < dayEnd) {
-        const slotMs = current.getTime();
-        const hour = current.getHours();
-        const pizzasBooked = pizzasByHour[hour] ?? 0;
+      // Generate 30-min slots from 10 AM to 9:30 PM (inclusive) in store timezone
+      const SLOT_MS = SLOT_INTERVAL_MINUTES * 60 * 1000;
+      const lastSlotMs = buildStoreTimestamp(input.dateMs, STORE_LAST_SLOT_HOUR, STORE_LAST_SLOT_MINUTE);
+      const minLeadMs = input.orderType === "delivery" ? 45 * 60 * 1000 : 15 * 60 * 1000;
+      const nowMs = Date.now();
 
-        // For today, skip slots that are in the past
-        // Delivery requires 45 min lead time; Pickup & Dine-In require 15 min
-        const minLeadMs = input.orderType === "delivery" ? 45 * 60 * 1000 : 15 * 60 * 1000;
-        const isPast = isToday && slotMs < storeNow.getTime() + minLeadMs;
+      let currentMs = dayStartMs;
+      while (currentMs <= lastSlotMs) {
+        const pizzasBooked = pizzasBySlot[currentMs] ?? 0;
+        const isPast = isToday && currentMs < nowMs + minLeadMs;
 
-        const label = current.toLocaleTimeString("en-US", {
+        const label = new Date(currentMs).toLocaleTimeString("en-US", {
           hour: "numeric",
           minute: "2-digit",
           hour12: true,
@@ -236,14 +249,14 @@ export const ordersRouter = router({
         });
 
         slots.push({
-          slotMs,
+          slotMs: currentMs,
           label,
           pizzasBooked,
           pizzasCapacity: PIZZA_CAPACITY_PER_HOUR,
           available: !isPast && pizzasBooked < PIZZA_CAPACITY_PER_HOUR,
         });
 
-        current.setMinutes(current.getMinutes() + SLOT_INTERVAL_MINUTES);
+        currentMs += SLOT_MS;
       }
 
       return { slots, isToday };

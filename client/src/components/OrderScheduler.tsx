@@ -121,7 +121,7 @@ export function OrderScheduler({ value, onChange, orderType = "pickup" }: OrderS
           <div>
             <p className="font-semibold text-amber-800 text-sm">We're currently closed</p>
             <p className="text-amber-700 text-xs mt-0.5">
-              Our hours are <strong>10:00 AM – 10:00 PM</strong> daily.
+              Our hours are <strong>10:00 AM – 10:00 PM</strong> daily. Last order by <strong>9:30 PM</strong>.
               We open at <strong>{nextOpen}</strong>. You can place your order now and schedule it for when we open!
             </p>
           </div>
@@ -205,7 +205,7 @@ export function OrderScheduler({ value, onChange, orderType = "pickup" }: OrderS
         <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-amber-50 border border-amber-200">
           <AlertCircle className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
           <p className="text-xs text-amber-700">
-            Scheduled orders are available <strong>10:00 AM – 10:00 PM</strong> daily.
+            Scheduled orders are available <strong>10:00 AM – 9:30 PM</strong> daily.
             For events outside these hours, please visit our{" "}
             <a href="/reservations" className="underline font-medium">Reservations</a> page.
           </p>

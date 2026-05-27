@@ -259,29 +259,29 @@
 - [x] Checkpoint saved
 
 ## Daily Special Rotating Banner (Home Page)
-- [ ] Define list of featured specials (top picks from ANYTIME_SPECIALS) with emoji/icon
-- [ ] Build DailySpecialBanner component: auto-rotates every 4s, smooth slide/fade transition, shows special number, name, price, and "Order Now" CTA
-- [ ] Add prev/next arrow controls and dot indicators for manual navigation
-- [ ] Clicking "Order Now" opens SpecialCustomizerModal for that special
-- [ ] Place banner at the very top of Home.tsx (below NapoliNavbar, above hero)
-- [ ] TypeScript: 0 errors
-- [ ] Checkpoint saved
+- [x] Define list of featured specials (top picks from ANYTIME_SPECIALS) with emoji/icon
+- [x] Build DailySpecialBanner component: auto-rotates every 5s, smooth slide/fade transition, shows special number, name, price, and "Order Now" CTA
+- [x] Add prev/next arrow controls and dot indicators for manual navigation
+- [x] Clicking "Order Now" links to /specials page
+- [x] Place banner at the very top of Home.tsx (below NapoliNavbar, above hero)
+- [x] TypeScript: 0 errors
+- [x] Checkpoint saved
 
 ## Reservations System (Rename Catering → Reservations)
-- [ ] Read existing Catering page, schema, and routers
-- [ ] Add reservations table to drizzle schema (id, type: dine-in/pickup/delivery, date, time, partySize, name, phone, email, notes, status, createdAt)
-- [ ] Run pnpm db:push to apply migration
-- [ ] Build server/reservations.ts: createReservation, listReservations (admin), updateStatus procedures
-- [ ] Register reservationsRouter in server/routers.ts
-- [ ] Build Reservations page: two-tab layout (Today's Order / Future Reservation)
-  - [ ] Today tab: same-day order with time picker (10 AM–9:30 PM Las Vegas time), service type, contact info
-  - [ ] Future tab: calendar date picker + time picker, party size, service type, full contact form, notes
-  - [ ] Las Vegas timezone validation (America/Los_Angeles), cutoff 9:30 PM for same-day
-  - [ ] Owner notification on new reservation submission
-- [ ] Rename Catering → Reservations in NapoliNavbar.tsx
-- [ ] Update App.tsx route: /catering → /reservations (keep /catering as redirect)
-- [ ] TypeScript: 0 errors
-- [ ] Checkpoint saved
+- [x] Read existing Catering page, schema, and routers
+- [x] Add reservations table to drizzle schema (id, type: dine-in/pickup/delivery, date, time, partySize, name, phone, email, notes, status, createdAt)
+- [x] Run pnpm db:push to apply migration
+- [x] Build server/reservations.ts: createReservation, listReservations (admin), updateStatus, getAvailableSlots procedures
+- [x] Register reservationsRouter in server/routers.ts
+- [x] Build Reservations page: two-tab layout (Today's Order / Future Reservation)
+  - [x] Today tab: same-day order with time picker (10 AM–9:30 PM Las Vegas time), service type, contact info
+  - [x] Future tab: calendar date picker + time picker, party size, service type, full contact form, notes
+  - [x] Las Vegas timezone validation (America/Los_Angeles), cutoff 9:30 PM for same-day
+  - [x] Owner notification on new reservation submission
+- [x] Rename Catering → Reservations in NapoliNavbar.tsx
+- [x] Update App.tsx route: added /reservations route (kept /catering for backward compat)
+- [x] TypeScript: 0 errors
+- [x] Checkpoint saved
 
 ## Home Page Follow-up Fixes
 - [x] Add rotating Daily Special banner at the top of the Home page
@@ -294,12 +294,12 @@
 - [x] Checkpoint saved
 
 ## Stripe-Only Payment Cleanup
-- [ ] Read CartDrawer, stripe.ts, OrderSuccess, schema to understand current state
-- [ ] Remove Clover payment option from CartDrawer (keep Stripe only)
-- [ ] Remove Authorize.net payment option from CartDrawer
-- [ ] Simplify paymentMethod enum in schema to stripe-only (or keep enum but hide others from UI)
-- [ ] Verify STRIPE_SECRET_KEY and VITE_STRIPE_PUBLISHABLE_KEY are set
-- [ ] Ensure Stripe webhook is configured for production domain
-- [ ] Clean up routers.ts (remove clover/authnet router registrations if not needed)
-- [ ] TypeScript: 0 errors
-- [ ] Checkpoint saved
+- [x] Read CartDrawer, stripe.ts, OrderSuccess, schema to understand current state
+- [x] Remove Elavon payment option from CartDrawer (Stripe only)
+- [x] Remove Clover POS tab from AdminOrders (replaced with Stripe-only view)
+- [x] Remove pushOrderToClover calls from stripe.ts webhook handler
+- [x] Remove clover and elavon router registrations from routers.ts
+- [x] Verify STRIPE_SECRET_KEY and VITE_STRIPE_PUBLISHABLE_KEY are set (confirmed)
+- [x] Stripe webhook configured for production domain (napolipizzerianorthlasvegas.com)
+- [x] TypeScript: 0 errors
+- [x] Checkpoint saved
