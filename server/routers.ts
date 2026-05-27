@@ -4,7 +4,6 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { stripeRouter } from "./stripe";
 import { uberDirectRouter } from "./uberdirect";
-import { cloverRouter } from "./clover";
 import { couponRouter } from "./coupon";
 import { doordashRouter } from "./doordash";
 import { settingsRouter } from "./settings";
@@ -13,7 +12,6 @@ import { ordersRouter } from "./orders";
 import { orderRefundsRouter } from "./orderRefunds";
 import { menuItemsRouter } from "./menuItems";
 import { modifiersRouter } from "./modifiers";
-import { elavonRouter } from "./elavon";
 import { reservationsRouter } from "./reservations";
 
 export const appRouter = router({
@@ -30,7 +28,6 @@ export const appRouter = router({
   }),
   stripe: stripeRouter,
   uber: uberDirectRouter,
-  clover: cloverRouter,
   coupon: couponRouter,
   doordash: doordashRouter,
   settings: settingsRouter,
@@ -39,7 +36,6 @@ export const appRouter = router({
   orderRefunds: orderRefundsRouter,
   menuItems: menuItemsRouter,
   modifiers: modifiersRouter,
-  elavon: elavonRouter,
   reservations: reservationsRouter,
 });
 

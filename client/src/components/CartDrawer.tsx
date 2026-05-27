@@ -161,9 +161,6 @@ export default function CartDrawer() {
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountPercent: number; description: string } | null>(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
-  // Payment method selector
-  const [paymentMethod, setPaymentMethod] = useState<"stripe" | "elavon">("stripe");
-
   // Stripe embedded payment state
   const [checkoutStep, setCheckoutStep] = useState<"cart" | "payment">("cart");
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -220,16 +217,6 @@ export default function CartDrawer() {
     },
     onError: (err) => {
       toast.error("Could not start checkout: " + err.message);
-    },
-  });
-
-  const createElavonSession = trpc.elavon.createPaymentSession.useMutation({
-    onSuccess: (data) => {
-      // Redirect to Elavon hosted payment page
-      window.location.href = data.paymentUrl;
-    },
-    onError: (err) => {
-      toast.error("Could not start Elavon checkout: " + err.message);
     },
   });
 
@@ -409,16 +396,7 @@ export default function CartDrawer() {
       deliveryFeeCents: selectedDeliveryFee ?? 0,
     };
 
-    if (paymentMethod === "elavon") {
-      createElavonSession.mutate({
-        ...orderPayload,
-        // returnUrl will be updated server-side to include the session ID
-        returnUrl: `${window.location.origin}/order-success?payment=elavon`,
-        cancelUrl: `${window.location.origin}`,
-      });
-    } else {
-      createPaymentIntent.mutate(orderPayload);
-    }
+    createPaymentIntent.mutate(orderPayload);
   };
 
   const handlePaymentSuccess = (piId: string) => {
@@ -427,7 +405,7 @@ export default function CartDrawer() {
     closeCart();
   };
 
-  const isLoading = createPaymentIntent.isPending || createElavonSession.isPending || feeConfigLoading;
+  const isLoading = createPaymentIntent.isPending || feeConfigLoading;
 
   return (
     <>
@@ -833,43 +811,7 @@ export default function CartDrawer() {
             {/* Order Policies Note */}
             <OrderPoliciesNote />
 
-            {/* Payment method selector */}
-            <div>
-              <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
-                PAYMENT METHOD
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setPaymentMethod("stripe")}
-                  className="flex flex-col items-center gap-1 py-2.5 px-3 rounded border transition-all"
-                  style={{
-                    background: paymentMethod === "stripe" ? "oklch(0.38 0.18 265)" : "white",
-                    borderColor: paymentMethod === "stripe" ? "oklch(0.38 0.18 265)" : "oklch(0.82 0.015 80)",
-                    color: paymentMethod === "stripe" ? "white" : "oklch(0.42 0.03 30)",
-                  }}
-                >
-                  <span className="text-xs font-bold" style={{ fontFamily: "'Oswald', sans-serif" }}>Stripe</span>
-                  <span className="text-xs opacity-75">Card · Apple Pay</span>
-                </button>
-                <button
-                  onClick={() => setPaymentMethod("elavon")}
-                  className="flex flex-col items-center gap-1 py-2.5 px-3 rounded border transition-all"
-                  style={{
-                    background: paymentMethod === "elavon" ? "oklch(0.25 0.10 220)" : "white",
-                    borderColor: paymentMethod === "elavon" ? "oklch(0.25 0.10 220)" : "oklch(0.82 0.015 80)",
-                    color: paymentMethod === "elavon" ? "white" : "oklch(0.42 0.03 30)",
-                  }}
-                >
-                  <span className="text-xs font-bold" style={{ fontFamily: "'Oswald', sans-serif" }}>Elavon</span>
-                  <span className="text-xs opacity-75">US Bank · Secure</span>
-                </button>
-              </div>
-              {paymentMethod === "elavon" && (
-                <p className="text-xs mt-1.5 px-2 py-1.5 rounded" style={{ background: "oklch(0.95 0.04 220)", color: "oklch(0.35 0.10 220)" }}>
-                  🏦 You will be redirected to Elavon's secure payment page to complete your order.
-                </p>
-              )}
-            </div>
+
 
             {/* Accepted cards */}
             <div className="space-y-1.5">
@@ -937,12 +879,6 @@ export default function CartDrawer() {
                   <Loader2 size={16} className="animate-spin" />
                   Getting delivery quote...
                 </>
-              ) : paymentMethod === "elavon" ? (
-                <>
-                  <Lock size={15} />
-                  Pay with Elavon — ${grandTotal.toFixed(2)}
-                  <ChevronRight size={16} />
-                </>
               ) : (
                 <>
                   <Lock size={15} />
@@ -953,8 +889,8 @@ export default function CartDrawer() {
             </button>
             <p className="text-center text-xs" style={{ color: "oklch(0.60 0.03 30)" }}>
               {orderType === "delivery"
-                ? `Delivery by Uber Direct · Secured by ${paymentMethod === "elavon" ? "Elavon (US Bank)" : "Stripe"}`
-                : `Secured by ${paymentMethod === "elavon" ? "Elavon (US Bank) · PCI Compliant" : "Stripe · PCI Compliant"}`}
+                ? "Delivery by Uber Direct · Secured by Stripe"
+                : "Secured by Stripe · PCI Compliant"}
             </p>
           </div>
         )}

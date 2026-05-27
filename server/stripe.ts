@@ -12,7 +12,6 @@ import Stripe from "stripe";
 import { z } from "zod";
 import { STRIPE_ENV } from "./_core/env";
 import { publicProcedure, router } from "./_core/trpc";
-import { pushOrderToClover } from "./cloverSync";
 import { markWebhookEventProcessed } from "./db";
 import type { Request, Response } from "express";
 import { getDb } from "./db";
@@ -627,18 +626,6 @@ async function createScheduledOrderFromPaymentIntent(intent: Stripe.PaymentInten
       content: `Customer: ${customerName} | Phone: ${customerPhone}\nScheduled: ${isAsap ? "ASAP" : new Date(scheduledAt).toLocaleString("en-US", { timeZone: STORE_TIMEZONE })}\nItems: ${items.map((i) => `${i.quantity ?? 1}x ${i.name}`).join(", ")}\nTotal: $${total.toFixed(2)}\nPaymentIntent: ${intent.id}`,
     }).catch(() => {});
 
-    // Push to Clover POS
-    if (items.length > 0 && intent.amount) {
-      pushOrderToClover({
-        items: items.map((i) => ({ name: i.name, price: i.price, quantity: i.quantity })),
-        orderType,
-        customerName: customerName || undefined,
-        customerPhone: customerPhone || undefined,
-        externalId: intent.id,
-        totalCents: intent.amount,
-      }).catch((err) => console.error("[Clover] Failed to push PI order:", err));
-    }
-
     return orderRef;
   } catch (err) {
     console.error("[Stripe PI] Failed to create scheduled order:", err);
@@ -689,38 +676,6 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         console.log(`[Stripe] Created scheduled order ${orderRef} for session ${session.id}`);
       }
 
-      // Push order to Clover POS (fire-and-forget)
-      try {
-        const rawItems = session.metadata?.cartItems;
-        const parsedItems: Array<{ name: string; price: number; quantity: number }> = rawItems
-          ? JSON.parse(rawItems)
-          : [];
-
-        if (parsedItems.length > 0 && session.amount_total) {
-          const orderType = (session.metadata?.orderType ?? "pickup") as "delivery" | "pickup" | "dine-in";
-          const customerName =
-            session.customer_details?.name ??
-            session.metadata?.customerName ??
-            undefined;
-          const customerPhone =
-            session.customer_details?.phone ??
-            session.metadata?.customerPhone ??
-            undefined;
-
-          pushOrderToClover({
-            items: parsedItems,
-            orderType,
-            customerName: customerName || undefined,
-            customerPhone: customerPhone || undefined,
-            externalId: session.id,
-            totalCents: session.amount_total,
-          }).catch((err) =>
-            console.error("[Clover] Failed to push Stripe order:", err)
-          );
-        }
-      } catch (err) {
-        console.error("[Clover] Error parsing Stripe session metadata:", err);
-      }
       break;
     }
     case "payment_intent.succeeded": {

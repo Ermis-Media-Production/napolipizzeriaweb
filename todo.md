@@ -291,4 +291,15 @@
 ## Follow-up Suggestions (from last delivery)
 - [x] Add interactive customizer (LunchCustomizerModal) to Lunch Specials so customers can order from /menu and /specials
 - [x] Add Anytime Specials featured section on Home page with top specials, prices, and "Order" button linking to /specials
+- [x] Checkpoint saved
+
+## Stripe-Only Payment Cleanup
+- [ ] Read CartDrawer, stripe.ts, OrderSuccess, schema to understand current state
+- [ ] Remove Clover payment option from CartDrawer (keep Stripe only)
+- [ ] Remove Authorize.net payment option from CartDrawer
+- [ ] Simplify paymentMethod enum in schema to stripe-only (or keep enum but hide others from UI)
+- [ ] Verify STRIPE_SECRET_KEY and VITE_STRIPE_PUBLISHABLE_KEY are set
+- [ ] Ensure Stripe webhook is configured for production domain
+- [ ] Clean up routers.ts (remove clover/authnet router registrations if not needed)
+- [ ] TypeScript: 0 errors
 - [ ] Checkpoint saved
