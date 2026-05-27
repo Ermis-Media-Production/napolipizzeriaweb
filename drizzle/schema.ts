@@ -1,4 +1,4 @@
-import { boolean, decimal, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, decimal, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar, bigint } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -297,3 +297,24 @@ export const reservations = mysqlTable("reservations", {
 
 export type Reservation = typeof reservations.$inferSelect;
 export type InsertReservation = typeof reservations.$inferInsert;
+
+
+/**
+ * Tracks questions asked to Eva AI to power self-learning quick questions.
+ * Each row represents a unique normalized question (similar questions are grouped).
+ * The `count` field increments each time the same question is asked.
+ */
+export const evaQuestions = mysqlTable("evaQuestions", {
+  id: int("id").autoincrement().primaryKey(),
+  /** The most recent raw question text from a customer */
+  questionText: text("questionText").notNull(),
+  /** LLM-normalized version used for deduplication (lowercase, trimmed, canonical form) */
+  normalizedText: varchar("normalizedText", { length: 512 }).notNull().unique(),
+  /** How many times this question (or a similar one) has been asked */
+  count: int("count").default(1).notNull(),
+  /** Timestamp of the most recent time this question was asked */
+  lastAskedAt: timestamp("lastAskedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type EvaQuestion = typeof evaQuestions.$inferSelect;
+export type InsertEvaQuestion = typeof evaQuestions.$inferInsert;

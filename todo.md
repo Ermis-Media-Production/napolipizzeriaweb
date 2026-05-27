@@ -339,3 +339,11 @@
 - [x] Conversation context: last 10 messages sent to LLM for coherent multi-turn chat
 - [x] Error fallback: directs to call 725-204-0379 if LLM fails
 - [x] SMS fallback: phone icon in header for direct call
+
+## Eva AI Self-Learning Quick Questions
+- [x] DB: eva_questions table (id, question_text, normalized_text, count, last_asked_at)
+- [x] Server: evaChat router - logQuestion mutation (upsert by normalized text)
+- [x] Server: evaChat router - getTopQuestions query (top 4 by count, min 2 asks)
+- [x] Server: LLM normalization of question text before storing (group similar questions)
+- [x] Client: EvaChat fetches top questions on mount, falls back to defaults if < 4 results
+- [x] Client: EvaChat logs every user message sent via the chat mutation

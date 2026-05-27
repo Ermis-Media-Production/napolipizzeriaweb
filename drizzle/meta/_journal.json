@@ -64,6 +64,13 @@
       "when": 1779810719233,
       "tag": "0008_wild_titanium_man",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1779898498954,
+      "tag": "0009_brown_wendigo",
+      "breakpoints": true
     }
   ]
 }

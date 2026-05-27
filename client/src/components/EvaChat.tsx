@@ -19,7 +19,7 @@ const BUBBLE_SIZE = 56;
 const PANEL_W = 380;
 const PANEL_H = 520;
 
-const QUICK_QUESTIONS = [
+const DEFAULT_QUICK_QUESTIONS = [
   "What are today's specials?",
   "Do you deliver to my area?",
   "What are your hours?",
@@ -81,6 +81,13 @@ export default function EvaChat() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
+
+  // ── Dynamic quick questions from server ─────────────────────────────────────
+  const topQuestionsQuery = trpc.eva.getTopQuestions.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000, // refresh every 5 minutes
+    refetchOnWindowFocus: false,
+  });
+  const quickQuestions = topQuestionsQuery.data?.questions ?? DEFAULT_QUICK_QUESTIONS;
 
   // Draggable position
   const [pos, setPos] = useState<{ x: number; y: number }>(loadPos);
@@ -265,18 +272,26 @@ export default function EvaChat() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick questions */}
+          {/* Quick questions — dynamically updated based on most-asked questions */}
           {messages.length === 1 && (
             <div className="px-4 pb-2 shrink-0" style={{ background: "oklch(0.985 0.01 80)" }}>
-              <div className="flex flex-wrap gap-1.5">
-                {QUICK_QUESTIONS.map((q) => (
-                  <button key={q} onClick={() => handleQuick(q)}
-                    className="text-xs px-2.5 py-1.5 rounded-full border transition-all hover:border-red-300 hover:bg-red-50 active:scale-[0.97]"
-                    style={{ borderColor: "oklch(0.85 0.015 80)", background: "white", color: "oklch(0.38 0.04 30)", fontFamily: "'Lato', sans-serif" }}>
-                    {q}
-                  </button>
-                ))}
-              </div>
+              {topQuestionsQuery.isLoading ? (
+                <div className="flex gap-1.5">
+                  {[1,2,3,4].map((i) => (
+                    <div key={i} className="h-7 rounded-full animate-pulse" style={{ width: `${60 + i * 15}px`, background: "oklch(0.90 0.01 80)" }} />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {quickQuestions.map((q) => (
+                    <button key={q} onClick={() => handleQuick(q)}
+                      className="text-xs px-2.5 py-1.5 rounded-full border transition-all hover:border-red-300 hover:bg-red-50 active:scale-[0.97]"
+                      style={{ borderColor: "oklch(0.85 0.015 80)", background: "white", color: "oklch(0.38 0.04 30)", fontFamily: "'Lato', sans-serif" }}>
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

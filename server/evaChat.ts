@@ -2,12 +2,19 @@
  * Eva AI Chat Router
  *
  * Powers the in-page Eva AI virtual sales assistant for Napoli Pizzeria.
- * Uses the built-in LLM with a detailed restaurant persona and knowledge base.
+ * - chat: send messages and get LLM responses (also logs the user question)
+ * - logQuestion: upsert a question by normalized text, increment count
+ * - getTopQuestions: return the top-4 most-asked questions (min 2 asks)
+ *                    falls back to default questions when data is sparse
  */
 import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
+import { getDb } from "./db";
+import { evaQuestions } from "../drizzle/schema";
+import { desc, sql } from "drizzle-orm";
 
+// ── Eva persona ───────────────────────────────────────────────────────────────
 const EVA_SYSTEM_PROMPT = `You are Eva, the friendly and knowledgeable virtual sales assistant for Napoli Pizzeria in North Las Vegas, Nevada.
 
 PERSONALITY:
@@ -63,19 +70,88 @@ IMPORTANT RULES:
 - If asked about allergens or dietary restrictions, recommend calling 725-204-0379 for accurate info
 `;
 
+// ── Normalize prompt: group similar questions together ────────────────────────
+const NORMALIZE_PROMPT = `You are a question normalizer for a restaurant chatbot.
+Given a customer question, return a short canonical normalized version (max 80 chars, lowercase, no punctuation) that captures the core intent.
+Group semantically identical questions together (e.g. "what time do you open?" and "when do you open?" → "what time does the restaurant open").
+Return ONLY the normalized text, nothing else.`;
+
+async function normalizeQuestion(question: string): Promise<string> {
+  try {
+    const res = await invokeLLM({
+      messages: [
+        { role: "system", content: NORMALIZE_PROMPT },
+        { role: "user", content: question.slice(0, 300) },
+      ],
+    });
+    const normalized = (res.choices?.[0]?.message?.content ?? question)
+      .toString()
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s]/g, "")
+      .slice(0, 512);
+    return normalized || question.toLowerCase().trim().slice(0, 512);
+  } catch {
+    return question.toLowerCase().trim().slice(0, 512);
+  }
+}
+
+// ── Upsert question in DB ─────────────────────────────────────────────────────
+async function upsertQuestion(rawText: string): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const normalized = await normalizeQuestion(rawText);
+    // Try insert; on duplicate key (normalizedText), increment count
+    await db.insert(evaQuestions).values({
+      questionText: rawText.slice(0, 1000),
+      normalizedText: normalized,
+      count: 1,
+    }).onDuplicateKeyUpdate({
+      set: {
+        count: sql`count + 1`,
+        questionText: rawText.slice(0, 1000), // keep most recent phrasing
+        lastAskedAt: sql`NOW()`,
+      },
+    });
+  } catch {
+    // Non-critical — never block the chat response
+  }
+}
+
+// ── Default questions (shown when not enough data yet) ────────────────────────
+const DEFAULT_QUESTIONS = [
+  "What are today's specials?",
+  "Do you deliver to my area?",
+  "What are your hours?",
+  "Can I customize my pizza?",
+];
+
+// ── Message schema ────────────────────────────────────────────────────────────
 const MessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
   content: z.string(),
 });
 
+// ── Router ────────────────────────────────────────────────────────────────────
 export const evaChatRouter = router({
+  /**
+   * Send a message to Eva and get an AI response.
+   * Also logs the latest user question asynchronously (fire-and-forget).
+   */
   chat: publicProcedure
     .input(
       z.object({
-        messages: z.array(MessageSchema).max(20), // last 20 messages for context
+        messages: z.array(MessageSchema).max(20),
       })
     )
     .mutation(async ({ input }) => {
+      // Fire-and-forget: log the last user message
+      const lastUserMsg = [...input.messages].reverse().find((m) => m.role === "user");
+      if (lastUserMsg?.content?.trim()) {
+        void upsertQuestion(lastUserMsg.content.trim());
+      }
+
       const llmMessages = [
         { role: "system" as const, content: EVA_SYSTEM_PROMPT },
         ...input.messages.map((m) => ({
@@ -85,8 +161,39 @@ export const evaChatRouter = router({
       ];
 
       const response = await invokeLLM({ messages: llmMessages });
-      const reply = response.choices?.[0]?.message?.content ?? "I'm sorry, I couldn't process that. Please call us at 725-204-0379 for immediate assistance!";
+      const reply =
+        response.choices?.[0]?.message?.content ??
+        "I'm sorry, I couldn't process that. Please call us at 725-204-0379 for immediate assistance!";
 
-      return { reply };
+      return { reply: typeof reply === "string" ? reply : String(reply) };
     }),
+
+  /**
+   * Return the top 4 most-asked questions.
+   * Only includes questions asked at least 2 times.
+   * Falls back to defaults if fewer than 4 qualifying questions exist.
+   */
+  getTopQuestions: publicProcedure.query(async () => {
+    try {
+      const db = await getDb();
+      if (!db) return { questions: DEFAULT_QUESTIONS };
+      const rows = await db
+        .select({ questionText: evaQuestions.questionText, count: evaQuestions.count })
+        .from(evaQuestions)
+        .where(sql`count >= 2`)
+        .orderBy(desc(evaQuestions.count))
+        .limit(4);
+
+      if (rows.length >= 4) {
+        return { questions: rows.map((r) => r.questionText) };
+      }
+
+      // Blend real top questions with defaults to always show 4
+      const real = rows.map((r) => r.questionText);
+      const fillers = DEFAULT_QUESTIONS.filter((d) => !real.some((r) => r.toLowerCase().includes(d.toLowerCase().slice(0, 20))));
+      return { questions: [...real, ...fillers].slice(0, 4) };
+    } catch {
+      return { questions: DEFAULT_QUESTIONS };
+    }
+  }),
 });
