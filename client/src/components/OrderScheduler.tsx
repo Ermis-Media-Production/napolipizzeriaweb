@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
-import { Clock, Calendar, AlertCircle, Info, CheckCircle2 } from "lucide-react";
+import { Clock, Calendar, AlertCircle, Info, CheckCircle2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -309,38 +309,64 @@ export function OrderScheduler({ value, onChange, orderType = "pickup" }: OrderS
   );
 }
 
-// ── Order Policies Note ───────────────────────────────────────────────────────
+// ── Order Policies Note (collapsible) ────────────────────────────────────────
 
 export function OrderPoliciesNote() {
+  const [expanded, setExpanded] = useState(false);
+
   return (
-    <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 space-y-1.5">
-      <div className="flex items-center gap-1.5">
-        <Info className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-        <p className="text-xs font-semibold text-blue-800">Order Policies</p>
-      </div>
-      <ul className="text-xs text-blue-700 space-y-1 pl-5 list-disc">
-        <li>
-          <strong>Cancellations & modifications</strong> are accepted up to{" "}
-          <strong>1 hour before</strong> your scheduled time. After that, please call us at{" "}
-          <a href="tel:7025448930" className="underline font-medium">
-            (702) 544-8930
-          </a>
-          .
-        </li>
-        <li>
-          Refunds for cancelled items are processed to your original payment method within{" "}
-          <strong>3–5 business days</strong>.
-        </li>
-        <li>
-          You can track and manage your order using the <strong>order confirmation link</strong>{" "}
-          shown after checkout.
-        </li>
-        <li>
-          Scheduled orders are subject to kitchen capacity. Slots showing{" "}
-          <span className="text-amber-600 font-medium">"Almost full"</span> may close before
-          your payment is processed.
-        </li>
-      </ul>
+    <div className="rounded-lg border border-blue-100 bg-blue-50 overflow-hidden">
+      {/* Header row — always visible, click to expand */}
+      <button
+        type="button"
+        onClick={() => setExpanded((p) => !p)}
+        className="w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-blue-100/60"
+      >
+        <div className="flex items-center gap-1.5">
+          <Info className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+          <p className="text-xs font-semibold text-blue-800">Order Policies</p>
+        </div>
+        <ChevronDown
+          className="w-3.5 h-3.5 text-blue-500 shrink-0 transition-transform duration-200"
+          style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
+        />
+      </button>
+
+      {/* Expandable body */}
+      {expanded && (
+        <div className="px-3 pb-3">
+          <ul className="text-xs text-blue-700 space-y-1 pl-5 list-disc">
+            <li>
+              <strong>Cancellations &amp; modifications</strong> are accepted up to{" "}
+              <strong>1 hour before</strong> your scheduled time. After that, please call us at{" "}
+              <a href="tel:7252040379" className="underline font-medium">
+                (725) 204-0379
+              </a>
+              .
+            </li>
+            <li>
+              For any <strong>complaints or order issues</strong>, please call us immediately at{" "}
+              <a href="tel:7252040379" className="underline font-medium">
+                (725) 204-0379
+              </a>
+              .
+            </li>
+            <li>
+              Refunds for cancelled items are processed to your original payment method within{" "}
+              <strong>3–5 business days</strong>.
+            </li>
+            <li>
+              You can track and manage your order using the{" "}
+              <strong>order confirmation link</strong> shown after checkout.
+            </li>
+            <li>
+              Scheduled orders are subject to kitchen capacity. Slots showing{" "}
+              <span className="text-amber-600 font-medium">&ldquo;Almost full&rdquo;</span> may
+              close before your payment is processed.
+            </li>
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

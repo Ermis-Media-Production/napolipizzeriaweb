@@ -891,26 +891,6 @@ export default function CartDrawer() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>Also:</span>
-                <div className="flex items-center gap-1.5">
-                  <div className="flex items-center justify-center rounded px-2 border" style={{ background: "#000", borderColor: "#000", height: 22, minWidth: 52 }}>
-                    <svg viewBox="0 0 50 20" width="42" height="14" fill="white" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M9.5 4.2c.6-.8.9-1.7.9-2.7-.9.1-2 .6-2.6 1.4-.6.7-1 1.6-.9 2.6.9 0 1.9-.5 2.6-1.3z"/>
-                      <path d="M10.4 5.6c-1.4-.1-2.6.8-3.3.8-.7 0-1.7-.8-2.9-.7-1.5.1-2.8.9-3.6 2.2-1.5 2.6-.4 6.5 1.1 8.6.7 1 1.6 2.2 2.8 2.1 1.1 0 1.5-.7 2.9-.7 1.3 0 1.7.7 2.9.7 1.2 0 2-1.1 2.7-2.1.5-.7.9-1.5 1.2-2.3-3.1-1.2-2.5-5.5.2-6.6-.8-1.2-2-2-4-2z"/>
-                      <text x="18" y="15" fontSize="11" fontFamily="-apple-system, Arial" fontWeight="600" fill="white">Pay</text>
-                    </svg>
-                  </div>
-                  <div className="flex items-center justify-center rounded px-2 border" style={{ background: "white", borderColor: "oklch(0.82 0.015 80)", height: 22, minWidth: 52 }}>
-                    <svg viewBox="0 0 50 20" width="44" height="14" xmlns="http://www.w3.org/2000/svg">
-                      <text x="0" y="15" fontSize="13" fontFamily="Arial" fontWeight="700">
-                        <tspan fill="#4285F4">G</tspan><tspan fill="#EA4335">o</tspan><tspan fill="#FBBC05">o</tspan><tspan fill="#4285F4">g</tspan><tspan fill="#34A853">l</tspan><tspan fill="#EA4335">e</tspan>
-                      </text>
-                      <text x="28" y="15" fontSize="11" fontFamily="Arial" fontWeight="600" fill="#5F6368">Pay</text>
-                    </svg>
-                  </div>
-                </div>
-              </div>
             </div>
 
             {/* Proceed to payment button */}
