@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { CartProvider } from "./contexts/CartContext";
 import CartDrawer from "./components/CartDrawer";
 import FloatingCart from "./components/FloatingCart";
+import EvaChat from "./components/EvaChat";
 import Home from "./pages/Home";
 import Menu from "./pages/Menu";
 import Specials from "./pages/Specials";
@@ -56,6 +57,7 @@ function App() {
             <Router />
             <CartDrawer />
             <FloatingCart />
+            <EvaChat />
           </TooltipProvider>
         </CartProvider>
       </ThemeProvider>

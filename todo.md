@@ -323,3 +323,11 @@
 - [x] Simple items add directly to cart with free soda description
 - [x] Button disabled and greyed out when outside lunch hours (10 AM – 3 PM)
 - [x] Opacity reduced on all cards when lunch is closed
+
+## Eva AI Floating Chat Widget
+- [x] EvaChat component: floating bubble bottom-right with pulse animation
+- [x] Expand/collapse panel with Eva greeting and quick question buttons
+- [x] Quick questions open SMS app with pre-filled message to +17022912025
+- [x] Custom message input sends via SMS
+- [x] Dismiss (X) button hides widget for the session (sessionStorage)
+- [x] Mounted site-wide in App.tsx
