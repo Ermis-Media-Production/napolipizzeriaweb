@@ -1,4 +1,4 @@
-import { X, Plus, Minus, Trash2, ShoppingCart, ChevronRight, Loader2, Lock, MapPin, CheckCircle2, AlertTriangle } from "lucide-react";
+import { X, Plus, Minus, Trash2, ShoppingCart, ChevronRight, Loader2, Lock, MapPin, CheckCircle2, AlertTriangle, Clock, Calendar, Info } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -165,6 +165,21 @@ export default function CartDrawer() {
   const [checkoutStep, setCheckoutStep] = useState<"cart" | "payment">("cart");
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+
+  // Store open/closed status (Las Vegas time)
+  const { data: storeStatus } = trpc.orders.storeStatus.useQuery(undefined, {
+    refetchInterval: 60_000, // refresh every minute
+  });
+  const storeIsOpen = storeStatus?.isOpen ?? true; // optimistic: assume open until we know
+  const nextOpenTime = storeStatus?.nextOpeningMs
+    ? new Date(storeStatus.nextOpeningMs).toLocaleString("en-US", {
+        timeZone: "America/Los_Angeles",
+        weekday: "short",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      })
+    : "10:00 AM";
 
   // Live convenience fee config from DB
   const { data: feeConfig, isLoading: feeConfigLoading } = trpc.settings.getConvenienceFee.useQuery();
@@ -533,6 +548,49 @@ export default function CartDrawer() {
             className="border-t px-4 py-4 space-y-3 shrink-0 overflow-y-auto"
             style={{ borderColor: "oklch(0.88 0.015 80)", background: "white", maxHeight: "72vh" }}
           >
+            {/* ── Closed-store banner (shown for pickup / delivery / dine-in when store is closed) ── */}
+            {!storeIsOpen && orderType !== "scheduled" && (
+              <div
+                className="rounded-lg border p-3 space-y-2.5"
+                style={{ borderColor: "oklch(0.75 0.12 45)", background: "oklch(0.97 0.05 45)" }}
+              >
+                <div className="flex items-start gap-2">
+                  <Clock size={15} className="shrink-0 mt-0.5" style={{ color: "oklch(0.52 0.15 45)" }} />
+                  <div>
+                    <p className="text-xs font-bold" style={{ color: "oklch(0.35 0.12 45)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.04em" }}>
+                      WE'RE CURRENTLY CLOSED
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: "oklch(0.45 0.08 45)", fontFamily: "'Lato', sans-serif" }}>
+                      Our hours are <strong>10:00 AM – 10:00 PM</strong> daily (Las Vegas time).
+                      We open at <strong>{nextOpenTime}</strong>.
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs" style={{ color: "oklch(0.40 0.08 45)", fontFamily: "'Lato', sans-serif" }}>
+                  Online orders are accepted daily during restaurant hours: <strong>10:00 AM – 10:00 PM</strong>.
+                  You can place a <strong>scheduled order</strong> now and we'll prepare it when we open!
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    onClick={() => setOrderType("scheduled")}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded font-bold text-xs transition-all active:scale-[0.98]"
+                    style={{ background: "var(--napoli-red, #c0392b)", color: "white", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}
+                  >
+                    <Calendar size={13} />
+                    Schedule Order for {nextOpenTime}
+                  </button>
+                  <a
+                    href="/reservations"
+                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded text-xs border transition-colors hover:bg-amber-50"
+                    style={{ borderColor: "oklch(0.75 0.12 45)", color: "oklch(0.40 0.10 45)", fontFamily: "'Lato', sans-serif" }}
+                  >
+                    <Info size={12} />
+                    For events outside our hours, visit Reservations →
+                  </a>
+                </div>
+              </div>
+            )}
+
             {/* Order type */}
             <div>
               <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
@@ -858,10 +916,10 @@ export default function CartDrawer() {
             {/* Proceed to payment button */}
             <button
               onClick={handleProceedToPayment}
-              disabled={isLoading || (orderType === "delivery" && (isFetchingUberQuote || isGeoChecking)) || !!geoError}
+              disabled={isLoading || (orderType === "delivery" && (isFetchingUberQuote || isGeoChecking)) || !!geoError || (!storeIsOpen && orderType !== "scheduled")}
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded font-bold text-sm transition-all active:scale-[0.98]"
               style={{
-                background: isLoading || (orderType === "delivery" && isFetchingUberQuote) || !!geoError
+                background: isLoading || (orderType === "delivery" && isFetchingUberQuote) || !!geoError || (!storeIsOpen && orderType !== "scheduled")
                   ? "oklch(0.55 0.03 30)"
                   : "oklch(0.38 0.18 265)",
                 color: "white",

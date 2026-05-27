@@ -308,3 +308,11 @@
 - [x] OrderScheduler.tsx: removed "9:30 PM" from all customer-facing text — restaurant hours shown as 10:00 AM – 10:00 PM
 - [x] Reservations.tsx: removed "9:30 PM" from all customer-facing text — internal cutoff kept as code constant only
 - [x] All public-facing text consistently shows 10:00 AM – 10:00 PM as restaurant hours
+
+## Store Hours Enforcement in CartDrawer
+- [x] CartDrawer: query storeStatus (Las Vegas time) and show closed-store banner for pickup/delivery/dine-in when restaurant is closed
+- [x] Closed banner shows: "We're Currently Closed", restaurant hours 10 AM – 10 PM, next opening time
+- [x] Closed banner CTA: "Schedule Order for [next open time]" button switches to scheduled order type
+- [x] Closed banner secondary CTA: link to Reservations page for events outside hours
+- [x] Proceed to Payment button is disabled when store is closed and order type is not "scheduled"
+- [x] Scheduled order type bypasses closed-store check (customers can always schedule for future)
