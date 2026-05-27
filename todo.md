@@ -347,3 +347,8 @@
 - [x] Server: LLM normalization of question text before storing (group similar questions)
 - [x] Client: EvaChat fetches top questions on mount, falls back to defaults if < 4 results
 - [x] Client: EvaChat logs every user message sent via the chat mutation
+
+## Unified Cart + Payment View
+- [x] CartDrawer refactored: order details step shows items + form + pricing, then "Enter Payment Details" button loads Stripe step
+- [x] Payment step shows order summary mini + Stripe Elements form
+- [x] "Edit order details" back button on payment step returns to details step

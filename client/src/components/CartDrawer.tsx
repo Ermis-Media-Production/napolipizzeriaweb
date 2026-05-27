@@ -1,4 +1,4 @@
-import { X, Plus, Minus, Trash2, ShoppingCart, ChevronRight, Loader2, Lock, MapPin, CheckCircle2, AlertTriangle, Clock, Calendar, Info } from "lucide-react";
+import { X, Plus, Minus, Trash2, ShoppingCart, Loader2, Lock, MapPin, CheckCircle2, AlertTriangle, Clock, Calendar, Info } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useCart } from "@/contexts/CartContext";
 import AddressAutocomplete, { type AddressComponents } from "@/components/AddressAutocomplete";
+
 // ─── Stripe publishable key ────────────────────────────────────────────────────
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ?? "");
 
@@ -19,7 +20,7 @@ const MAX_DELIVERY_MILES = 20;
 
 /** Haversine distance in miles between two lat/lng points */
 function haversineMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 3958.8; // Earth radius in miles
+  const R = 3958.8;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
   const a =
@@ -61,7 +62,6 @@ function PaymentForm({ clientSecret, paymentIntentId, grandTotal, onSuccess, onC
       setErrorMsg(error.message ?? "Payment failed. Please try again.");
       setIsProcessing(false);
     } else {
-      // Payment succeeded without redirect
       onSuccess(paymentIntentId);
     }
   };
@@ -120,7 +120,7 @@ function PaymentForm({ clientSecret, paymentIntentId, grandTotal, onSuccess, onC
         className="w-full text-xs py-2 rounded border transition-colors"
         style={{ borderColor: "oklch(0.82 0.015 80)", color: "oklch(0.50 0.03 30)" }}
       >
-        ← Back to order details
+        ← Edit order details
       </button>
     </form>
   );
@@ -161,16 +161,16 @@ export default function CartDrawer() {
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountPercent: number; description: string } | null>(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
-  // Stripe embedded payment state
-  const [checkoutStep, setCheckoutStep] = useState<"cart" | "payment">("cart");
+  // Stripe embedded payment state — "details" = order form, "payment" = Stripe form
+  const [checkoutStep, setCheckoutStep] = useState<"details" | "payment">("details");
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
 
   // Store open/closed status (Las Vegas time)
   const { data: storeStatus } = trpc.orders.storeStatus.useQuery(undefined, {
-    refetchInterval: 60_000, // refresh every minute
+    refetchInterval: 60_000,
   });
-  const storeIsOpen = storeStatus?.isOpen ?? true; // optimistic: assume open until we know
+  const storeIsOpen = storeStatus?.isOpen ?? true;
   const nextOpenTime = storeStatus?.nextOpeningMs
     ? new Date(storeStatus.nextOpeningMs).toLocaleString("en-US", {
         timeZone: "America/Los_Angeles",
@@ -201,10 +201,10 @@ export default function CartDrawer() {
     }
   }, [isOpen, pendingOrderType, clearPendingOrderType]);
 
-  // Reset to cart step when cart closes
+  // Reset to details step when cart closes
   useEffect(() => {
     if (!isOpen) {
-      setCheckoutStep("cart");
+      setCheckoutStep("details");
       setClientSecret(null);
       setPaymentIntentId(null);
     }
@@ -266,7 +266,6 @@ export default function CartDrawer() {
       setIsGeoChecking(false);
       return true;
     } catch {
-      // Fallback: allow checkout if geocoding fails (don't block customer)
       setIsGeoChecking(false);
       return true;
     }
@@ -294,31 +293,26 @@ export default function CartDrawer() {
     if (field === "state")   setDeliveryState(value);
     if (field === "zip")     setDeliveryZip(value);
     triggerUberQuote(newAddress, newCity, newState, newZip);
-    // Debounce geo check
     if (geoDebounceRef.current) clearTimeout(geoDebounceRef.current);
     geoDebounceRef.current = setTimeout(() => {
       validateDeliveryRadius(newAddress, newCity, newState, newZip);
     }, 1200);
   };
 
-    /** Called when user picks a suggestion from the autocomplete dropdown */
   const handleAddressSelect = useCallback((components: AddressComponents) => {
     setDeliveryAddress(components.streetAddress);
     setDeliveryCity(components.city || "North Las Vegas");
     setDeliveryState(components.state || "NV");
     setDeliveryZip(components.zip || "");
     setGeoError(null);
-    // Use the precise lat/lng directly — no need to geocode again
     const miles = haversineMiles(RESTAURANT_LAT, RESTAURANT_LNG, components.lat, components.lng);
     if (miles > MAX_DELIVERY_MILES) {
       setGeoError(`Sorry, we only deliver within ${MAX_DELIVERY_MILES} miles of our restaurant. Your address is approximately ${miles.toFixed(1)} miles away. Please call us at 725-204-0379 for catering or special arrangements.`);
     } else {
-      // Trigger Uber quote with the precise address
       triggerUberQuote(components.streetAddress, components.city || "North Las Vegas", components.state || "NV", components.zip || "");
     }
   }, []);
 
-  const redeemCoupon = trpc.coupon.redeem.useMutation();
   const handleApplyCoupon = async () => {
     const code = couponCode.trim().toUpperCase();
     if (!code) return;
@@ -374,7 +368,6 @@ export default function CartDrawer() {
   const handleProceedToPayment = async () => {
     if (!validateForm()) return;
 
-    // Extra geo check on submit for delivery
     if (orderType === "delivery") {
       const ok = await validateDeliveryRadius(deliveryAddress, deliveryCity, deliveryState, deliveryZip);
       if (!ok) return;
@@ -421,13 +414,14 @@ export default function CartDrawer() {
   };
 
   const isLoading = createPaymentIntent.isPending || feeConfigLoading;
+  const isStoreClosed = !storeIsOpen && orderType !== "scheduled";
 
   return (
     <>
       {isOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-          onClick={checkoutStep === "cart" ? closeCart : undefined}
+          onClick={checkoutStep === "details" ? closeCart : undefined}
           style={{ transition: "opacity 200ms ease-out" }}
         />
       )}
@@ -450,7 +444,7 @@ export default function CartDrawer() {
             <span className="font-bold text-sm" style={{ fontFamily: "'Oswald', sans-serif", letterSpacing: "0.08em" }}>
               {checkoutStep === "payment" ? "SECURE PAYMENT" : "YOUR ORDER"}
             </span>
-            {totalItems > 0 && checkoutStep === "cart" && (
+            {totalItems > 0 && checkoutStep === "details" && (
               <span
                 className="text-xs font-bold px-1.5 py-0.5 rounded-full"
                 style={{ background: "var(--napoli-gold, #d4a017)", color: "var(--napoli-dark, #1a0a00)" }}
@@ -477,468 +471,455 @@ export default function CartDrawer() {
           </div>
         )}
 
-        {/* Cart items */}
-        {items.length > 0 && checkoutStep === "cart" && (
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-2 py-2 border-b"
-                style={{ borderColor: "oklch(0.88 0.015 80)" }}
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate" style={{ color: "oklch(0.22 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
-                    {item.name}
+        {/* ── ORDER DETAILS STEP ─────────────────────────────────────────────── */}
+        {items.length > 0 && checkoutStep === "details" && (
+          <div className="flex-1 overflow-y-auto">
+            {/* Cart items */}
+            <div className="px-4 py-3 space-y-2">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-2 py-2 border-b"
+                  style={{ borderColor: "oklch(0.88 0.015 80)" }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate" style={{ color: "oklch(0.22 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
+                      {item.name}
+                    </p>
+                    <p className="text-xs" style={{ color: "var(--napoli-red, #c0392b)" }}>
+                      ${item.price.toFixed(2)} each
+                    </p>
+                    {item.description && (
+                      <p className="text-xs mt-0.5 leading-snug" style={{ color: "oklch(0.52 0.03 30)" }}>
+                        {item.description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      className="w-6 h-6 rounded-full flex items-center justify-center border transition-colors hover:bg-red-50"
+                      style={{ borderColor: "oklch(0.82 0.015 80)" }}
+                    >
+                      <Minus size={10} />
+                    </button>
+                    <span className="w-5 text-center text-sm font-bold" style={{ color: "oklch(0.22 0.04 30)" }}>
+                      {item.quantity}
+                    </span>
+                    <button
+                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      className="w-6 h-6 rounded-full flex items-center justify-center border transition-colors hover:bg-red-50"
+                      style={{ borderColor: "oklch(0.82 0.015 80)" }}
+                    >
+                      <Plus size={10} />
+                    </button>
+                  </div>
+                  <p className="text-sm font-bold w-14 text-right" style={{ color: "oklch(0.22 0.04 30)" }}>
+                    ${(item.price * item.quantity).toFixed(2)}
                   </p>
-                  <p className="text-xs" style={{ color: "var(--napoli-red, #c0392b)" }}>
-                    ${item.price.toFixed(2)} each
+                  <button
+                    onClick={() => removeItem(item.id)}
+                    className="p-1 rounded hover:bg-red-50 transition-colors"
+                    style={{ color: "oklch(0.55 0.03 30)" }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+              {items.length > 1 && (
+                <button
+                  onClick={clearCart}
+                  className="text-xs w-full text-center py-1.5 transition-colors"
+                  style={{ color: "oklch(0.55 0.03 30)" }}
+                >
+                  Clear all items
+                </button>
+              )}
+            </div>
+
+            {/* Order details form */}
+            <div className="border-t px-4 py-4 space-y-3" style={{ borderColor: "oklch(0.88 0.015 80)", background: "white" }}>
+
+              {/* ── Closed-store banner ── */}
+              {isStoreClosed && (
+                <div
+                  className="rounded-lg border p-3 space-y-2.5"
+                  style={{ borderColor: "oklch(0.75 0.12 45)", background: "oklch(0.97 0.05 45)" }}
+                >
+                  <div className="flex items-start gap-2">
+                    <Clock size={15} className="shrink-0 mt-0.5" style={{ color: "oklch(0.52 0.15 45)" }} />
+                    <div>
+                      <p className="text-xs font-bold" style={{ color: "oklch(0.35 0.12 45)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.04em" }}>
+                        WE'RE CURRENTLY CLOSED
+                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: "oklch(0.45 0.08 45)", fontFamily: "'Lato', sans-serif" }}>
+                        Our hours are <strong>10:00 AM – 10:00 PM</strong> daily (Las Vegas time).
+                        We open at <strong>{nextOpenTime}</strong>.
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs" style={{ color: "oklch(0.40 0.08 45)", fontFamily: "'Lato', sans-serif" }}>
+                    Online orders are accepted daily during restaurant hours: <strong>10:00 AM – 10:00 PM</strong>.
+                    You can place a <strong>scheduled order</strong> now and we'll prepare it when we open!
                   </p>
-                  {item.description && (
-                    <p className="text-xs mt-0.5 leading-snug" style={{ color: "oklch(0.52 0.03 30)" }}>
-                      {item.description}
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      onClick={() => setOrderType("scheduled")}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded font-bold text-xs transition-all active:scale-[0.98]"
+                      style={{ background: "var(--napoli-red, #c0392b)", color: "white", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}
+                    >
+                      <Calendar size={13} />
+                      Schedule Order for {nextOpenTime}
+                    </button>
+                    <a
+                      href="/reservations"
+                      className="w-full flex items-center justify-center gap-1.5 py-2 rounded text-xs border transition-colors hover:bg-amber-50"
+                      style={{ borderColor: "oklch(0.75 0.12 45)", color: "oklch(0.40 0.10 45)", fontFamily: "'Lato', sans-serif" }}
+                    >
+                      <Info size={12} />
+                      For events outside our hours, visit Reservations →
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Order type */}
+              <div>
+                <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
+                  ORDER TYPE
+                </p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {([
+                    { type: "pickup",    label: "To Go / Pick Up" },
+                    { type: "delivery",  label: "Delivery" },
+                    { type: "dine-in",   label: "Dine-In" },
+                    { type: "scheduled", label: "Schedule" },
+                  ] as const).map(({ type, label }) => (
+                    <button
+                      key={type}
+                      onClick={() => setOrderType(type)}
+                      className="py-2 px-2 rounded text-xs font-semibold border transition-all"
+                      style={{
+                        background: orderType === type ? "var(--napoli-red, #c0392b)" : "transparent",
+                        color: orderType === type ? "white" : "oklch(0.42 0.03 30)",
+                        borderColor: orderType === type ? "var(--napoli-red, #c0392b)" : "oklch(0.82 0.015 80)",
+                        fontFamily: "'Oswald', sans-serif",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Schedule selector */}
+              {orderType === "scheduled" ? (
+                <div>
+                  <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
+                    SCHEDULE DATE & TIME
+                  </p>
+                  <OrderScheduler
+                    value={schedule}
+                    onChange={setSchedule}
+                    orderType="pickup"
+                  />
+                </div>
+              ) : (
+                <div
+                  className="flex items-center gap-2 px-3 py-2 rounded border"
+                  style={{ borderColor: "oklch(0.82 0.015 80)", background: "oklch(0.985 0.01 80)" }}
+                >
+                  <span className="text-base">⏱</span>
+                  <p className="text-xs" style={{ color: "oklch(0.45 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+                    <strong>Order ASAP</strong> — or select <em>Schedule</em> above to pick a future date &amp; time.
+                  </p>
+                </div>
+              )}
+
+              {/* Delivery section */}
+              {orderType === "delivery" && (
+                <div
+                  className="space-y-2 p-3 rounded-lg border"
+                  style={{ borderColor: "oklch(0.82 0.015 80)", background: "oklch(0.98 0.005 80)" }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <MapPin size={13} style={{ color: "var(--napoli-red, #c0392b)" }} />
+                    <span className="text-xs font-semibold" style={{ color: "oklch(0.35 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
+                      DELIVERY ADDRESS
+                    </span>
+                    <span className="text-xs ml-auto" style={{ color: "oklch(0.55 0.03 30)" }}>
+                      Within 20 miles · Las Vegas area
+                    </span>
+                  </div>
+                  <AddressAutocomplete
+                    value={deliveryAddress}
+                    onChange={(val) => handleAddressChange("address", val)}
+                    onSelect={handleAddressSelect}
+                    placeholder="Street address *"
+                    hasError={!!geoError}
+                  />
+                  <div className="grid grid-cols-3 gap-2">
+                    <input type="text" placeholder="City" value={deliveryCity}
+                      onChange={(e) => handleAddressChange("city", e.target.value)}
+                      className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                      style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }} />
+                    <input type="text" placeholder="State" value={deliveryState}
+                      onChange={(e) => handleAddressChange("state", e.target.value)}
+                      className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                      style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }} />
+                    <input type="text" placeholder="ZIP" value={deliveryZip}
+                      onChange={(e) => handleAddressChange("zip", e.target.value)}
+                      className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                      style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }} />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Delivery notes (apt #, gate code...)"
+                    value={deliveryNotes}
+                    onChange={(e) => setDeliveryNotes(e.target.value)}
+                    className="w-full text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+                  />
+                  {geoError && (
+                    <div
+                      className="flex items-start gap-2 px-3 py-2 rounded border text-xs"
+                      style={{ borderColor: "oklch(0.65 0.18 25)", background: "oklch(0.97 0.04 25)", color: "oklch(0.40 0.18 25)" }}
+                    >
+                      <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                      {geoError}
+                    </div>
+                  )}
+                  {isGeoChecking && (
+                    <div className="flex items-center gap-2 py-1 text-xs" style={{ color: "oklch(0.42 0.03 30)" }}>
+                      <Loader2 size={12} className="animate-spin" />
+                      <span>Checking delivery area...</span>
+                    </div>
+                  )}
+                  {isFetchingUberQuote && (
+                    <div className="flex items-center gap-2 py-2 text-xs" style={{ color: "oklch(0.42 0.03 30)" }}>
+                      <Loader2 size={13} className="animate-spin" style={{ color: "oklch(0.40 0.15 220)" }} />
+                      <span>Getting delivery quote...</span>
+                    </div>
+                  )}
+                  {!isFetchingUberQuote && uberFee !== null && uberQuoteId && (
+                    <div className="flex items-center justify-between px-3 py-2 rounded-lg border"
+                      style={{ borderColor: "oklch(0.70 0.15 220)", background: "oklch(0.95 0.04 220)" }}>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 size={14} style={{ color: "oklch(0.40 0.15 220)" }} />
+                        <div>
+                          <span className="text-xs font-bold" style={{ color: "oklch(0.25 0.10 220)", fontFamily: "'Oswald', sans-serif" }}>
+                            Uber Direct
+                          </span>
+                          {uberEta && (
+                            <span className="text-xs ml-2" style={{ color: "oklch(0.40 0.10 220)" }}>
+                              · ETA {new Date(uberEta).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold" style={{ color: "oklch(0.30 0.15 220)" }}>
+                          ${(uberFee / 100).toFixed(2)}
+                        </span>
+                        <button
+                          onClick={() => triggerUberQuote(deliveryAddress, deliveryCity, deliveryState, deliveryZip)}
+                          className="text-xs px-2 py-0.5 rounded border transition-colors"
+                          style={{ borderColor: "oklch(0.65 0.12 220)", color: "oklch(0.40 0.12 220)" }}
+                        >
+                          Refresh
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {!isFetchingUberQuote && !uberFee && deliveryAddress.trim() && !getUberQuote.isPending && getUberQuote.isError && (
+                    <p className="text-xs px-2 py-1.5 rounded border" style={{ color: "oklch(0.45 0.18 25)", background: "oklch(0.97 0.04 25)", borderColor: "oklch(0.75 0.12 25)" }}>
+                      Delivery not available for this address. Please check the address or call us at 725-204-0379.
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                    className="w-6 h-6 rounded-full flex items-center justify-center border transition-colors hover:bg-red-50"
-                    style={{ borderColor: "oklch(0.82 0.015 80)" }}
-                  >
-                    <Minus size={10} />
-                  </button>
-                  <span className="w-5 text-center text-sm font-bold" style={{ color: "oklch(0.22 0.04 30)" }}>
-                    {item.quantity}
-                  </span>
-                  <button
-                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                    className="w-6 h-6 rounded-full flex items-center justify-center border transition-colors hover:bg-red-50"
-                    style={{ borderColor: "oklch(0.82 0.015 80)" }}
-                  >
-                    <Plus size={10} />
-                  </button>
-                </div>
-                <p className="text-sm font-bold w-14 text-right" style={{ color: "oklch(0.22 0.04 30)" }}>
-                  ${(item.price * item.quantity).toFixed(2)}
-                </p>
-                <button
-                  onClick={() => removeItem(item.id)}
-                  className="p-1 rounded hover:bg-red-50 transition-colors"
-                  style={{ color: "oklch(0.55 0.03 30)" }}
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            ))}
-            {items.length > 1 && (
-              <button
-                onClick={clearCart}
-                className="text-xs w-full text-center py-1.5 transition-colors"
-                style={{ color: "oklch(0.55 0.03 30)" }}
-              >
-                Clear all items
-              </button>
-            )}
-          </div>
-        )}
+              )}
 
-        {/* Checkout panel — order details step */}
-        {items.length > 0 && checkoutStep === "cart" && (
-          <div
-            className="border-t px-4 py-4 space-y-3 shrink-0 overflow-y-auto"
-            style={{ borderColor: "oklch(0.88 0.015 80)", background: "white", maxHeight: "72vh" }}
-          >
-            {/* ── Closed-store banner (shown for pickup / delivery / dine-in when store is closed) ── */}
-            {!storeIsOpen && orderType !== "scheduled" && (
-              <div
-                className="rounded-lg border p-3 space-y-2.5"
-                style={{ borderColor: "oklch(0.75 0.12 45)", background: "oklch(0.97 0.05 45)" }}
-              >
-                <div className="flex items-start gap-2">
-                  <Clock size={15} className="shrink-0 mt-0.5" style={{ color: "oklch(0.52 0.15 45)" }} />
-                  <div>
-                    <p className="text-xs font-bold" style={{ color: "oklch(0.35 0.12 45)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.04em" }}>
-                      WE'RE CURRENTLY CLOSED
-                    </p>
-                    <p className="text-xs mt-0.5" style={{ color: "oklch(0.45 0.08 45)", fontFamily: "'Lato', sans-serif" }}>
-                      Our hours are <strong>10:00 AM – 10:00 PM</strong> daily (Las Vegas time).
-                      We open at <strong>{nextOpenTime}</strong>.
-                    </p>
-                  </div>
-                </div>
-                <p className="text-xs" style={{ color: "oklch(0.40 0.08 45)", fontFamily: "'Lato', sans-serif" }}>
-                  Online orders are accepted daily during restaurant hours: <strong>10:00 AM – 10:00 PM</strong>.
-                  You can place a <strong>scheduled order</strong> now and we'll prepare it when we open!
-                </p>
-                <div className="flex flex-col gap-1.5">
-                  <button
-                    onClick={() => setOrderType("scheduled")}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded font-bold text-xs transition-all active:scale-[0.98]"
-                    style={{ background: "var(--napoli-red, #c0392b)", color: "white", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}
-                  >
-                    <Calendar size={13} />
-                    Schedule Order for {nextOpenTime}
-                  </button>
-                  <a
-                    href="/reservations"
-                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded text-xs border transition-colors hover:bg-amber-50"
-                    style={{ borderColor: "oklch(0.75 0.12 45)", color: "oklch(0.40 0.10 45)", fontFamily: "'Lato', sans-serif" }}
-                  >
-                    <Info size={12} />
-                    For events outside our hours, visit Reservations →
-                  </a>
-                </div>
-              </div>
-            )}
-
-            {/* Order type */}
-            <div>
-              <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
-                ORDER TYPE
-              </p>
-              <div className="grid grid-cols-2 gap-1.5">
-                {([
-                  { type: "pickup",    label: "To Go / Pick Up" },
-                  { type: "delivery",  label: "Delivery" },
-                  { type: "dine-in",   label: "Dine-In" },
-                  { type: "scheduled", label: "Schedule" },
-                ] as const).map(({ type, label }) => (
-                  <button
-                    key={type}
-                    onClick={() => setOrderType(type)}
-                    className="py-2 px-2 rounded text-xs font-semibold border transition-all"
-                    style={{
-                      background: orderType === type ? "var(--napoli-red, #c0392b)" : "transparent",
-                      color: orderType === type ? "white" : "oklch(0.42 0.03 30)",
-                      borderColor: orderType === type ? "var(--napoli-red, #c0392b)" : "oklch(0.82 0.015 80)",
-                      fontFamily: "'Oswald', sans-serif",
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Schedule selector */}
-            {orderType === "scheduled" ? (
-              <div>
-                <p className="text-xs font-semibold mb-2" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
-                  SCHEDULE DATE & TIME
-                </p>
-                <OrderScheduler
-                  value={schedule}
-                  onChange={setSchedule}
-                  orderType="pickup"
-                />
-              </div>
-            ) : (
-              <div
-                className="flex items-center gap-2 px-3 py-2 rounded border"
-                style={{ borderColor: "oklch(0.82 0.015 80)", background: "oklch(0.985 0.01 80)" }}
-              >
-                <span className="text-base">⏱</span>
-                <p className="text-xs" style={{ color: "oklch(0.45 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
-                  <strong>Order ASAP</strong> — or select <em>Schedule</em> above to pick a future date &amp; time.
-                </p>
-              </div>
-            )}
-
-            {/* Delivery section */}
-            {orderType === "delivery" && (
-              <div
-                className="space-y-2 p-3 rounded-lg border"
-                style={{ borderColor: "oklch(0.82 0.015 80)", background: "oklch(0.98 0.005 80)" }}
-              >
-                <div className="flex items-center gap-1.5">
-                  <MapPin size={13} style={{ color: "var(--napoli-red, #c0392b)" }} />
-                  <span className="text-xs font-semibold" style={{ color: "oklch(0.35 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
-                    DELIVERY ADDRESS
-                  </span>
-                  <span className="text-xs ml-auto" style={{ color: "oklch(0.55 0.03 30)" }}>
-                    Within 20 miles · Las Vegas area
-                  </span>
-                </div>
-                <AddressAutocomplete
-                  value={deliveryAddress}
-                  onChange={(val) => handleAddressChange("address", val)}
-                  onSelect={handleAddressSelect}
-                  placeholder="Street address *"
-                  hasError={!!geoError}
-                />
-                <div className="grid grid-cols-3 gap-2">
-                  <input type="text" placeholder="City" value={deliveryCity}
-                    onChange={(e) => handleAddressChange("city", e.target.value)}
-                    className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }} />
-                  <input type="text" placeholder="State" value={deliveryState}
-                    onChange={(e) => handleAddressChange("state", e.target.value)}
-                    className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }} />
-                  <input type="text" placeholder="ZIP" value={deliveryZip}
-                    onChange={(e) => handleAddressChange("zip", e.target.value)}
-                    className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }} />
-                </div>
+              {/* Customer info */}
+              <div className="grid grid-cols-2 gap-2">
                 <input
                   type="text"
-                  placeholder="Delivery notes (apt #, gate code...)"
-                  value={deliveryNotes}
-                  onChange={(e) => setDeliveryNotes(e.target.value)}
-                  className="w-full text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                  placeholder="Your name *"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
                   style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
                 />
+                <input
+                  type="tel"
+                  placeholder="Phone number"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                  style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+                />
+              </div>
+              <input
+                type="email"
+                placeholder="Email (for order confirmation)"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                className="w-full text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+              />
 
-                {/* Geo error */}
-                {geoError && (
-                  <div
-                    className="flex items-start gap-2 px-3 py-2 rounded border text-xs"
-                    style={{ borderColor: "oklch(0.65 0.18 25)", background: "oklch(0.97 0.04 25)", color: "oklch(0.40 0.18 25)" }}
-                  >
-                    <AlertTriangle size={13} className="mt-0.5 shrink-0" />
-                    {geoError}
-                  </div>
-                )}
-
-                {isGeoChecking && (
-                  <div className="flex items-center gap-2 py-1 text-xs" style={{ color: "oklch(0.42 0.03 30)" }}>
-                    <Loader2 size={12} className="animate-spin" />
-                    <span>Checking delivery area...</span>
-                  </div>
-                )}
-
-                {isFetchingUberQuote && (
-                  <div className="flex items-center gap-2 py-2 text-xs" style={{ color: "oklch(0.42 0.03 30)" }}>
-                    <Loader2 size={13} className="animate-spin" style={{ color: "oklch(0.40 0.15 220)" }} />
-                    <span>Getting delivery quote...</span>
-                  </div>
-                )}
-
-                {!isFetchingUberQuote && uberFee !== null && uberQuoteId && (
+              {/* Coupon code input */}
+              <div className="space-y-1.5">
+                {appliedCoupon ? (
                   <div className="flex items-center justify-between px-3 py-2 rounded-lg border"
-                    style={{ borderColor: "oklch(0.70 0.15 220)", background: "oklch(0.95 0.04 220)" }}>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 size={14} style={{ color: "oklch(0.40 0.15 220)" }} />
-                      <div>
-                        <span className="text-xs font-bold" style={{ color: "oklch(0.25 0.10 220)", fontFamily: "'Oswald', sans-serif" }}>
-                          Uber Direct
-                        </span>
-                        {uberEta && (
-                          <span className="text-xs ml-2" style={{ color: "oklch(0.40 0.10 220)" }}>
-                            · ETA {new Date(uberEta).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold" style={{ color: "oklch(0.30 0.15 220)" }}>
-                        ${(uberFee / 100).toFixed(2)}
+                    style={{ borderColor: "oklch(0.70 0.15 145)", background: "oklch(0.96 0.04 145)" }}>
+                    <div>
+                      <span className="text-xs font-bold" style={{ color: "oklch(0.35 0.12 145)", fontFamily: "'Oswald', sans-serif" }}>
+                        {appliedCoupon.discountPercent}% OFF
                       </span>
-                      <button
-                        onClick={() => triggerUberQuote(deliveryAddress, deliveryCity, deliveryState, deliveryZip)}
-                        className="text-xs px-2 py-0.5 rounded border transition-colors"
-                        style={{ borderColor: "oklch(0.65 0.12 220)", color: "oklch(0.40 0.12 220)" }}
-                      >
-                        Refresh
-                      </button>
+                      <span className="text-xs ml-2" style={{ color: "oklch(0.45 0.08 145)" }}>
+                        {appliedCoupon.code} — {appliedCoupon.description}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setAppliedCoupon(null)}
+                      className="text-xs px-2 py-0.5 rounded border transition-colors"
+                      style={{ borderColor: "oklch(0.65 0.12 145)", color: "oklch(0.40 0.12 145)" }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Coupon code"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => e.key === "Enter" && handleApplyCoupon()}
+                      className="flex-1 text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                      style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+                    />
+                    <button
+                      onClick={handleApplyCoupon}
+                      disabled={!couponCode.trim() || isApplyingCoupon}
+                      className="text-xs px-3 py-2 rounded font-semibold border transition-all"
+                      style={{
+                        background: couponCode.trim() ? "oklch(0.38 0.12 145)" : "transparent",
+                        color: couponCode.trim() ? "white" : "oklch(0.60 0.03 30)",
+                        borderColor: couponCode.trim() ? "oklch(0.38 0.12 145)" : "oklch(0.82 0.015 80)",
+                        fontFamily: "'Oswald', sans-serif",
+                      }}
+                    >
+                      {isApplyingCoupon ? "..." : "Apply"}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Order Summary */}
+              <div className="flex flex-col gap-1 py-2 border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>Subtotal ({totalItems} item{totalItems !== 1 ? "s" : ""})</span>
+                  <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>${subtotal.toFixed(2)}</span>
+                </div>
+                {appliedCoupon && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs" style={{ color: "oklch(0.35 0.12 145)" }}>Discount ({appliedCoupon.discountPercent}% off — {appliedCoupon.code})</span>
+                    <span className="text-xs font-semibold" style={{ color: "oklch(0.35 0.12 145)" }}>−${discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>
+                    Convenience Fee ({feeConfigLoading ? "…" : feeConfig?.enabled ? (feeConfig.percent ?? 3) : 0}%)
+                  </span>
+                  <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>+${convenienceFee.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>Sales Tax (NV 8.375%)</span>
+                  <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>+${salesTax.toFixed(2)}</span>
+                </div>
+                {selectedDeliveryFee !== null && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>Delivery (Uber Direct)</span>
+                    <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>+${deliveryFeeDollars.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-2 mt-1 border-t" style={{ borderColor: "oklch(0.82 0.015 80)" }}>
+                  <span className="text-sm font-semibold" style={{ color: "oklch(0.35 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>Total</span>
+                  <span className="text-xl font-bold" style={{ color: "var(--napoli-red, #c0392b)", fontFamily: "'Oswald', sans-serif" }}>
+                    ${grandTotal.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Order Policies Note */}
+              <OrderPoliciesNote />
+
+              {/* Accepted cards */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>We accept:</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <div className="flex items-center justify-center rounded px-1.5 py-0.5 border" style={{ background: "#1a1f71", borderColor: "#1a1f71", minWidth: 36, height: 22 }}>
+                      <span className="text-white font-bold" style={{ fontSize: 9, fontFamily: "'Arial', sans-serif" }}>VISA</span>
+                    </div>
+                    <div className="flex items-center justify-center rounded px-1 border" style={{ background: "white", borderColor: "oklch(0.82 0.015 80)", minWidth: 36, height: 22 }}>
+                      <div className="rounded-full" style={{ width: 13, height: 13, background: "#EB001B", marginRight: -4, zIndex: 1 }} />
+                      <div className="rounded-full" style={{ width: 13, height: 13, background: "#F79E1B" }} />
+                    </div>
+                    <div className="flex items-center justify-center rounded px-1.5 py-0.5 border" style={{ background: "#2E77BC", borderColor: "#2E77BC", minWidth: 36, height: 22 }}>
+                      <span className="text-white font-bold" style={{ fontSize: 7.5, fontFamily: "'Arial', sans-serif" }}>AMEX</span>
+                    </div>
+                    <div className="flex items-center justify-center rounded px-1.5 py-0.5 border" style={{ background: "white", borderColor: "oklch(0.82 0.015 80)", minWidth: 36, height: 22 }}>
+                      <span className="font-bold" style={{ fontSize: 7, fontFamily: "'Arial', sans-serif", color: "#231F20" }}>DISC<span style={{ color: "#F76F20" }}>VR</span></span>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* ── PROCEED TO PAYMENT button ── */}
+              <button
+                onClick={handleProceedToPayment}
+                disabled={isLoading || (orderType === "delivery" && (isFetchingUberQuote || isGeoChecking)) || !!geoError || isStoreClosed}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded font-bold text-sm transition-all active:scale-[0.98]"
+                style={{
+                  background: isLoading || (orderType === "delivery" && isFetchingUberQuote) || !!geoError || isStoreClosed
+                    ? "oklch(0.55 0.03 30)"
+                    : "oklch(0.38 0.18 265)",
+                  color: "white",
+                  fontFamily: "'Oswald', sans-serif",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Preparing checkout...
+                  </>
+                ) : orderType === "delivery" && isFetchingUberQuote ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Getting delivery quote...
+                  </>
+                ) : (
+                  <>
+                    <Lock size={15} />
+                    Enter Payment Details — ${grandTotal.toFixed(2)}
+                  </>
                 )}
-
-                {!isFetchingUberQuote && !uberFee && deliveryAddress.trim() && !getUberQuote.isPending && getUberQuote.isError && (
-                  <p className="text-xs px-2 py-1.5 rounded border" style={{ color: "oklch(0.45 0.18 25)", background: "oklch(0.97 0.04 25)", borderColor: "oklch(0.75 0.12 25)" }}>
-                    Delivery not available for this address. Please check the address or call us at 725-204-0379.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Customer info */}
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                placeholder="Your name *"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-                style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
-              />
-              <input
-                type="tel"
-                placeholder="Phone number"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-                style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
-              />
+              </button>
+              <p className="text-center text-xs pb-4" style={{ color: "oklch(0.60 0.03 30)" }}>
+                {orderType === "delivery"
+                  ? "Delivery by Uber Direct · Secured by Stripe"
+                  : "Secured by Stripe · PCI Compliant"}
+              </p>
             </div>
-            <input
-              type="email"
-              placeholder="Email (for order confirmation)"
-              value={customerEmail}
-              onChange={(e) => setCustomerEmail(e.target.value)}
-              className="w-full text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-              style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
-            />
-
-            {/* Coupon code input */}
-            <div className="space-y-1.5">
-              {appliedCoupon ? (
-                <div className="flex items-center justify-between px-3 py-2 rounded-lg border"
-                  style={{ borderColor: "oklch(0.70 0.15 145)", background: "oklch(0.96 0.04 145)" }}>
-                  <div>
-                    <span className="text-xs font-bold" style={{ color: "oklch(0.35 0.12 145)", fontFamily: "'Oswald', sans-serif" }}>
-                      {appliedCoupon.discountPercent}% OFF
-                    </span>
-                    <span className="text-xs ml-2" style={{ color: "oklch(0.45 0.08 145)" }}>
-                      {appliedCoupon.code} — {appliedCoupon.description}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setAppliedCoupon(null)}
-                    className="text-xs px-2 py-0.5 rounded border transition-colors"
-                    style={{ borderColor: "oklch(0.65 0.12 145)", color: "oklch(0.40 0.12 145)" }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Coupon code"
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                    onKeyDown={(e) => e.key === "Enter" && handleApplyCoupon()}
-                    className="flex-1 text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-                    style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
-                  />
-                  <button
-                    onClick={handleApplyCoupon}
-                    disabled={!couponCode.trim() || isApplyingCoupon}
-                    className="text-xs px-3 py-2 rounded font-semibold border transition-all"
-                    style={{
-                      background: couponCode.trim() ? "oklch(0.38 0.12 145)" : "transparent",
-                      color: couponCode.trim() ? "white" : "oklch(0.60 0.03 30)",
-                      borderColor: couponCode.trim() ? "oklch(0.38 0.12 145)" : "oklch(0.82 0.015 80)",
-                      fontFamily: "'Oswald', sans-serif",
-                    }}
-                  >
-                    {isApplyingCoupon ? "..." : "Apply"}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Order Summary */}
-            <div className="flex flex-col gap-1 py-2 border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-              <div className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>Subtotal ({totalItems} item{totalItems !== 1 ? "s" : ""})</span>
-                <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>${subtotal.toFixed(2)}</span>
-              </div>
-              {appliedCoupon && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: "oklch(0.35 0.12 145)" }}>Discount ({appliedCoupon.discountPercent}% off — {appliedCoupon.code})</span>
-                  <span className="text-xs font-semibold" style={{ color: "oklch(0.35 0.12 145)" }}>−${discountAmount.toFixed(2)}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>
-                  Convenience Fee ({feeConfigLoading ? "…" : feeConfig?.enabled ? (feeConfig.percent ?? 3) : 0}%)
-                </span>
-                <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>+${convenienceFee.toFixed(2)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>Sales Tax (NV 8.375%)</span>
-                <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>+${salesTax.toFixed(2)}</span>
-              </div>
-              {selectedDeliveryFee !== null && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>Delivery (Uber Direct)</span>
-                  <span className="text-xs" style={{ color: "oklch(0.35 0.04 30)" }}>+${deliveryFeeDollars.toFixed(2)}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between pt-2 mt-1 border-t" style={{ borderColor: "oklch(0.82 0.015 80)" }}>
-                <span className="text-sm font-semibold" style={{ color: "oklch(0.35 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>Total</span>
-                <span className="text-xl font-bold" style={{ color: "var(--napoli-red, #c0392b)", fontFamily: "'Oswald', sans-serif" }}>
-                  ${grandTotal.toFixed(2)}
-                </span>
-              </div>
-            </div>
-
-            {/* Order Policies Note */}
-            <OrderPoliciesNote />
-
-
-
-            {/* Accepted cards */}
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>We accept:</span>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <div className="flex items-center justify-center rounded px-1.5 py-0.5 border" style={{ background: "#1a1f71", borderColor: "#1a1f71", minWidth: 36, height: 22 }}>
-                    <span className="text-white font-bold" style={{ fontSize: 9, fontFamily: "'Arial', sans-serif" }}>VISA</span>
-                  </div>
-                  <div className="flex items-center justify-center rounded px-1 border" style={{ background: "white", borderColor: "oklch(0.82 0.015 80)", minWidth: 36, height: 22 }}>
-                    <div className="rounded-full" style={{ width: 13, height: 13, background: "#EB001B", marginRight: -4, zIndex: 1 }} />
-                    <div className="rounded-full" style={{ width: 13, height: 13, background: "#F79E1B" }} />
-                  </div>
-                  <div className="flex items-center justify-center rounded px-1.5 py-0.5 border" style={{ background: "#2E77BC", borderColor: "#2E77BC", minWidth: 36, height: 22 }}>
-                    <span className="text-white font-bold" style={{ fontSize: 7.5, fontFamily: "'Arial', sans-serif" }}>AMEX</span>
-                  </div>
-                  <div className="flex items-center justify-center rounded px-1.5 py-0.5 border" style={{ background: "white", borderColor: "oklch(0.82 0.015 80)", minWidth: 36, height: 22 }}>
-                    <span className="font-bold" style={{ fontSize: 7, fontFamily: "'Arial', sans-serif", color: "#231F20" }}>DISC<span style={{ color: "#F76F20" }}>VR</span></span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Proceed to payment button */}
-            <button
-              onClick={handleProceedToPayment}
-              disabled={isLoading || (orderType === "delivery" && (isFetchingUberQuote || isGeoChecking)) || !!geoError || (!storeIsOpen && orderType !== "scheduled")}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded font-bold text-sm transition-all active:scale-[0.98]"
-              style={{
-                background: isLoading || (orderType === "delivery" && isFetchingUberQuote) || !!geoError || (!storeIsOpen && orderType !== "scheduled")
-                  ? "oklch(0.55 0.03 30)"
-                  : "oklch(0.38 0.18 265)",
-                color: "white",
-                fontFamily: "'Oswald', sans-serif",
-                letterSpacing: "0.05em",
-              }}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  Preparing checkout...
-                </>
-              ) : orderType === "delivery" && isFetchingUberQuote ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  Getting delivery quote...
-                </>
-              ) : (
-                <>
-                  <Lock size={15} />
-                  Enter Payment Details — ${grandTotal.toFixed(2)}
-                  <ChevronRight size={16} />
-                </>
-              )}
-            </button>
-            <p className="text-center text-xs" style={{ color: "oklch(0.60 0.03 30)" }}>
-              {orderType === "delivery"
-                ? "Delivery by Uber Direct · Secured by Stripe"
-                : "Secured by Stripe · PCI Compliant"}
-            </p>
           </div>
         )}
 
-        {/* Payment step — embedded Stripe Elements */}
+        {/* ── PAYMENT STEP — embedded Stripe Elements ───────────────────────── */}
         {items.length > 0 && checkoutStep === "payment" && clientSecret && (
-          <div
-            className="flex-1 overflow-y-auto px-4 py-4"
-            style={{ background: "white" }}
-          >
+          <div className="flex-1 overflow-y-auto px-4 py-4" style={{ background: "white" }}>
             {/* Order summary mini */}
             <div
               className="mb-4 p-3 rounded-lg border"
@@ -987,7 +968,7 @@ export default function CartDrawer() {
                 paymentIntentId={paymentIntentId!}
                 grandTotal={grandTotal}
                 onSuccess={handlePaymentSuccess}
-                onCancel={() => setCheckoutStep("cart")}
+                onCancel={() => setCheckoutStep("details")}
               />
             </Elements>
           </div>
