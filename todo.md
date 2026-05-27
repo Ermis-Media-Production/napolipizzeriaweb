@@ -303,3 +303,8 @@
 - [x] Stripe webhook configured for production domain (napolipizzerianorthlasvegas.com)
 - [x] TypeScript: 0 errors
 - [x] Checkpoint saved
+
+## Restaurant Hours Text Fix
+- [x] OrderScheduler.tsx: removed "9:30 PM" from all customer-facing text — restaurant hours shown as 10:00 AM – 10:00 PM
+- [x] Reservations.tsx: removed "9:30 PM" from all customer-facing text — internal cutoff kept as code constant only
+- [x] All public-facing text consistently shows 10:00 AM – 10:00 PM as restaurant hours

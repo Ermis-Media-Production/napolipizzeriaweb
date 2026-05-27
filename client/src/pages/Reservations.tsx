@@ -399,8 +399,8 @@ function TodayOrderForm() {
         </h3>
         <p className="text-sm" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
           {currentMinutes < OPEN_MINUTES
-            ? "We open at 10:00 AM Las Vegas time. Same-day orders are accepted from opening until 9:30 PM."
-            : "Same-day orders are no longer accepted after 9:30 PM. We close at 10:00 PM."
+            ? "We open at 10:00 AM Las Vegas time. Same-day orders are accepted during business hours."
+            : "Same-day online orders are no longer accepted for today. We close at 10:00 PM."
           }
         </p>
         <p className="text-sm font-semibold" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
@@ -426,7 +426,7 @@ function TodayOrderForm() {
       >
         <Info size={14} className="shrink-0 mt-0.5" />
         <span style={{ fontFamily: "'Lato', sans-serif" }}>
-          Today's orders must be placed by <strong>9:30 PM</strong> Las Vegas time. We're open <strong>10:00 AM – 10:00 PM</strong> every day.
+          We're open <strong>10:00 AM – 10:00 PM</strong> every day. Place your order and we'll have it ready!
         </span>
       </div>
 
@@ -752,7 +752,7 @@ export default function Reservations() {
             style={{ background: "oklch(0.92 0.015 80)" }}
           >
             {[
-              { id: "today" as const, label: "Order Today", emoji: "🍕", desc: "Same-day, by 9:30 PM" },
+              { id: "today" as const, label: "Order Today", emoji: "🍕", desc: "Same-day order" },
               { id: "future" as const, label: "Reservations", emoji: "📅", desc: "Tomorrow & beyond" },
             ].map((tab) => (
               <button
