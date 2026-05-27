@@ -3,15 +3,52 @@
  */
 import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Star, Plus } from "lucide-react";
+import { ArrowRight, Star, Plus, ShoppingCart } from "lucide-react";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
 import { ANYTIME_SPECIALS, LUNCH_SPECIALS, RESTAURANT_INFO } from "@/lib/napoliData";
 import LunchTimerBadge from "@/components/LunchTimerBadge";
 import SpecialCustomizerModal from "@/components/SpecialCustomizerModal";
+import LunchCustomizerModal, { type LunchItem } from "@/components/LunchCustomizerModal";
+import { useCart } from "@/contexts/CartContext";
+import { useLunchTimer } from "@/hooks/useLunchTimer";
+import { toast } from "sonner";
+
+function parsePrice(price: string): number | null {
+  const n = parseFloat(price.replace(/[^0-9.]/g, ""));
+  return isNaN(n) ? null : n;
+}
+
+// Items that need the customizer modal
+const NEEDS_CUSTOMIZER = new Set([2, 3, 4, 6, 9, 13, 16, 19, 24]);
 
 export default function Specials() {
   const [specialNum, setSpecialNum] = useState<number | null>(null);
+  const [lunchItem, setLunchItem] = useState<LunchItem | null>(null);
+  const { addItem, openCart } = useCart();
+  const lunchTimer = useLunchTimer();
+  const isLunchOpen = lunchTimer.isOpen;
+
+  const handleLunchAdd = (item: LunchItem) => {
+    if (!isLunchOpen) return;
+    if (NEEDS_CUSTOMIZER.has(item.num)) {
+      setLunchItem(item);
+      return;
+    }
+    const numericPrice = parsePrice(item.price);
+    if (!numericPrice) return;
+    addItem({
+      id: `lunch-${item.num}-${Date.now()}`,
+      name: `#${item.num} ${item.name}`,
+      price: numericPrice,
+      quantity: 1,
+      category: "lunch",
+      description: "Includes free can of soda",
+    });
+    toast.success(`#${item.num} ${item.name} added to cart`, {
+      action: { label: "View Cart", onClick: openCart },
+    });
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">
@@ -61,18 +98,37 @@ export default function Specials() {
               <div
                 key={item.num}
                 className="flex items-center gap-3 p-4 rounded border bg-white napoli-card-hover"
-                style={{ borderColor: "oklch(0.88 0.015 80)" }}
+                style={{
+                  borderColor: "oklch(0.88 0.015 80)",
+                  opacity: isLunchOpen ? 1 : 0.5,
+                  transition: "opacity 0.3s ease",
+                }}
               >
                 <span
                   className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 napoli-price"
-                  style={{ background: "var(--napoli-red)", color: "white" }}
+                  style={{ background: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)", color: "white" }}
                 >
                   {item.num}
                 </span>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</div>
                 </div>
-                <div className="napoli-price text-base shrink-0" style={{ color: "var(--napoli-red)" }}>{item.price}</div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="napoli-price text-base" style={{ color: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)" }}>{item.price}</div>
+                  <button
+                    onClick={() => handleLunchAdd(item)}
+                    disabled={!isLunchOpen}
+                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-95"
+                    style={{
+                      background: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)",
+                      color: "white",
+                      cursor: isLunchOpen ? "pointer" : "not-allowed",
+                    }}
+                    title={isLunchOpen ? `Add #${item.num} ${item.name} to cart` : "Lunch Specials available 10 AM – 3 PM only"}
+                  >
+                    <ShoppingCart size={14} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -126,6 +182,14 @@ export default function Specials() {
         specialNum={specialNum}
         onClose={() => setSpecialNum(null)}
       />
+
+      {/* Lunch Customizer Modal */}
+      {lunchItem && (
+        <LunchCustomizerModal
+          item={lunchItem}
+          onClose={() => setLunchItem(null)}
+        />
+      )}
 
       <NapoliFooter />
     </div>

@@ -316,3 +316,10 @@
 - [x] Closed banner secondary CTA: link to Reservations page for events outside hours
 - [x] Proceed to Payment button is disabled when store is closed and order type is not "scheduled"
 - [x] Scheduled order type bypasses closed-store check (customers can always schedule for future)
+
+## Lunch Specials Cart Button on Specials Page
+- [x] Specials.tsx: add ShoppingCart button to each Lunch Special item card
+- [x] Items requiring customization (2,3,4,6,9,13,16,19,24) open LunchCustomizerModal
+- [x] Simple items add directly to cart with free soda description
+- [x] Button disabled and greyed out when outside lunch hours (10 AM – 3 PM)
+- [x] Opacity reduced on all cards when lunch is closed
