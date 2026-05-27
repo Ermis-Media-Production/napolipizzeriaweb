@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
-import { Clock, Calendar, AlertCircle, Info, CheckCircle2, ChevronDown } from "lucide-react";
+import { Clock, Calendar, AlertCircle, Info, CheckCircle2, ChevronDown, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -338,18 +338,26 @@ export function OrderPoliciesNote() {
           <ul className="text-xs text-blue-700 space-y-1 pl-5 list-disc">
             <li>
               <strong>Cancellations &amp; modifications</strong> are accepted up to{" "}
-              <strong>1 hour before</strong> your scheduled time. After that, please call us at{" "}
-              <a href="tel:7252040379" className="underline font-medium">
-                (725) 204-0379
+              <strong>1 hour before</strong> your scheduled time. After that, please call us:
+              <a
+                href="tel:+17022912025"
+                className="inline-flex items-center gap-1 ml-1.5 px-2 py-0.5 rounded-full text-white font-semibold transition-all active:scale-95"
+                style={{ background: "var(--napoli-red, #c0392b)", fontSize: "0.65rem" }}
+              >
+                <Phone size={9} />
+                Call Now · Eva AI
               </a>
-              .
             </li>
             <li>
-              For any <strong>complaints or order issues</strong>, please call us immediately at{" "}
-              <a href="tel:7252040379" className="underline font-medium">
-                (725) 204-0379
+              For any <strong>complaints or order issues</strong>, call us immediately:
+              <a
+                href="tel:+17022912025"
+                className="inline-flex items-center gap-1 ml-1.5 px-2 py-0.5 rounded-full text-white font-semibold transition-all active:scale-95"
+                style={{ background: "var(--napoli-red, #c0392b)", fontSize: "0.65rem" }}
+              >
+                <Phone size={9} />
+                Call Now · Eva AI
               </a>
-              .
             </li>
             <li>
               Refunds for cancelled items are processed to your original payment method within{" "}
