@@ -94,7 +94,7 @@ function AnytimeSpecialsFeatured() {
               19 combo deals — pizzas, wings, sodas & more at unbeatable prices
             </p>
           </div>
-          <Link href="/specials">
+          <Link href="/specials#anytime-specials">
             <button
               className="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded text-sm napoli-label transition-colors"
               style={{ background: "var(--napoli-red)", color: "white" }}

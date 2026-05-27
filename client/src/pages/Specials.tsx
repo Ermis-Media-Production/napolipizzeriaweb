@@ -135,7 +135,7 @@ export default function Specials() {
         </div>
 
         {/* Anytime Specials */}
-        <div>
+        <div id="anytime-specials">
           <div className="flex items-center gap-3 mb-4">
             <Star size={18} style={{ color: "var(--napoli-gold)" }} fill="var(--napoli-gold)" />
             <h2 className="napoli-display text-2xl" style={{ color: "var(--napoli-dark)" }}>Anytime Specials</h2>
