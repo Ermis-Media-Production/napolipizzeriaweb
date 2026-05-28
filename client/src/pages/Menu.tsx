@@ -1448,21 +1448,23 @@ export default function Menu() {
           <div className="px-5 py-2 border-b text-xs napoli-body" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)", color: "oklch(0.52 0.03 30)" }}>
             Add Chicken $7.49 or Steak $9.49
           </div>
-          {SALADS.map((item) => (
-            <div key={item.name}>
-              {SALAD_MODAL_ITEMS.includes(item.name) ? (
-                <AppetizersItemRow
-                  name={item.name}
-                  desc={item.desc}
-                  price={(item as any).price ?? ((item as any).prices?.[0]?.price)}
-                  highlight={(item as any).highlight}
-                  onOpen={() => setSaladsModalTrigger({ itemName: item.name })}
-                />
-              ) : (
-                <ItemRow name={item.name} desc={item.desc} price={(item as any).price} highlight={(item as any).highlight} category="salads" />
-              )}
-            </div>
-          ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
+            {SALADS.map((item) => (
+              <div key={item.name} style={{ borderBottom: "1px solid oklch(0.93 0.012 80)", borderRight: "1px solid oklch(0.93 0.012 80)" }}>
+                {SALAD_MODAL_ITEMS.includes(item.name) ? (
+                  <AppetizersItemRow
+                    name={item.name}
+                    desc={item.desc}
+                    price={(item as any).price ?? ((item as any).prices?.[0]?.price)}
+                    highlight={(item as any).highlight}
+                    onOpen={() => setSaladsModalTrigger({ itemName: item.name })}
+                  />
+                ) : (
+                  <ItemRow name={item.name} desc={item.desc} price={(item as any).price} highlight={(item as any).highlight} category="salads" />
+                )}
+              </div>
+            ))}
+          </div>
         </MenuCard>
 
         {/* ── DESSERTS ───────────────────────────────────────── */}
@@ -1472,9 +1474,11 @@ export default function Menu() {
             <span className="napoli-price text-lg" style={{ color: "var(--napoli-red)" }}>{DESSERTS.price}</span>
             <span className="text-xs napoli-body ml-2" style={{ color: "oklch(0.52 0.03 30)" }}>each</span>
           </div>
-          <div className="flex flex-col">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
             {DESSERTS.items.map((item) => (
-              <ItemRow key={item} name={item} price={DESSERTS.price} category="desserts" />
+              <div key={item} style={{ borderBottom: "1px solid oklch(0.93 0.012 80)", borderRight: "1px solid oklch(0.93 0.012 80)" }}>
+                <ItemRow name={item} price={DESSERTS.price} category="desserts" />
+              </div>
             ))}
           </div>
         </MenuCard>
