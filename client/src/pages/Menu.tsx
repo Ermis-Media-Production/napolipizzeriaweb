@@ -247,9 +247,12 @@ function BurgerRow({
   const singlePrice = parsePrice(item.single);
 
   return (
-    <div className="flex flex-col" style={{ borderBottom: "1px solid oklch(0.93 0.012 80)" }}>
-      {/* Photo */}
-      <div className="relative overflow-hidden" style={{ height: "180px" }}>
+    <div
+      className="flex flex-col"
+      style={{ borderBottom: "1px solid oklch(0.93 0.012 80)", borderRight: "1px solid oklch(0.93 0.012 80)" }}
+    >
+      {/* Photo — compact, just enough to recognise the item */}
+      <div className="relative overflow-hidden shrink-0" style={{ height: "110px" }}>
         {photo ? (
           <img
             src={photo}
@@ -257,46 +260,49 @@ function BurgerRow({
             className="w-full h-full object-cover"
             loading="lazy"
             style={{ transition: "transform 0.4s cubic-bezier(0.23,1,0.32,1)" }}
-            onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.05)")}
+            onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.06)")}
             onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center" style={{ background: "oklch(0.95 0.012 80)" }}>
-            <span style={{ fontSize: 48 }}>🍔</span>
+            <span style={{ fontSize: 36 }}>🍔</span>
           </div>
         )}
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.60) 0%, transparent 55%)" }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 50%)" }} />
+      </div>
+
+      {/* Content — name + description + buy buttons */}
+      <div className="flex flex-col flex-1 px-3 pt-2 pb-3 gap-1.5">
         <span
-          className="absolute bottom-3 left-4 text-white font-bold text-base"
-          style={{ fontFamily: "'Oswald', sans-serif", textShadow: "0 1px 4px rgba(0,0,0,0.7)", maxWidth: "calc(100% - 2rem)" }}
+          className="font-bold text-sm leading-tight"
+          style={{ fontFamily: "'Oswald', sans-serif", color: "var(--napoli-dark)" }}
         >
           {item.name}
         </span>
-      </div>
-      {/* Content */}
-      <div className="flex flex-col flex-1 px-4 py-3 gap-2">
         {item.desc && (
-          <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{item.desc}</p>
+          <p className="text-xs napoli-body leading-tight" style={{ color: "oklch(0.52 0.03 30)" }}>{item.desc}</p>
         )}
-        <div className="flex items-center gap-2 mt-auto">
+
+        {/* Buy buttons — primary focus */}
+        <div className="flex flex-col gap-1.5 mt-auto pt-1">
           {halfPrice && (
             <button
               onClick={() => onOpenModal(item.name, "half")}
-              className="flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
-              style={{ background: "oklch(0.97 0.012 80)", color: "var(--napoli-red)", border: "1px solid oklch(0.88 0.015 80)" }}
+              className="w-full flex items-center justify-between px-3 py-2 rounded font-semibold transition-all active:scale-95 hover:opacity-90"
+              style={{ background: "oklch(0.97 0.012 80)", color: "var(--napoli-red)", border: "1.5px solid var(--napoli-red)", fontSize: "0.72rem" }}
             >
-              <Plus size={11} />
-              <span>½ lb {item.half}</span>
+              <span>½ lb</span>
+              <span className="font-bold">{item.half}</span>
             </button>
           )}
           {singlePrice && (
             <button
               onClick={() => onOpenModal(item.name, "single")}
-              className="flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
-              style={{ background: "var(--napoli-red)", color: "white" }}
+              className="w-full flex items-center justify-between px-3 py-2 rounded font-semibold transition-all active:scale-95 hover:opacity-90"
+              style={{ background: "var(--napoli-red)", color: "white", fontSize: "0.72rem" }}
             >
-              <Plus size={11} />
-              <span>1 lb {item.single}</span>
+              <span>1 lb</span>
+              <span className="font-bold">{item.single}</span>
             </button>
           )}
         </div>
