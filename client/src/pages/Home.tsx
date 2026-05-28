@@ -943,7 +943,7 @@ export default function Home() {
             </div>
           </div>
           <div className="text-center mt-8">
-            <Link href="/menu">
+            <Link href="/menu#lunch">
               <button
                 className="inline-flex items-center gap-2 px-7 py-3 rounded text-sm font-semibold border-2 napoli-label transition-colors"
                 style={{ borderColor: "oklch(0.75 0.08 145)", color: "oklch(0.99 0.015 80)" }}
