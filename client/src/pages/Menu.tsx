@@ -242,71 +242,53 @@ function BurgerRow({
   onOpenModal: (burgerName: string, size: "half" | "single") => void;
 }) {
   const photo = getBurgerPhoto(item.name);
-
   const halfPrice = parsePrice(item.half);
   const singlePrice = parsePrice(item.single);
 
   return (
     <div
-      className="flex flex-col"
-      style={{ borderBottom: "1px solid oklch(0.93 0.012 80)", borderRight: "1px solid oklch(0.93 0.012 80)" }}
+      className="napoli-menu-item flex items-center gap-3 px-4 py-3"
+      style={{ borderBottom: "1px solid oklch(0.93 0.012 80)" }}
     >
-      {/* Photo — compact, just enough to recognise the item */}
-      <div className="relative overflow-hidden shrink-0" style={{ height: "110px" }}>
+      {/* Small square photo */}
+      <div className="shrink-0 rounded overflow-hidden" style={{ width: 68, height: 68 }}>
         {photo ? (
-          <img
-            src={photo}
-            alt={item.name}
-            className="w-full h-full object-cover"
-            loading="lazy"
-            style={{ transition: "transform 0.4s cubic-bezier(0.23,1,0.32,1)" }}
-            onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.06)")}
-            onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
-          />
+          <img src={photo} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
         ) : (
           <div className="w-full h-full flex items-center justify-center" style={{ background: "oklch(0.95 0.012 80)" }}>
-            <span style={{ fontSize: 36 }}>🍔</span>
+            <span style={{ fontSize: 28 }}>🍔</span>
           </div>
         )}
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 50%)" }} />
       </div>
 
-      {/* Content — name + description + buy buttons */}
-      <div className="flex flex-col flex-1 px-3 pt-2 pb-3 gap-1.5">
-        <span
-          className="font-bold text-sm leading-tight"
-          style={{ fontFamily: "'Oswald', sans-serif", color: "var(--napoli-dark)" }}
-        >
-          {item.name}
-        </span>
+      {/* Name + description */}
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-sm leading-tight napoli-body" style={{ color: "var(--napoli-dark)" }}>{item.name}</p>
         {item.desc && (
-          <p className="text-xs napoli-body leading-tight" style={{ color: "oklch(0.52 0.03 30)" }}>{item.desc}</p>
+          <p className="text-xs napoli-body mt-0.5 leading-snug" style={{ color: "oklch(0.52 0.03 30)" }}>{item.desc}</p>
         )}
-
-        {/* Buy buttons — primary focus */}
-        <div className="flex flex-col gap-1.5 mt-auto pt-1">
+        <div className="flex gap-1.5 mt-1.5">
           {halfPrice && (
-            <button
-              onClick={() => onOpenModal(item.name, "half")}
-              className="w-full flex items-center justify-between px-3 py-2 rounded font-semibold transition-all active:scale-95 hover:opacity-90"
-              style={{ background: "oklch(0.97 0.012 80)", color: "var(--napoli-red)", border: "1.5px solid var(--napoli-red)", fontSize: "0.72rem" }}
-            >
-              <span>½ lb</span>
-              <span className="font-bold">{item.half}</span>
-            </button>
+            <span className="text-xs font-medium" style={{ color: "oklch(0.52 0.03 30)" }}>½ lb {item.half}</span>
+          )}
+          {halfPrice && singlePrice && (
+            <span className="text-xs" style={{ color: "oklch(0.75 0.01 80)" }}>·</span>
           )}
           {singlePrice && (
-            <button
-              onClick={() => onOpenModal(item.name, "single")}
-              className="w-full flex items-center justify-between px-3 py-2 rounded font-semibold transition-all active:scale-95 hover:opacity-90"
-              style={{ background: "var(--napoli-red)", color: "white", fontSize: "0.72rem" }}
-            >
-              <span>1 lb</span>
-              <span className="font-bold">{item.single}</span>
-            </button>
+            <span className="text-xs font-medium" style={{ color: "oklch(0.52 0.03 30)" }}>1 lb {item.single}</span>
           )}
         </div>
       </div>
+
+      {/* Single Order button */}
+      <button
+        onClick={() => onOpenModal(item.name, singlePrice ? "single" : "half")}
+        className="shrink-0 flex items-center gap-1 px-3 py-2 rounded font-semibold text-xs transition-all active:scale-95 hover:opacity-90"
+        style={{ background: "var(--napoli-red)", color: "white", whiteSpace: "nowrap" }}
+      >
+        <Plus size={12} />
+        Order
+      </button>
     </div>
   );
 }
@@ -1445,7 +1427,7 @@ export default function Menu() {
               <span className="text-xs px-2 py-0.5 rounded border napoli-body" style={{ borderColor: "oklch(0.88 0.015 80)", color: "oklch(0.42 0.03 30)" }}>🥑 Add Avocado $1</span>
             </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2">
             {BURGERS.items.map((item) => (
               <BurgerRow
                 key={item.name}
