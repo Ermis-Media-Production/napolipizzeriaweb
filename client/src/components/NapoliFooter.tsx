@@ -2,13 +2,18 @@
  * Napoli Pizzeria Footer
  * Design: Dark background, Italian tricolor accents
  */
+import { useState } from "react";
 import { Link } from "wouter";
-import { Phone, MapPin, Clock, Instagram, Facebook, Globe } from "lucide-react";
+import { Phone, MapPin, Clock, Instagram, Facebook, Globe, ArrowRight } from "lucide-react";
 import { RESTAURANT_INFO } from "@/lib/napoliData";
+import PickUpSpecialModal from "@/components/PickUpSpecialModal";
 
 export default function NapoliFooter() {
+  const [pickupModalOpen, setPickupModalOpen] = useState(false);
+
   return (
     <footer>
+      <PickUpSpecialModal open={pickupModalOpen} onClose={() => setPickupModalOpen(false)} />
       {/* Italian flag divider */}
       <div className="h-1.5 flex">
         <div className="flex-1 bg-napoli-green" />
@@ -150,9 +155,16 @@ export default function NapoliFooter() {
                 <div className="napoli-heading text-base" style={{ color: "oklch(0.95 0.015 80)" }}>
                   {RESTAURANT_INFO.pickupSpecial.label}
                 </div>
-                <div className="napoli-price text-2xl" style={{ color: "var(--napoli-gold)" }}>
+                <div className="napoli-price text-2xl mb-2" style={{ color: "var(--napoli-gold)" }}>
                   {RESTAURANT_INFO.pickupSpecial.price}
                 </div>
+                <button
+                  onClick={() => setPickupModalOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 py-2 rounded text-xs font-bold napoli-label transition-all active:scale-95"
+                  style={{ background: "var(--napoli-red)", color: "white" }}
+                >
+                  Order Now <ArrowRight size={13} />
+                </button>
               </div>
             </div>
           </div>
