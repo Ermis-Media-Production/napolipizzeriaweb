@@ -146,6 +146,15 @@ export default function CartDrawer() {
   const [geoError, setGeoError] = useState<string | null>(null);
   const [isGeoChecking, setIsGeoChecking] = useState(false);
   const geoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // True when address was validated via autocomplete (has precise lat/lng — no re-geocode needed)
+  const [geoValidated, setGeoValidated] = useState(false);
+
+  // Pre-loaded PaymentIntent (created in background while customer fills form)
+  const [preloadedClientSecret, setPreloadedClientSecret] = useState<string | null>(null);
+  const [preloadedPaymentIntentId, setPreloadedPaymentIntentId] = useState<string | null>(null);
+  const [preloadedTotal, setPreloadedTotal] = useState<number | null>(null);
+  const preloadDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const preloadTotalRef = useRef<number>(0); // Captures grandTotal at the time preload is triggered
 
   // Schedule selection
   const [schedule, setSchedule] = useState<ScheduleSelection | null>(null);
@@ -207,6 +216,9 @@ export default function CartDrawer() {
       setCheckoutStep("details");
       setClientSecret(null);
       setPaymentIntentId(null);
+      setPreloadedClientSecret(null);
+      setPreloadedPaymentIntentId(null);
+      setPreloadedTotal(null);
     }
   }, [isOpen]);
 
@@ -235,7 +247,64 @@ export default function CartDrawer() {
     },
   });
 
+  const preloadPaymentIntent = trpc.stripe.createPaymentIntent.useMutation({
+    onSuccess: (data) => {
+      setPreloadedClientSecret(data.clientSecret);
+      setPreloadedPaymentIntentId(data.paymentIntentId);
+      setPreloadedTotal(preloadTotalRef.current); // Use ref value captured at trigger time
+    },
+    onError: () => {
+      // Silent failure — will fall back to on-demand creation
+      setPreloadedClientSecret(null);
+      setPreloadedPaymentIntentId(null);
+    },
+  });
+
   const utils = trpc.useUtils();
+
+  /** Build the order payload for PaymentIntent creation */
+  const buildOrderPayload = useCallback(() => {
+    const resolvedSchedule: ScheduleSelection = schedule ?? { type: "asap" };
+    const scheduledAt = resolvedSchedule.type === "asap" ? Date.now() : resolvedSchedule.scheduledAt;
+    const isAsap = resolvedSchedule.type === "asap";
+    const apiOrderType = orderType === "scheduled" ? "pickup" : orderType as "delivery" | "pickup" | "dine-in";
+    const subtotalVal = totalPrice;
+    const discountAmountVal = appliedCoupon ? (subtotalVal * appliedCoupon.discountPercent) / 100 : 0;
+    const discountedSubtotalVal = subtotalVal - discountAmountVal;
+    const convenienceFeeVal = Math.round(discountedSubtotalVal * liveFeeRate * 100) / 100;
+    const salesTaxVal = Math.round(discountedSubtotalVal * NV_SALES_TAX_RATE * 100) / 100;
+    const selectedDeliveryFeeVal = orderType === "delivery" && uberFee !== null ? uberFee : null;
+    const deliveryFeeDollarsVal = selectedDeliveryFeeVal !== null ? selectedDeliveryFeeVal / 100 : 0;
+    const grandTotalVal = discountedSubtotalVal + convenienceFeeVal + salesTaxVal + deliveryFeeDollarsVal;
+    return {
+      payload: {
+        items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category, description: i.description })),
+        customerName,
+        customerPhone: customerPhone || undefined,
+        customerEmail: customerEmail || undefined,
+        orderType: apiOrderType,
+        scheduledAt,
+        isAsap,
+        uberQuoteId: orderType === "delivery" && uberQuoteId ? uberQuoteId : undefined,
+        dropoffAddress: orderType === "delivery" ? deliveryAddress : undefined,
+        dropoffCity: orderType === "delivery" ? deliveryCity : undefined,
+        dropoffState: orderType === "delivery" ? deliveryState : undefined,
+        dropoffZip: orderType === "delivery" ? deliveryZip : undefined,
+        dropoffNotes: orderType === "delivery" && deliveryNotes ? deliveryNotes : undefined,
+        couponCode: appliedCoupon?.code || undefined,
+        discountPercent: appliedCoupon?.discountPercent || undefined,
+        subtotal: subtotalVal,
+        discountAmount: discountAmountVal,
+        convenienceFee: convenienceFeeVal,
+        salesTax: salesTaxVal,
+        total: grandTotalVal,
+        convenienceFeeCents: Math.round(convenienceFeeVal * 100),
+        salesTaxCents: Math.round(salesTaxVal * 100),
+        deliveryFeeCents: selectedDeliveryFeeVal ?? 0,
+      },
+      grandTotalVal,
+    };
+  }, [items, customerName, customerPhone, customerEmail, orderType, schedule, appliedCoupon, liveFeeRate, uberFee, uberQuoteId, deliveryAddress, deliveryCity, deliveryState, deliveryZip, deliveryNotes, totalPrice]);
 
   /** Geocode address and check 20-mile radius using Manus Maps proxy */
   const validateDeliveryRadius = useCallback(async (address: string, city: string, state: string, zip: string): Promise<boolean> => {
@@ -283,7 +352,9 @@ export default function CartDrawer() {
   };
   const quoteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // When user manually edits address fields, invalidate the autocomplete-validated flag
   const handleAddressChange = (field: "address" | "city" | "state" | "zip", value: string) => {
+    setGeoValidated(false); // User edited manually — require re-validation
     const newAddress = field === "address" ? value : deliveryAddress;
     const newCity    = field === "city"    ? value : deliveryCity;
     const newState   = field === "state"   ? value : deliveryState;
@@ -308,7 +379,9 @@ export default function CartDrawer() {
     const miles = haversineMiles(RESTAURANT_LAT, RESTAURANT_LNG, components.lat, components.lng);
     if (miles > MAX_DELIVERY_MILES) {
       setGeoError(`Sorry, we only deliver within ${MAX_DELIVERY_MILES} miles of our restaurant. Your address is approximately ${miles.toFixed(1)} miles away. Please call us at 725-204-0379 for catering or special arrangements.`);
+      setGeoValidated(false);
     } else {
+      setGeoValidated(true); // Address validated via autocomplete — skip re-geocode on proceed
       triggerUberQuote(components.streetAddress, components.city || "North Las Vegas", components.state || "NV", components.zip || "");
     }
   }, []);
@@ -344,6 +417,40 @@ export default function CartDrawer() {
   const deliveryFeeDollars = selectedDeliveryFee !== null ? selectedDeliveryFee / 100 : 0;
   const grandTotal = discountedSubtotal + convenienceFee + salesTax + deliveryFeeDollars;
 
+  // isStoreClosed must be declared before the preload useEffect
+  const isStoreClosed = !storeIsOpen && orderType !== "scheduled";
+
+  // ── Background PaymentIntent pre-load ────────────────────────────────────────
+  // Trigger a silent PaymentIntent creation 1.5s after the customer fills their
+  // name (the last required field for non-delivery orders). This way the Stripe
+  // form appears instantly when they click "Enter Payment Details".
+  useEffect(() => {
+    if (checkoutStep !== "details") return; // Already in payment step
+    if (!customerName.trim() || items.length === 0) return; // Not ready yet
+    if (orderType === "delivery" && (!uberQuoteId || geoError)) return; // Delivery not ready
+    if (feeConfigLoading) return; // Wait for fee config
+    if (isStoreClosed) return; // Store closed
+
+    if (preloadDebounceRef.current) clearTimeout(preloadDebounceRef.current);
+    preloadDebounceRef.current = setTimeout(() => {
+      // Don't re-preload if we already have a valid preload for this total
+      if (
+        preloadedClientSecret &&
+        preloadedTotal !== null &&
+        Math.abs(preloadedTotal - grandTotal) < 0.01
+      ) return;
+
+      const { payload, grandTotalVal } = buildOrderPayload();
+      preloadTotalRef.current = grandTotalVal;
+      preloadPaymentIntent.mutate(payload);
+    }, 1500);
+
+    return () => {
+      if (preloadDebounceRef.current) clearTimeout(preloadDebounceRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerName, grandTotal, orderType, uberQuoteId, geoError, feeConfigLoading, checkoutStep, items.length, isStoreClosed]);
+
   const validateForm = () => {
     if (items.length === 0) return false;
     if (!customerName.trim()) {
@@ -368,41 +475,30 @@ export default function CartDrawer() {
   const handleProceedToPayment = async () => {
     if (!validateForm()) return;
 
-    if (orderType === "delivery") {
+    // Skip geocoding if address was already validated via autocomplete (has precise lat/lng)
+    if (orderType === "delivery" && !geoValidated) {
       const ok = await validateDeliveryRadius(deliveryAddress, deliveryCity, deliveryState, deliveryZip);
       if (!ok) return;
     }
 
-    const resolvedSchedule: ScheduleSelection = schedule ?? { type: "asap" };
-    const scheduledAt = resolvedSchedule.type === "asap" ? Date.now() : resolvedSchedule.scheduledAt;
-    const isAsap = resolvedSchedule.type === "asap";
-    const apiOrderType = orderType === "scheduled" ? "pickup" : orderType as "delivery" | "pickup" | "dine-in";
+    const { payload: orderPayload, grandTotalVal } = buildOrderPayload();
 
-    const orderPayload = {
-      items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category, description: i.description })),
-      customerName,
-      customerPhone: customerPhone || undefined,
-      customerEmail: customerEmail || undefined,
-      orderType: apiOrderType,
-      scheduledAt,
-      isAsap,
-      uberQuoteId: orderType === "delivery" && uberQuoteId ? uberQuoteId : undefined,
-      dropoffAddress: orderType === "delivery" ? deliveryAddress : undefined,
-      dropoffCity: orderType === "delivery" ? deliveryCity : undefined,
-      dropoffState: orderType === "delivery" ? deliveryState : undefined,
-      dropoffZip: orderType === "delivery" ? deliveryZip : undefined,
-      dropoffNotes: orderType === "delivery" && deliveryNotes ? deliveryNotes : undefined,
-      couponCode: appliedCoupon?.code || undefined,
-      discountPercent: appliedCoupon?.discountPercent || undefined,
-      subtotal,
-      discountAmount,
-      convenienceFee,
-      salesTax,
-      total: grandTotal,
-      convenienceFeeCents: Math.round(convenienceFee * 100),
-      salesTaxCents: Math.round(salesTax * 100),
-      deliveryFeeCents: selectedDeliveryFee ?? 0,
-    };
+    // If we have a pre-loaded PaymentIntent with the same total, use it instantly
+    if (
+      preloadedClientSecret &&
+      preloadedPaymentIntentId &&
+      preloadedTotal !== null &&
+      Math.abs(preloadedTotal - grandTotalVal) < 0.01
+    ) {
+      setClientSecret(preloadedClientSecret);
+      setPaymentIntentId(preloadedPaymentIntentId);
+      setCheckoutStep("payment");
+      // Clear preloaded so it won't be reused
+      setPreloadedClientSecret(null);
+      setPreloadedPaymentIntentId(null);
+      setPreloadedTotal(null);
+      return;
+    }
 
     createPaymentIntent.mutate(orderPayload);
   };
@@ -414,7 +510,6 @@ export default function CartDrawer() {
   };
 
   const isLoading = createPaymentIntent.isPending || feeConfigLoading;
-  const isStoreClosed = !storeIsOpen && orderType !== "scheduled";
 
   return (
     <>

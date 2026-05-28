@@ -352,3 +352,9 @@
 - [x] CartDrawer refactored: order details step shows items + form + pricing, then "Enter Payment Details" button loads Stripe step
 - [x] Payment step shows order summary mini + Stripe Elements form
 - [x] "Edit order details" back button on payment step returns to details step
+
+## Checkout Speed Optimization
+- [x] Skip redundant geocoding on "Enter Payment Details" click when address was already validated via autocomplete (geoValidated flag)
+- [x] Pre-load Stripe PaymentIntent in background 1.5s after customer fills their name, so payment form appears instantly
+- [x] Add geoValidated flag that resets when customer manually edits address fields
+- [x] Refactor buildOrderPayload into reusable useCallback for both preload and on-demand creation
