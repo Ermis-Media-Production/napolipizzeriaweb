@@ -18,6 +18,7 @@ const FLAVORS = [
   "Mild",
   "Medium",
   "Hot",
+  "Extra Hot",
   "BBQ",
   "Spicy Honey BBQ",
   "Lemon Pepper",
@@ -32,6 +33,7 @@ const HEAT_LEVELS: Record<string, string> = {
   Mild: "🌶️",
   Medium: "🌶️🌶️",
   Hot: "🌶️🌶️🌶️",
+  "Extra Hot": "🌶️🌶️🌶️🌶️",
 };
 
 const FLAVOR_GROUPS = [
@@ -39,7 +41,7 @@ const FLAVOR_GROUPS = [
     key: "heat",
     label: "🌡️ HEAT LEVELS",
     sublabel: "Classic buffalo-style — choose your heat",
-    flavors: ["Plain", "Mild", "Medium", "Hot"],
+    flavors: ["Plain", "Mild", "Medium", "Hot", "Extra Hot"],
     accentColor: "var(--napoli-red)",
   },
   {
