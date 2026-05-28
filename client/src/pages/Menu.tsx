@@ -669,22 +669,23 @@ export default function Menu() {
         {/* ── APPETIZERS ─────────────────────────────────────── */}
         <SectionHeader id="appetizers" title="Appetizers" emoji="🧅" photo="/manus-storage/napoli-appetizers_dc37c73d.jpg" />
         <MenuCard>
-          {APPETIZERS.map((item) => (
-            <div key={item.name}>
-              {APPETIZER_MODAL_ITEMS.includes(item.name) ? (
-                <AppetizersItemRow
-                  name={item.name}
-                  desc={item.desc}
-                  price={(item as any).price ?? ((item as any).prices?.[0]?.price)}
-                  highlight={(item as any).highlight}
-                  onOpen={() => setAppetizersModalTrigger({ itemName: item.name })}
-                />
-              ) : (
-                <ItemRow name={item.name} desc={item.desc} price={(item as any).price} highlight={(item as any).highlight} category="appetizers" />
-              )}
-            </div>
-          ))}
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
+            {APPETIZERS.map((item) => (
+              <div key={item.name} style={{ borderBottom: "1px solid oklch(0.93 0.012 80)", borderRight: "1px solid oklch(0.93 0.012 80)" }}>
+                {APPETIZER_MODAL_ITEMS.includes(item.name) ? (
+                  <AppetizersItemRow
+                    name={item.name}
+                    desc={item.desc}
+                    price={(item as any).price ?? ((item as any).prices?.[0]?.price)}
+                    highlight={(item as any).highlight}
+                    onOpen={() => setAppetizersModalTrigger({ itemName: item.name })}
+                  />
+                ) : (
+                  <ItemRow name={item.name} desc={item.desc} price={(item as any).price} highlight={(item as any).highlight} category="appetizers" />
+                )}
+              </div>
+            ))}
+          </div>
         </MenuCard>
 
         {/* ── LUNCH SPECIALS ─────────────────────────────────── */}
