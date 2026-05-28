@@ -741,7 +741,7 @@ export default function Menu() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {LUNCH_SPECIALS.items.map((item, i) => (
               <LunchSpecialRow key={item.num} item={item} isLeft={i % 2 === 0} isLunchOpen={lunchTimer.isOpen} />
             ))}
@@ -1308,6 +1308,7 @@ export default function Menu() {
           {/* Cold Subs */}
           <div>
             <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Served Cold</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
             {SUBS.cold.map((s) => {
               const basePrice = parsePrice(s.price) ?? 0;
               const subPhoto = getMenuPhoto(s.name);
@@ -1338,11 +1339,13 @@ export default function Menu() {
                 </div>
               );
             })}
+            </div>
           </div>
 
           {/* Hot Subs */}
           <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
             <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Served Hot</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
             {SUBS.hotDetailed.map((s) => {
               const basePrice = parsePrice(s.price) ?? 0;
               const addNote = s.add ? s.add + (s.desc ? " · " + s.desc : "") : s.desc;
@@ -1375,6 +1378,7 @@ export default function Menu() {
                 </div>
               );
             })}
+            </div>
           </div>
 
           {/* Triple Deckers */}
@@ -1383,6 +1387,7 @@ export default function Menu() {
               <p className="napoli-label text-xs" style={{ color: "var(--napoli-red)" }}>Triple Deckers <span className="napoli-badge-green ml-2">Gluten Free Bread Available</span></p>
               <p className="text-xs napoli-body mt-1" style={{ color: "oklch(0.52 0.03 30)" }}>{TRIPLE_DECKERS.note}</p>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
             {TRIPLE_DECKERS.items.map((item) => {
               const basePrice = parsePrice(item.price) ?? 0;
               const triplePhoto = getMenuPhoto(item.name);
@@ -1413,6 +1418,7 @@ export default function Menu() {
                 </div>
               );
             })}
+            </div>
           </div>
         </MenuCard>
 
