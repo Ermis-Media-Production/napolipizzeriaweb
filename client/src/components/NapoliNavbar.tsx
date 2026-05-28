@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { RESTAURANT_INFO } from "@/lib/napoliData";
 import { useCart, type OrderType } from "@/contexts/CartContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const ORDER_TYPES: {
   type: OrderType;
@@ -63,6 +64,7 @@ export default function NapoliNavbar() {
   const [orderPopupOpen, setOrderPopupOpen] = useState(false);
   const [location] = useLocation();
   const { totalItems, openCartWithType } = useCart();
+  const { lang, setLang } = useLanguage();
   const popupRef = useRef<HTMLDivElement>(null);
 
   const navLinks = [
@@ -196,6 +198,22 @@ export default function NapoliNavbar() {
               );
             })}
 
+            {/* Language toggle */}
+            <button
+              onClick={() => setLang(lang === "en" ? "es" : "en")}
+              className="ml-1 px-2.5 py-1 rounded text-xs font-bold transition-all hover:opacity-80 active:scale-95"
+              style={{
+                background: lang === "es" ? "oklch(0.45 0.18 145)" : "oklch(0.93 0.012 80)",
+                color: lang === "es" ? "white" : "var(--napoli-dark)",
+                border: "1px solid oklch(0.82 0.015 80)",
+                fontFamily: "'Oswald', sans-serif",
+                letterSpacing: "0.08em",
+              }}
+              title={lang === "en" ? "Cambiar a Español" : "Switch to English"}
+            >
+              {lang === "en" ? "ES" : "EN"}
+            </button>
+
             {/* Cart button */}
             <button
               onClick={() => openCartWithType("pickup")}
@@ -307,6 +325,29 @@ export default function NapoliNavbar() {
                   </span>
                 </Link>
               ))}
+              {/* Language toggle in mobile menu */}
+              <div className="px-4 pt-2 pb-1 border-t mt-1" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
+                <p className="text-xs mb-2" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
+                  {lang === "en" ? "LANGUAGE / IDIOMA" : "IDIOMA / LANGUAGE"}
+                </p>
+                <div className="flex gap-2">
+                  {(["en", "es"] as const).map((l) => (
+                    <button
+                      key={l}
+                      onClick={() => { setLang(l); setOpen(false); }}
+                      className="flex-1 py-2 rounded text-sm font-bold transition-all active:scale-95"
+                      style={{
+                        background: lang === l ? "var(--napoli-red)" : "oklch(0.93 0.012 80)",
+                        color: lang === l ? "white" : "var(--napoli-dark)",
+                        border: `1px solid ${lang === l ? "var(--napoli-red)" : "oklch(0.82 0.015 80)"}`,
+                        fontFamily: "'Oswald', sans-serif",
+                      }}
+                    >
+                      {l === "en" ? "🇺🇸 English" : "🇲🇽 Español"}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}

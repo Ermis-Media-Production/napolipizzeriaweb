@@ -7,6 +7,7 @@ import { useLunchTimer } from "@/hooks/useLunchTimer";
 import LunchTimerBadge from "@/components/LunchTimerBadge";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
@@ -572,7 +573,6 @@ function AppetizersItemRow({
 
 // ── KIDS MENU GRID ──────────────────────────────────────────────────────────
 const SAUCE_ITEMS = new Set(["Ziti w/ Marinara or Butter", "Spaghetti w/ Marinara or Butter"]);
-
 function KidsMenuCard({
   item,
   price,
@@ -588,7 +588,7 @@ function KidsMenuCard({
   const numericPrice = parseFloat(price.replace("$", ""));
   const hasSauceChoice = SAUCE_ITEMS.has(item);
   const [sauce, setSauce] = React.useState<"Marinara" | "Butter">("Marinara");
-
+  const { t } = useLanguage();
   const handleAdd = () => {
     const itemName = hasSauceChoice ? `${item} (${sauce})` : item;
     addItem({
@@ -600,57 +600,57 @@ function KidsMenuCard({
       description: hasSauceChoice ? `Sauce: ${sauce}` : undefined,
     });
     toast.success(`${itemName} added to cart!`, {
-      action: { label: "View Cart", onClick: openCart },
+      action: { label: t.ui.viewCart, onClick: openCart },
     });
   };
-
   return (
     <div
       className="flex flex-col overflow-hidden rounded-lg"
       style={{ border: "1px solid oklch(0.85 0.08 240)", background: "white" }}
     >
-      {/* Photo */}
-      <div className="relative" style={{ height: 130 }}>
+      {/* Photo — compact height matching Desserts style */}
+      <div className="relative" style={{ height: 100 }}>
         {photo ? (
           <img src={photo} alt={item} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center" style={{ background: "oklch(0.93 0.06 240)" }}>
-            <span style={{ fontSize: 40 }}>🍽️</span>
+            <span style={{ fontSize: 36 }}>🍽️</span>
           </div>
         )}
       </div>
       {/* Info */}
-      <div className="flex flex-col gap-2 p-3 flex-1">
-        <span className="text-sm font-semibold napoli-body leading-tight" style={{ color: "oklch(0.28 0.12 240)" }}>{item}</span>
+      <div className="flex flex-col gap-1.5 p-2.5 flex-1">
+        <span className="text-xs font-semibold napoli-body leading-tight" style={{ color: "oklch(0.28 0.12 240)" }}>{item}</span>
         <NutritionBadges itemName={item} compact />
         {/* Sauce selector */}
         {hasSauceChoice && (
-          <div className="flex gap-1.5">
+          <div className="flex gap-1">
             {(["Marinara", "Butter"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setSauce(s)}
-                className="flex-1 py-1 rounded text-xs font-semibold transition-all active:scale-95"
+                className="flex-1 py-0.5 rounded text-xs font-semibold transition-all active:scale-95"
                 style={{
                   background: sauce === s ? "oklch(0.55 0.18 240)" : "oklch(0.93 0.06 240)",
                   color: sauce === s ? "white" : "oklch(0.40 0.12 240)",
                   border: `1px solid ${sauce === s ? "oklch(0.55 0.18 240)" : "oklch(0.80 0.08 240)"}`,
+                  fontSize: "0.65rem",
                 }}
               >
-                {s}
+                {s === "Marinara" ? t.ui.marinara : t.ui.butter}
               </button>
             ))}
           </div>
         )}
         {/* Price + Add */}
-        <div className="flex items-center justify-between mt-auto">
-          <span className="napoli-price text-base font-bold" style={{ color: "oklch(0.35 0.18 240)" }}>{price}</span>
+        <div className="flex items-center justify-between mt-auto pt-1">
+          <span className="napoli-price text-sm font-bold" style={{ color: "oklch(0.35 0.18 240)" }}>{price}</span>
           <button
             onClick={handleAdd}
-            className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
-            style={{ background: "oklch(0.55 0.18 240)", color: "white" }}
+            className="flex items-center gap-0.5 px-2 py-1 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
+            style={{ background: "oklch(0.55 0.18 240)", color: "white", fontSize: "0.7rem" }}
           >
-            <Plus size={12} /> Add
+            <Plus size={10} /> {t.ui.add}
           </button>
         </div>
       </div>
