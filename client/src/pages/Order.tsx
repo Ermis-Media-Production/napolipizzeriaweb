@@ -1,7 +1,8 @@
 /**
  * Napoli Pizzeria — Order Page
  */
-import { Phone, Globe, MapPin, Clock, Truck, UtensilsCrossed, ShoppingBag } from "lucide-react";
+import { Phone, Globe, MapPin, Clock, Truck, UtensilsCrossed, ShoppingBag, ArrowRight } from "lucide-react";
+import { Link } from "wouter";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
 import { RESTAURANT_INFO } from "@/lib/napoliData";
@@ -30,9 +31,17 @@ export default function Order() {
             <div className="napoli-display text-2xl mb-1" style={{ color: "var(--napoli-dark)" }}>
               {RESTAURANT_INFO.pickupSpecial.label}
             </div>
-            <div className="napoli-price text-4xl" style={{ color: "var(--napoli-red)" }}>
+            <div className="napoli-price text-4xl mb-3" style={{ color: "var(--napoli-red)" }}>
               {RESTAURANT_INFO.pickupSpecial.price}
             </div>
+            <Link href="/menu">
+              <button
+                className="napoli-btn-red inline-flex items-center gap-2 px-6 py-3 rounded text-sm font-bold"
+                style={{ background: "var(--napoli-red)", color: "white" }}
+              >
+                Order Now <ArrowRight size={15} />
+              </button>
+            </Link>
           </div>
 
           {/* Order options */}

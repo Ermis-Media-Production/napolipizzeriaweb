@@ -526,6 +526,14 @@ export default function Home() {
               <div className="napoli-price text-2xl" style={{ color: "var(--napoli-gold)" }}>
                 {RESTAURANT_INFO.pickupSpecial.price}
               </div>
+              <Link href="/menu">
+                <button
+                  className="flex items-center gap-1 px-3 py-2 rounded text-xs font-bold napoli-label transition-all active:scale-95"
+                  style={{ background: "var(--napoli-red)", color: "white" }}
+                >
+                  Order Now <ChevronRight size={13} />
+                </button>
+              </Link>
             </div>
           </div>
         </div>
@@ -647,18 +655,23 @@ export default function Home() {
                 />
               </div>
               {/* Floating badge */}
-              <div
-                className="absolute -bottom-4 -left-4 px-4 py-3 rounded shadow-lg border-2"
-                style={{
-                  background: "var(--napoli-red)",
-                  borderColor: "var(--napoli-gold)",
-                  color: "white",
-                }}
-              >
-                <div className="napoli-label text-xs" style={{ color: "var(--napoli-gold)" }}>Pick Up Special</div>
-                <div className="napoli-price text-xl">$12.99</div>
-                <div className="text-xs napoli-body opacity-90">16" 1 Topping</div>
-              </div>
+              <Link href="/menu">
+                <div
+                  className="absolute -bottom-4 -left-4 px-4 py-3 rounded shadow-lg border-2 cursor-pointer transition-opacity hover:opacity-90"
+                  style={{
+                    background: "var(--napoli-red)",
+                    borderColor: "var(--napoli-gold)",
+                    color: "white",
+                  }}
+                >
+                  <div className="napoli-label text-xs" style={{ color: "var(--napoli-gold)" }}>Pick Up Special</div>
+                  <div className="napoli-price text-xl">$12.99</div>
+                  <div className="text-xs napoli-body opacity-90">16" 1 Topping</div>
+                  <div className="flex items-center gap-1 mt-1 text-xs font-bold napoli-label">
+                    Order Now <ChevronRight size={11} />
+                  </div>
+                </div>
+              </Link>
             </div>
           </div>
         </div>
