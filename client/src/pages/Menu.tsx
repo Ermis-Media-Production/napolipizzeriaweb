@@ -563,8 +563,115 @@ function AppetizersItemRow({
   );
 }
 
+// ── KIDS MENU GRID ──────────────────────────────────────────────────────────
+const SAUCE_ITEMS = new Set(["Ziti w/ Marinara or Butter", "Spaghetti w/ Marinara or Butter"]);
+
+function KidsMenuCard({
+  item,
+  price,
+  addItem,
+  openCart,
+}: {
+  item: string;
+  price: string;
+  addItem: ReturnType<typeof useCart>["addItem"];
+  openCart: () => void;
+}) {
+  const photo = getMenuPhoto(item);
+  const numericPrice = parseFloat(price.replace("$", ""));
+  const hasSauceChoice = SAUCE_ITEMS.has(item);
+  const [sauce, setSauce] = React.useState<"Marinara" | "Butter">("Marinara");
+
+  const handleAdd = () => {
+    const itemName = hasSauceChoice ? `${item} (${sauce})` : item;
+    addItem({
+      id: `kids-${item}-${sauce}-${Date.now()}`,
+      name: itemName,
+      price: numericPrice,
+      quantity: 1,
+      category: "childrens-menu",
+      description: hasSauceChoice ? `Sauce: ${sauce}` : undefined,
+    });
+    toast.success(`${itemName} added to cart!`, {
+      action: { label: "View Cart", onClick: openCart },
+    });
+  };
+
+  return (
+    <div
+      className="flex flex-col overflow-hidden rounded-lg"
+      style={{ border: "1px solid oklch(0.85 0.08 240)", background: "white" }}
+    >
+      {/* Photo */}
+      <div className="relative" style={{ height: 130 }}>
+        {photo ? (
+          <img src={photo} alt={item} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center" style={{ background: "oklch(0.93 0.06 240)" }}>
+            <span style={{ fontSize: 40 }}>🍽️</span>
+          </div>
+        )}
+      </div>
+      {/* Info */}
+      <div className="flex flex-col gap-2 p-3 flex-1">
+        <span className="text-sm font-semibold napoli-body leading-tight" style={{ color: "oklch(0.28 0.12 240)" }}>{item}</span>
+        {/* Sauce selector */}
+        {hasSauceChoice && (
+          <div className="flex gap-1.5">
+            {(["Marinara", "Butter"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSauce(s)}
+                className="flex-1 py-1 rounded text-xs font-semibold transition-all active:scale-95"
+                style={{
+                  background: sauce === s ? "oklch(0.55 0.18 240)" : "oklch(0.93 0.06 240)",
+                  color: sauce === s ? "white" : "oklch(0.40 0.12 240)",
+                  border: `1px solid ${sauce === s ? "oklch(0.55 0.18 240)" : "oklch(0.80 0.08 240)"}`,
+                }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* Price + Add */}
+        <div className="flex items-center justify-between mt-auto">
+          <span className="napoli-price text-base font-bold" style={{ color: "oklch(0.35 0.18 240)" }}>{price}</span>
+          <button
+            onClick={handleAdd}
+            className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
+            style={{ background: "oklch(0.55 0.18 240)", color: "white" }}
+          >
+            <Plus size={12} /> Add
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KidsMenuGrid({
+  price,
+  items,
+  addItem,
+  openCart,
+}: {
+  price: string;
+  items: string[];
+  addItem: ReturnType<typeof useCart>["addItem"];
+  openCart: () => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">
+      {items.map((item) => (
+        <KidsMenuCard key={item} item={item} price={price} addItem={addItem} openCart={openCart} />
+      ))}
+    </div>
+  );
+}
+
 export default function Menu() {
-  const { addItem } = useCart();
+  const { addItem, openCart } = useCart();
   const lunchTimer = useLunchTimer();
   const [activeCategory, setActiveCategory] = useState("appetizers");
   const navScrollRef = useRef<HTMLDivElement>(null);
@@ -1554,33 +1661,8 @@ export default function Menu() {
               <span className="text-xs napoli-body ml-2" style={{ color: "oklch(0.45 0.10 240)" }}>each · Includes drink & dessert</span>
             </div>
           </div>
-          {/* Items grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
-            {CHILDRENS_MENU.items.map((item, i) => {
-              return (
-                <div
-                  key={item}
-                  className="flex items-center justify-between px-5 py-3 border-b border-r"
-                  style={{ borderColor: "oklch(0.87 0.07 240)" }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">{["🍕","🍝","🍔","🐔","🧆","🥪","🥗","🍟"][i % 8]}</span>
-                    <span className="text-sm font-semibold napoli-body" style={{ color: "oklch(0.28 0.12 240)" }}>{item}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="napoli-price text-sm font-bold" style={{ color: "oklch(0.40 0.18 240)" }}>{CHILDRENS_MENU.price}</span>
-                    <button
-                      onClick={() => { addItem({ id: `kids-${item}-${Date.now()}`, name: item, price: parseFloat(CHILDRENS_MENU.price.replace("$","")), quantity: 1, category: "childrens-menu" }); toast.success(`${item} added to cart!`); }}
-                      className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90"
-                      style={{ background: "oklch(0.55 0.18 240)", color: "white" }}
-                    >
-                      <Plus size={13} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          {/* Items grid — photo cards with sauce selector */}
+          <KidsMenuGrid price={CHILDRENS_MENU.price} items={CHILDRENS_MENU.items} addItem={addItem} openCart={openCart} />
         </div>
 
         {/* ── BEVERAGES ──────────────────────────────────────────────── */}

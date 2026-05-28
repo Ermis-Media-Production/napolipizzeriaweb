@@ -160,12 +160,12 @@ export const MENU_PHOTOS: Record<string, string> = {
   "Carrot Cake":                    C + "1X218Z83988FR.jpeg",
 
   // ── CHILDREN'S MENU ──────────────────────────────────────────
-  "Chicken Fingers (3) w/ Fries":   C + "7BKS32E6KM95R.jpeg",
-  "Grilled Cheese w/ Fries":        C + "0MPQWX8V4FPPA.jpeg",
-  "Ziti w/ Marinara or Butter":     C + "EA4SX42TRT7GM.jpeg",
-  "Macaroni & Cheese w/ Fries":     C + "YFYDWKSNTR0J6.jpeg",
-  "Dinosaur Nugget w/ Fries":       C + "7BKS32E6KM95R.jpeg",
-  "Spaghetti w/ Marinara or Butter":C + "4NZ1VQXECCYMR.jpeg",
+  "Chicken Fingers (3) w/ Fries":   S + "kids_chicken_fingers_d6e5299d.jpeg",
+  "Grilled Cheese w/ Fries":        S + "kids_grilled_cheese_3c2eb54b.jpeg",
+  "Ziti w/ Marinara or Butter":     S + "kids_ziti_8caaef9e.jpeg",
+  "Macaroni & Cheese w/ Fries":     S + "kids_mac_cheese_b08e1a92.jpeg",
+  "Dinosaur Nugget w/ Fries":       S + "kids_dino_nuggets_a7fea610.jpeg",
+  "Spaghetti w/ Marinara or Butter":S + "kids_spaghetti_58058e1e.jpeg",
 
   // ── BEVERAGES ────────────────────────────────────────────────
   "Soda Can":                       C + "DVVRX7FH10MQ4.jpeg",
