@@ -257,7 +257,7 @@ export default function AdminSettings() {
         >
           <AlertCircle size={16} className="shrink-0 mt-0.5" style={{ color: "oklch(0.45 0.12 250)" }} />
           <p className="text-xs leading-relaxed" style={{ color: "oklch(0.40 0.08 250)", fontFamily: "'Lato', sans-serif" }}>
-            Settings take effect immediately for all new checkout sessions. Existing Stripe sessions that are already in progress will use the fee that was active when the session was created.
+            Settings take effect immediately for all new checkout sessions. Changes apply to all new Authorize.net transactions.
           </p>
         </div>
       </div>

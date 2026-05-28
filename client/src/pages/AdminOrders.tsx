@@ -113,7 +113,6 @@ function getStatusColor(status: string): { bg: string; text: string } {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-// (Clover removed — using Stripe only)
 function OrderTypeIcon({ type }: { type: ReturnType<typeof parseOrderType> }) {
   const icons = {
     delivery: <Truck size={14} style={{ color: "var(--napoli-red, #c0392b)" }} />,
@@ -583,7 +582,6 @@ function ScheduledOrdersTab() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AdminOrders() {
-  // Stripe-only orders panel — Clover removed
   return (
     <AdminLayout>
       <div className="space-y-4">
@@ -591,7 +589,7 @@ export default function AdminOrders() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Orders</h1>
-            <p className="text-sm text-muted-foreground mt-1">Track and manage all incoming orders paid via Stripe.</p>
+            <p className="text-sm text-muted-foreground mt-1">Track and manage all incoming orders paid via Authorize.net.</p>
           </div>
         </div>
 
