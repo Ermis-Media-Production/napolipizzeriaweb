@@ -79,10 +79,17 @@ export default function NapoliFooter() {
                 Services
               </h4>
               <div className="space-y-2">
-                {RESTAURANT_INFO.services.map((s) => (
-                  <div key={s} className="flex items-center gap-2">
+                {([
+                  { label: "Delivery", href: "/order" },
+                  { label: "Dine-In", href: "/order" },
+                  { label: "Pick Up", href: "/order" },
+                  { label: "Catering", href: "/catering" },
+                ] as const).map((s) => (
+                  <div key={s.label} className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-napoli-red shrink-0" />
-                    <span className="text-sm napoli-body" style={{ color: "oklch(0.75 0.015 80)" }}>{s}</span>
+                    <Link href={s.href}>
+                      <span className="text-sm napoli-body cursor-pointer hover:text-napoli-red transition-colors" style={{ color: "oklch(0.75 0.015 80)" }}>{s.label}</span>
+                    </Link>
                   </div>
                 ))}
               </div>
@@ -90,10 +97,17 @@ export default function NapoliFooter() {
                 <h4 className="napoli-label text-xs mb-3" style={{ color: "var(--napoli-gold)" }}>
                   Menu
                 </h4>
-                {["Appetizers", "Lunch Specials", "Pizzeria", "Wings", "Pasta", "Burgers"].map((item) => (
-                  <Link key={item} href="/menu">
+                {([
+                  { label: "Appetizers", anchor: "appetizers" },
+                  { label: "Lunch Specials", anchor: "lunch" },
+                  { label: "Pizzeria", anchor: "pizza" },
+                  { label: "Wings", anchor: "wings" },
+                  { label: "Pasta", anchor: "pasta" },
+                  { label: "Burgers", anchor: "burgers" },
+                ] as const).map((item) => (
+                  <Link key={item.label} href={`/menu#${item.anchor}`}>
                     <div className="text-sm napoli-body mb-1.5 cursor-pointer hover:text-napoli-red transition-colors" style={{ color: "oklch(0.65 0.015 80)" }}>
-                      {item}
+                      {item.label}
                     </div>
                   </Link>
                 ))}
