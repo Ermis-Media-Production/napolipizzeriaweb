@@ -27,6 +27,13 @@ const FLAVORS = [
   "Mango Habanero",
 ];
 
+const HEAT_LEVELS: Record<string, string> = {
+  Plain: "",
+  Mild: "🌶️",
+  Medium: "🌶️🌶️",
+  Hot: "🌶️🌶️🌶️",
+};
+
 const FLAVOR_GROUPS = [
   {
     key: "heat",
@@ -83,14 +90,19 @@ function FlavorButton({
   return (
     <button
       onClick={onClick}
-      className="px-3 py-2 rounded-lg text-xs font-semibold napoli-body transition-all active:scale-95"
+      className="flex flex-col items-center px-3 py-2 rounded-lg text-xs font-semibold napoli-body transition-all active:scale-95"
       style={
         selected
           ? { background: accentColor, color: "white", border: `2px solid ${accentColor}` }
           : { background: "white", color: "oklch(0.35 0.03 30)", border: "2px solid oklch(0.88 0.015 80)" }
       }
     >
-      {f === "Plain" ? "🍗 Plain" : f}
+      <span>{f === "Plain" ? "🍗 Plain" : f}</span>
+      {HEAT_LEVELS[f] !== undefined && (
+        <span className="text-xs mt-0.5" style={{ letterSpacing: "-1px", opacity: selected ? 1 : 0.75 }}>
+          {HEAT_LEVELS[f] || "○ No heat"}
+        </span>
+      )}
     </button>
   );
 }
