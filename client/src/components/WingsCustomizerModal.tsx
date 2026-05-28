@@ -27,6 +27,30 @@ const FLAVORS = [
   "Mango Habanero",
 ];
 
+const FLAVOR_GROUPS = [
+  {
+    key: "heat",
+    label: "🌡️ HEAT LEVELS",
+    sublabel: "Classic buffalo-style — choose your heat",
+    flavors: ["Plain", "Mild", "Medium", "Hot"],
+    accentColor: "var(--napoli-red)",
+  },
+  {
+    key: "sauce",
+    label: "💧 SPECIALTY SAUCES",
+    sublabel: "Bold flavors tossed in sauce",
+    flavors: ["BBQ", "Spicy Honey BBQ", "Teriyaki", "Spicy Teriyaki", "Sweet Red Chili", "Mango Habanero"],
+    accentColor: "oklch(0.52 0.18 50)",
+  },
+  {
+    key: "dry",
+    label: "🧂 DRY RUB",
+    sublabel: "Seasoned dry — no sauce, crispy finish",
+    flavors: ["Lemon Pepper"],
+    accentColor: "oklch(0.52 0.12 250)",
+  },
+];
+
 export interface WingsSelection {
   type: "Bone-In" | "Boneless" | "Chicken Fingers";
   qty: string;
@@ -283,15 +307,26 @@ function WingsCustomizerInner({ selection, onClose }: { selection: WingsSelectio
                   <p className="text-xs napoli-body mb-4" style={{ color: "oklch(0.52 0.03 30)" }}>
                     Select one — required. Choose <strong>Plain</strong> for no sauce.
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    {FLAVORS.map((f) => (
-                      <FlavorButton
-                        key={f}
-                        f={f}
-                        selected={flavor === f}
-                        onClick={() => setFlavor(f)}
-                        accentColor="var(--napoli-red)"
-                      />
+                  <div className="space-y-4">
+                    {FLAVOR_GROUPS.map((group) => (
+                      <div key={group.key}>
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="napoli-label text-xs font-bold" style={{ color: "oklch(0.35 0.03 30)", letterSpacing: "0.1em" }}>{group.label}</span>
+                          <div className="flex-1 h-px" style={{ background: "oklch(0.90 0.012 80)" }} />
+                        </div>
+                        <p className="text-xs napoli-body mb-2" style={{ color: "oklch(0.58 0.03 30)" }}>{group.sublabel}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {group.flavors.map((f) => (
+                            <FlavorButton
+                              key={f}
+                              f={f}
+                              selected={flavor === f}
+                              onClick={() => setFlavor(f)}
+                              accentColor={group.accentColor}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </>
@@ -324,15 +359,25 @@ function WingsCustomizerInner({ selection, onClose }: { selection: WingsSelectio
                         </span>
                       )}
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {FLAVORS.map((f) => (
-                        <FlavorButton
-                          key={f}
-                          f={f}
-                          selected={flavorA === f}
-                          onClick={() => setFlavorA(f)}
-                          accentColor="var(--napoli-red)"
-                        />
+                    <div className="space-y-3">
+                      {FLAVOR_GROUPS.map((group) => (
+                        <div key={group.key}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="napoli-label text-xs font-bold" style={{ color: "oklch(0.45 0.03 30)", letterSpacing: "0.08em", fontSize: "10px" }}>{group.label}</span>
+                            <div className="flex-1 h-px" style={{ background: "oklch(0.90 0.012 80)" }} />
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {group.flavors.map((f) => (
+                              <FlavorButton
+                                key={f}
+                                f={f}
+                                selected={flavorA === f}
+                                onClick={() => setFlavorA(f)}
+                                accentColor={group.accentColor}
+                              />
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -373,15 +418,25 @@ function WingsCustomizerInner({ selection, onClose }: { selection: WingsSelectio
                         </span>
                       )}
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {FLAVORS.map((f) => (
-                        <FlavorButton
-                          key={f}
-                          f={f}
-                          selected={flavorB === f}
-                          onClick={() => setFlavorB(f)}
-                          accentColor="oklch(0.26 0.10 145)"
-                        />
+                    <div className="space-y-3">
+                      {FLAVOR_GROUPS.map((group) => (
+                        <div key={group.key}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="napoli-label text-xs font-bold" style={{ color: "oklch(0.45 0.03 30)", letterSpacing: "0.08em", fontSize: "10px" }}>{group.label}</span>
+                            <div className="flex-1 h-px" style={{ background: "oklch(0.90 0.012 80)" }} />
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {group.flavors.map((f) => (
+                              <FlavorButton
+                                key={f}
+                                f={f}
+                                selected={flavorB === f}
+                                onClick={() => setFlavorB(f)}
+                                accentColor={group.accentColor}
+                              />
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
                     {flavorA && flavorB && flavorA === flavorB && (
