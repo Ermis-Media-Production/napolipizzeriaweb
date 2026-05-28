@@ -478,6 +478,7 @@ export async function handleCloverWebhook(body: unknown): Promise<void> {
       name: i.name,
       price: Number(i.unitPrice),
       quantity: i.quantity,
+      description: i.description ?? undefined,
     })),
     orderType: order.orderType as "delivery" | "pickup" | "dine-in",
     customerName: order.customerName ?? undefined,

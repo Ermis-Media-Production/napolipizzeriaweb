@@ -408,7 +408,7 @@ export default function CartDrawer() {
     const grandTotalVal = discountedSubtotalVal + convenienceFeeVal + salesTaxVal + deliveryFeeDollarsVal;
     return {
       payload: {
-        items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category })),
+        items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category, description: i.description ?? "" })),
         customerName,
         customerPhone: customerPhone || undefined,
         customerEmail: customerEmail || undefined,

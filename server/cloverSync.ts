@@ -30,7 +30,7 @@ import { CLOVER_ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
 
 export interface CloverOrderInput {
-  items: Array<{ name: string; price: number; quantity: number }>;
+  items: Array<{ name: string; price: number; quantity: number; description?: string }>;
   orderType: "delivery" | "pickup" | "dine-in";
   customerName?: string;
   customerPhone?: string;
@@ -269,14 +269,22 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
 
   // Step 2: Add all line items with printer label assignments
   // Pizza items → "Pizza" printer | Everything else → "Food" printer
+  // The description field carries modifier/customization details (toppings, crust, sauce, etc.)
+  // We send each modifier as a separate note line so kitchen staff can see all details.
   const lineItems = input.items.map((item) => {
     const printerLabel = getPrinterLabel(item.name);
-    return {
+    const lineItem: Record<string, unknown> = {
       name: item.name,
       price: Math.round(item.price * 100), // cents
       unitQty: item.quantity,
       printerLabel: { name: printerLabel },
     };
+    // Attach modifier/customization details as a note on the line item
+    // so they appear on both the kitchen receipt and the Clover order view.
+    if (item.description && item.description.trim()) {
+      lineItem.note = item.description.trim();
+    }
+    return lineItem;
   });
 
   await axios.post(

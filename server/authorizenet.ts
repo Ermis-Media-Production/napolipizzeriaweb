@@ -161,6 +161,7 @@ const CartItemSchema = z.object({
   price: z.number().positive(),
   quantity: z.number().int().positive(),
   category: z.string().optional(),
+  description: z.string().optional(), // modifier/customization details
 });
 
 // ── Router ────────────────────────────────────────────────────────────────────
@@ -267,7 +268,12 @@ export const authorizeNetRouter = router({
 
         // Fire-and-forget: push order to Clover POS (non-blocking)
         pushOrderToClover({
-          items: input.items,
+          items: input.items.map((i) => ({
+            name: i.name,
+            price: i.price,
+            quantity: i.quantity,
+            description: i.description,
+          })),
           orderType: input.orderType,
           customerName: input.customerName,
           customerPhone: input.customerPhone,
