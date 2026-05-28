@@ -1597,7 +1597,7 @@ export default function Menu() {
           className="rounded-b-md border border-t-0 mb-8 overflow-hidden"
           style={{ borderColor: "oklch(0.45 0.06 255)", background: "oklch(0.96 0.02 255)" }}
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
             {BEVERAGES.map((bev) => {
               const bevPhoto = getMenuPhoto(bev.name);
               if ((bev as any).prices) {
