@@ -245,11 +245,19 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
   ]);
 
   // Step 1: Create the order shell, assigning the "Online" employee
+  // Build a descriptive title that shows up in Clover reports:
+  // "Online Pick-Up — John Smith" or "Online Delivery — NPZ-20260528-0042"
+  const reportTitle = input.customerName
+    ? `${orderTypeLabel} — ${input.customerName}`
+    : input.orderRef
+    ? `${orderTypeLabel} — ${input.orderRef}`
+    : `${orderTypeLabel} — Napoli Pizzeria`;
+
   const orderPayload: Record<string, unknown> = {
     state: "open",
     currency: "USD",
     total: input.totalCents,
-    title: `${orderTypeLabel} — Napoli Pizzeria`,
+    title: reportTitle,
     note: noteLines.length ? noteLines.join(" | ") : undefined,
     manualTransaction: false,
     testMode: false,
@@ -270,7 +278,7 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
   // Step 2: Add all line items with printer label assignments
   // Pizza items → "Pizza" printer | Everything else → "Food" printer
   // The description field carries modifier/customization details (toppings, crust, sauce, etc.)
-  // We send each modifier as a separate note line so kitchen staff can see all details.
+  // We format each modifier as a separate line for easy reading by kitchen staff.
   const lineItems = input.items.map((item) => {
     const printerLabel = getPrinterLabel(item.name);
     const lineItem: Record<string, unknown> = {
@@ -279,14 +287,26 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
       unitQty: item.quantity,
       printerLabel: { name: printerLabel },
     };
-    // Attach modifier/customization details as a note on the line item
-    // so they appear on both the kitchen receipt and the Clover order view.
-    // Each modifier is placed on its own line for easy reading by kitchen staff.
+
     if (item.description && item.description.trim()) {
-      // Replace " · " separator (used in the frontend) with newlines
-      lineItem.note = item.description
-        .trim()
-        .replace(/ · /g, "\n");
+      // Normalize description into clean kitchen-ticket lines:
+      //   " · " separators (frontend format) → newlines
+      //   "\n" already present → keep as-is
+      // Result: each modifier on its own line, easy to read at the pizza station.
+      const raw = item.description.trim();
+
+      // Build a structured note:
+      // 1. Replace " · " with newline
+      // 2. Ensure Half & Half sections are clearly labeled
+      // 3. Add a separator line before the note for visual clarity on the ticket
+      let note = raw
+        .replace(/ · /g, "\n")  // frontend separator
+        .replace(/\|/g, "\n");  // pipe separators used in some modals
+
+      // Ensure "Half & Half" header is prominent
+      note = note.replace(/(Half & Half)/gi, "*** $1 ***");
+
+      lineItem.note = note;
     }
     return lineItem;
   });

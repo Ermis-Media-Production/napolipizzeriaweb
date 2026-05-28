@@ -15,6 +15,8 @@ import { modifiersRouter } from "./modifiers";
 import { reservationsRouter } from "./reservations";
 import { evaChatRouter } from "./evaChat";
 import { authorizeNetRouter } from "./authorizenet";
+import { cloverCheckoutRouter } from "./cloverCheckout";
+import { cloverRouter } from "./clover";
 
 export const appRouter = router({
   system: systemRouter,
@@ -41,6 +43,8 @@ export const appRouter = router({
   reservations: reservationsRouter,
   eva: evaChatRouter,
   authnet: authorizeNetRouter,
+  cloverCheckout: cloverCheckoutRouter,
+  clover: cloverRouter,
 });
 
 export type AppRouter = typeof appRouter;

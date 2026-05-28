@@ -18,6 +18,7 @@ import { getDb } from "./db";
 import { scheduledOrders, orderItems } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
+import { pushOrderToClover } from "./cloverSync";
 
 // Initialize Stripe lazily so the server can start without keys in dev
 function getStripe() {
@@ -533,6 +534,38 @@ Total: $${total.toFixed(2)}${meta.couponCode ? ` (coupon: ${meta.couponCode})` :
 Stripe Session: ${session.id}`,
     }).catch(() => {});
 
+    // Push order to Clover POS for kitchen printing and centralized reporting
+    pushOrderToClover({
+      items: items.map((i) => ({
+        name: i.name,
+        price: i.price,
+        quantity: i.quantity ?? 1,
+        description: i.description ?? undefined,
+      })),
+      orderType: orderType as "delivery" | "pickup" | "dine-in",
+      customerName,
+      customerPhone,
+      externalId: session.id,
+      totalCents: Math.round(total * 100),
+      scheduledAt: isAsap ? undefined : scheduledAt,
+      orderRef,
+    }).then(async (result) => {
+      try {
+        const dbInner = await getDb();
+        if (dbInner && result.cloverOrderId) {
+          await dbInner
+            .update(scheduledOrders)
+            .set({ cloverOrderId: result.cloverOrderId })
+            .where(eq(scheduledOrders.orderRef, orderRef));
+          console.log(`[Stripe] Saved cloverOrderId ${result.cloverOrderId} for order ${orderRef}`);
+        }
+      } catch (e) {
+        console.warn("[Stripe] Failed to save cloverOrderId:", e);
+      }
+    }).catch((err) => {
+      console.error(`[Stripe] Failed to push order ${orderRef} to Clover POS:`, err);
+    });
+
     return orderRef;
   } catch (err) {
     console.error("[Stripe] Failed to create scheduled order:", err);
@@ -625,6 +658,38 @@ async function createScheduledOrderFromPaymentIntent(intent: Stripe.PaymentInten
       title: `🛒 New Order ${orderRef} — $${total.toFixed(2)} (${orderType})`,
       content: `Customer: ${customerName} | Phone: ${customerPhone}\nScheduled: ${isAsap ? "ASAP" : new Date(scheduledAt).toLocaleString("en-US", { timeZone: STORE_TIMEZONE })}\nItems: ${items.map((i) => `${i.quantity ?? 1}x ${i.name}`).join(", ")}\nTotal: $${total.toFixed(2)}\nPaymentIntent: ${intent.id}`,
     }).catch(() => {});
+
+    // Push order to Clover POS for kitchen printing and centralized reporting
+    pushOrderToClover({
+      items: items.map((i) => ({
+        name: i.name,
+        price: i.price,
+        quantity: i.quantity ?? 1,
+        description: i.description ?? undefined,
+      })),
+      orderType: orderType as "delivery" | "pickup" | "dine-in",
+      customerName,
+      customerPhone,
+      externalId: intent.id,
+      totalCents: Math.round(total * 100),
+      scheduledAt: isAsap ? undefined : scheduledAt,
+      orderRef,
+    }).then(async (result) => {
+      try {
+        const dbInner = await getDb();
+        if (dbInner && result.cloverOrderId) {
+          await dbInner
+            .update(scheduledOrders)
+            .set({ cloverOrderId: result.cloverOrderId })
+            .where(eq(scheduledOrders.orderRef, orderRef));
+          console.log(`[Stripe PI] Saved cloverOrderId ${result.cloverOrderId} for order ${orderRef}`);
+        }
+      } catch (e) {
+        console.warn("[Stripe PI] Failed to save cloverOrderId:", e);
+      }
+    }).catch((err) => {
+      console.error(`[Stripe PI] Failed to push order ${orderRef} to Clover POS:`, err);
+    });
 
     return orderRef;
   } catch (err) {

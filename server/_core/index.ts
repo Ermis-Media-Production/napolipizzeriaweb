@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { handleStripeWebhook } from "../stripe";
 import { handleAuthorizeNetWebhook } from "../authorizenetWebhook";
+import { handleCloverWebhook } from "../cloverCheckout";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -58,6 +59,17 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+  // Clover Hosted Checkout webhook — fires after customer completes payment on Clover's page
+  // Registered AFTER json middleware so req.body is already parsed
+  app.post("/api/clover/webhook", (req, res) => {
+    handleCloverWebhook(req.body)
+      .then(() => res.json({ received: true }))
+      .catch((err) => {
+        console.error("[CloverWebhook] Error:", err);
+        res.status(500).json({ error: "Webhook processing failed" });
+      });
+  });
 
   registerStorageProxy(app);
   registerOAuthRoutes(app);
