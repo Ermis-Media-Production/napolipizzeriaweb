@@ -747,45 +747,88 @@ export default function Menu() {
         {/* ── PIZZERIA ───────────────────────────────────────── */}
         <SectionHeader id="pizza" title="Pizzeria — Hand Tossed New York Style" emoji="🍕" photo="/manus-storage/napoli-pizza-hero_66a71a97.jpg" />
         <MenuCard>
-          {/* Size/price table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ background: "oklch(0.97 0.012 80)" }}>
-                  <th className="text-left px-5 py-3 napoli-label text-xs" style={{ color: "oklch(0.52 0.03 30)" }}>Item</th>
-                  {PIZZA_SIZES.map((s) => (
-                    <th key={s} className="text-center px-2 py-3 napoli-label text-xs" style={{ color: "oklch(0.52 0.03 30)" }}>{s}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(PIZZA_BASE_PRICES).map(([name, prices]) => (
-                  <tr key={name} className="border-t" style={{ borderColor: "oklch(0.93 0.012 80)" }}>
-                    <td className="px-5 py-3 napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{name}</td>
-                    {prices.map((p, i) => (
-                      <td key={i} className="text-center px-2 py-3 napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{p}</td>
-                    ))}
-                    <td className="px-3 py-3">
-                      <button
-                        onClick={() => {
-                          setPizzaModalKey(k => k + 1);
-                          setPizzaSelection({
-                            pizzaName: name,
-                            isSpecialty: false,
-                            freeToppings: name === "4 Topping Combo" ? 4 : 0,
-                            allowHalfAndHalf: true,
-                          });
-                        }}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all active:scale-95"
-                        style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
-                      >
-                        <Plus size={11} /> Order
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* Plain Cheese Pizza */}
+          <div className="napoli-menu-item flex items-center gap-3 px-5 py-4">
+            <img
+              src="/manus-storage/cheese_pizza_00fdae04.webp"
+              alt="Plain Cheese Pizza"
+              className="w-14 h-14 rounded object-cover shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>Plain Cheese</span>
+              <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>Classic New York-style hand-tossed crust loaded with mozzarella — the perfect base. Add your own toppings to customize.</p>
+              <div className="overflow-x-auto mt-2">
+                <table className="text-xs">
+                  <thead>
+                    <tr>
+                      {PIZZA_SIZES.map((s) => (
+                        <th key={s} className="text-center pr-3 pb-0.5 napoli-label" style={{ color: "oklch(0.52 0.03 30)" }}>{s}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      {PIZZA_BASE_PRICES["Plain Cheese"].map((p, i) => (
+                        <td key={i} className="text-center pr-3 napoli-price font-semibold" style={{ color: "var(--napoli-red)" }}>{p}</td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setPizzaModalKey(k => k + 1);
+                setPizzaSelection({ pizzaName: "Plain Cheese", isSpecialty: false, freeToppings: 0, allowHalfAndHalf: true });
+              }}
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
+              style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+            >
+              <Plus size={13} /> Order
+            </button>
+          </div>
+          {/* 4 Topping Combo */}
+          <div className="napoli-menu-item flex items-center gap-3 px-5 py-4 border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
+            <img
+              src="/manus-storage/four_topping_combo_10890069.png"
+              alt="4 Topping Combo Pizza"
+              className="w-14 h-14 rounded object-cover shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>4 Topping Combo</span>
+                <span className="text-xs font-semibold px-1.5 py-0.5 rounded" style={{ background: "oklch(0.95 0.06 60)", color: "oklch(0.45 0.12 50)", fontFamily: "'Oswald', sans-serif" }}>BEST VALUE</span>
+              </div>
+              <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>Hand-tossed New York-style crust with cheese — choose any 4 toppings from 30 options. Half &amp; Half available.</p>
+              <div className="overflow-x-auto mt-2">
+                <table className="text-xs">
+                  <thead>
+                    <tr>
+                      {PIZZA_SIZES.map((s) => (
+                        <th key={s} className="text-center pr-3 pb-0.5 napoli-label" style={{ color: "oklch(0.52 0.03 30)" }}>{s}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      {PIZZA_BASE_PRICES["4 Topping Combo"].map((p, i) => (
+                        <td key={i} className="text-center pr-3 napoli-price font-semibold" style={{ color: "var(--napoli-red)" }}>{p}</td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setPizzaModalKey(k => k + 1);
+                setPizzaSelection({ pizzaName: "4 Topping Combo", isSpecialty: false, freeToppings: 4, allowHalfAndHalf: true });
+              }}
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
+              style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+            >
+              <Plus size={13} /> Order
+            </button>
           </div>
 
           {/* Gluten Free Pizza */}
