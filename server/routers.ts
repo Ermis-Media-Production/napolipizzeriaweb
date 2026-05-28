@@ -14,6 +14,7 @@ import { menuItemsRouter } from "./menuItems";
 import { modifiersRouter } from "./modifiers";
 import { reservationsRouter } from "./reservations";
 import { evaChatRouter } from "./evaChat";
+import { authorizeNetRouter } from "./authorizenet";
 
 export const appRouter = router({
   system: systemRouter,
@@ -39,6 +40,7 @@ export const appRouter = router({
   modifiers: modifiersRouter,
   reservations: reservationsRouter,
   eva: evaChatRouter,
+  authnet: authorizeNetRouter,
 });
 
 export type AppRouter = typeof appRouter;

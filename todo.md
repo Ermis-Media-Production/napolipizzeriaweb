@@ -358,3 +358,11 @@
 - [x] Pre-load Stripe PaymentIntent in background 1.5s after customer fills their name, so payment form appears instantly
 - [x] Add geoValidated flag that resets when customer manually edits address fields
 - [x] Refactor buildOrderPayload into reusable useCallback for both preload and on-demand creation
+
+## Authorize.net Migration (Replace Stripe)
+- [x] Set AUTHNET_API_LOGIN_ID=59rVFp2dW7Df, AUTHNET_TRANSACTION_KEY, AUTHNET_IS_SANDBOX=false, VITE_AUTHNET_CLIENT_KEY secrets (production mode)
+- [x] Register authorizeNetRouter in main appRouter (routers.ts)
+- [x] Rewrite CartDrawer to use Accept.js tokenization instead of Stripe Elements
+- [x] Rewrite OrderSuccess to display Authorize.net transaction details (transactionId, authCode, amount, orderType)
+- [x] Validate production credentials via Authorize.net API (returns Ok)
+- [x] TypeScript: 0 errors

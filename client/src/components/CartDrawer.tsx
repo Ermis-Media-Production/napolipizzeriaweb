@@ -1,17 +1,16 @@
-import { X, Plus, Minus, Trash2, ShoppingCart, Loader2, Lock, MapPin, CheckCircle2, AlertTriangle, Clock, Calendar, Info } from "lucide-react";
+// CartDrawer — Authorize.net Accept.js payment flow
 import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { NV_SALES_TAX_RATE } from "@shared/const";
 import { OrderScheduler, OrderPoliciesNote, type ScheduleSelection } from "./OrderScheduler";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useCart } from "@/contexts/CartContext";
 import AddressAutocomplete, { type AddressComponents } from "@/components/AddressAutocomplete";
-
-// ─── Stripe publishable key ────────────────────────────────────────────────────
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ?? "");
+import {
+  ShoppingCart, X, Minus, Plus, Trash2, Lock, Loader2, MapPin,
+  AlertTriangle, CheckCircle2, Clock, Calendar, Info, CreditCard,
+} from "lucide-react";
 
 // ─── Restaurant center (3131 W Craig Rd, North Las Vegas, NV) ─────────────────
 const RESTAURANT_LAT = 36.2481;
@@ -29,73 +28,207 @@ function haversineMiles(lat1: number, lng1: number, lat2: number, lng2: number):
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// ─── Embedded payment form (rendered inside <Elements>) ───────────────────────
-interface PaymentFormProps {
-  clientSecret: string;
-  paymentIntentId: string;
-  grandTotal: number;
-  onSuccess: (paymentIntentId: string) => void;
-  onCancel: () => void;
+// ─── Accept.js types ──────────────────────────────────────────────────────────
+declare global {
+  interface Window {
+    Accept?: {
+      dispatchData: (
+        secureData: {
+          authData: { clientKey: string; apiLoginID: string };
+          cardData: { cardNumber: string; month: string; year: string; cardCode: string };
+        },
+        callback: (response: {
+          opaqueData?: { dataDescriptor: string; dataValue: string };
+          messages: { resultCode: string; message: Array<{ code: string; text: string }> };
+        }) => void
+      ) => void;
+    };
+  }
 }
 
-function PaymentForm({ clientSecret, paymentIntentId, grandTotal, onSuccess, onCancel }: PaymentFormProps) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+// ─── Authorize.net card form ──────────────────────────────────────────────────
+interface AuthNetFormProps {
+  apiLoginId: string;
+  clientKey: string;
+  grandTotal: number;
+  onTokenize: (descriptor: string, value: string) => void;
+  onCancel: () => void;
+  isProcessing: boolean;
+  errorMsg: string | null;
+}
 
-  const handlePay = async (e: React.FormEvent) => {
+function AuthNetCardForm({
+  apiLoginId,
+  clientKey,
+  grandTotal,
+  onTokenize,
+  onCancel,
+  isProcessing,
+  errorMsg,
+}: AuthNetFormProps) {
+  const [cardNumber, setCardNumber] = useState("");
+  const [expMonth, setExpMonth] = useState("");
+  const [expYear, setExpYear] = useState("");
+  const [cvv, setCvv] = useState("");
+  const [zip, setZip] = useState("");
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const formatCard = (v: string) =>
+    v.replace(/\D/g, "").slice(0, 16).replace(/(.{4})/g, "$1 ").trim();
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements) return;
-    setIsProcessing(true);
-    setErrorMsg(null);
+    setLocalError(null);
+    const rawCard = cardNumber.replace(/\s/g, "");
+    if (rawCard.length < 13) { setLocalError("Please enter a valid card number."); return; }
+    if (!expMonth || !expYear) { setLocalError("Please enter expiration date."); return; }
+    if (cvv.length < 3) { setLocalError("Please enter your security code."); return; }
 
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/order-success?payment=stripe&payment_intent=${paymentIntentId}`,
-      },
-      redirect: "if_required",
-    });
-
-    if (error) {
-      setErrorMsg(error.message ?? "Payment failed. Please try again.");
-      setIsProcessing(false);
-    } else {
-      onSuccess(paymentIntentId);
+    if (!window.Accept) {
+      setLocalError("Payment system not loaded. Please refresh and try again.");
+      return;
     }
+
+    window.Accept.dispatchData(
+      {
+        authData: { clientKey, apiLoginID: apiLoginId },
+        cardData: {
+          cardNumber: rawCard,
+          month: expMonth.padStart(2, "0"),
+          year: expYear.length === 2 ? `20${expYear}` : expYear,
+          cardCode: cvv,
+        },
+      },
+      (response) => {
+        if (response.messages.resultCode === "Error") {
+          const msg = response.messages.message?.[0]?.text ?? "Card tokenization failed.";
+          setLocalError(msg);
+          return;
+        }
+        if (!response.opaqueData) {
+          setLocalError("No token returned. Please try again.");
+          return;
+        }
+        onTokenize(response.opaqueData.dataDescriptor, response.opaqueData.dataValue);
+      }
+    );
+  };
+
+  const inputStyle = {
+    borderColor: "oklch(0.82 0.015 80)",
+    fontFamily: "'Lato', sans-serif",
   };
 
   return (
-    <form onSubmit={handlePay} className="space-y-3">
-      <div
-        className="p-3 rounded-lg border"
-        style={{ borderColor: "oklch(0.82 0.015 80)", background: "white" }}
-      >
-        <PaymentElement
-          options={{
-            layout: "tabs",
-            fields: { billingDetails: { address: { country: "never" } } },
-          }}
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {/* Card number */}
+      <div>
+        <label className="text-xs font-semibold mb-1 block" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
+          CARD NUMBER
+        </label>
+        <div className="relative">
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="1234 5678 9012 3456"
+            value={cardNumber}
+            onChange={(e) => setCardNumber(formatCard(e.target.value))}
+            className="w-full text-sm px-3 py-2.5 rounded border outline-none focus:ring-1 pr-10"
+            style={inputStyle}
+            autoComplete="cc-number"
+          />
+          <CreditCard size={16} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "oklch(0.60 0.03 30)" }} />
+        </div>
+      </div>
+
+      {/* Expiry + CVV */}
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <label className="text-xs font-semibold mb-1 block" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
+            MONTH
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="MM"
+            maxLength={2}
+            value={expMonth}
+            onChange={(e) => setExpMonth(e.target.value.replace(/\D/g, "").slice(0, 2))}
+            className="w-full text-sm px-3 py-2.5 rounded border outline-none focus:ring-1 text-center"
+            style={inputStyle}
+            autoComplete="cc-exp-month"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-semibold mb-1 block" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
+            YEAR
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="YY"
+            maxLength={4}
+            value={expYear}
+            onChange={(e) => setExpYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            className="w-full text-sm px-3 py-2.5 rounded border outline-none focus:ring-1 text-center"
+            style={inputStyle}
+            autoComplete="cc-exp-year"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-semibold mb-1 block" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
+            CVV
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="123"
+            maxLength={4}
+            value={cvv}
+            onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            className="w-full text-sm px-3 py-2.5 rounded border outline-none focus:ring-1 text-center"
+            style={inputStyle}
+            autoComplete="cc-csc"
+          />
+        </div>
+      </div>
+
+      {/* ZIP */}
+      <div>
+        <label className="text-xs font-semibold mb-1 block" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
+          ZIP CODE
+        </label>
+        <input
+          type="text"
+          inputMode="numeric"
+          placeholder="89115"
+          maxLength={10}
+          value={zip}
+          onChange={(e) => setZip(e.target.value.replace(/\D/g, "").slice(0, 10))}
+          className="w-full text-sm px-3 py-2.5 rounded border outline-none focus:ring-1"
+          style={inputStyle}
+          autoComplete="postal-code"
         />
       </div>
 
-      {errorMsg && (
+      {/* Error */}
+      {(localError || errorMsg) && (
         <div
           className="flex items-start gap-2 px-3 py-2 rounded border text-xs"
           style={{ borderColor: "oklch(0.70 0.18 25)", background: "oklch(0.97 0.04 25)", color: "oklch(0.40 0.18 25)" }}
         >
           <AlertTriangle size={13} className="mt-0.5 shrink-0" />
-          {errorMsg}
+          {localError ?? errorMsg}
         </div>
       )}
 
+      {/* Pay button */}
       <button
         type="submit"
-        disabled={!stripe || isProcessing}
+        disabled={isProcessing}
         className="w-full flex items-center justify-center gap-2 py-3.5 rounded font-bold text-sm transition-all active:scale-[0.98]"
         style={{
-          background: isProcessing ? "oklch(0.55 0.03 30)" : "oklch(0.38 0.18 265)",
+          background: isProcessing ? "oklch(0.55 0.03 30)" : "var(--napoli-red, #c0392b)",
           color: "white",
           fontFamily: "'Oswald', sans-serif",
           letterSpacing: "0.05em",
@@ -122,6 +255,10 @@ function PaymentForm({ clientSecret, paymentIntentId, grandTotal, onSuccess, onC
       >
         ← Edit order details
       </button>
+
+      <p className="text-center text-xs pb-2" style={{ color: "oklch(0.60 0.03 30)" }}>
+        🔒 Secured by Authorize.net · PCI Compliant
+      </p>
     </form>
   );
 }
@@ -146,15 +283,7 @@ export default function CartDrawer() {
   const [geoError, setGeoError] = useState<string | null>(null);
   const [isGeoChecking, setIsGeoChecking] = useState(false);
   const geoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // True when address was validated via autocomplete (has precise lat/lng — no re-geocode needed)
   const [geoValidated, setGeoValidated] = useState(false);
-
-  // Pre-loaded PaymentIntent (created in background while customer fills form)
-  const [preloadedClientSecret, setPreloadedClientSecret] = useState<string | null>(null);
-  const [preloadedPaymentIntentId, setPreloadedPaymentIntentId] = useState<string | null>(null);
-  const [preloadedTotal, setPreloadedTotal] = useState<number | null>(null);
-  const preloadDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const preloadTotalRef = useRef<number>(0); // Captures grandTotal at the time preload is triggered
 
   // Schedule selection
   const [schedule, setSchedule] = useState<ScheduleSelection | null>(null);
@@ -170,10 +299,10 @@ export default function CartDrawer() {
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountPercent: number; description: string } | null>(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
-  // Stripe embedded payment state — "details" = order form, "payment" = Stripe form
+  // Checkout step: "details" = order form, "payment" = card form
   const [checkoutStep, setCheckoutStep] = useState<"details" | "payment">("details");
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   // Store open/closed status (Las Vegas time)
   const { data: storeStatus } = trpc.orders.storeStatus.useQuery(undefined, {
@@ -193,6 +322,24 @@ export default function CartDrawer() {
   // Live convenience fee config from DB
   const { data: feeConfig, isLoading: feeConfigLoading } = trpc.settings.getConvenienceFee.useQuery();
   const liveFeeRate = feeConfigLoading ? 0.03 : feeConfig?.enabled ? feeConfig.percent / 100 : 0;
+
+  // Authorize.net client credentials
+  const { data: authnetConfig } = trpc.authnet.getClientKey.useQuery();
+
+  // Load Accept.js script once when payment step is entered
+  useEffect(() => {
+    if (checkoutStep !== "payment") return;
+    if (document.getElementById("acceptjs-script")) return;
+    const isSandbox = authnetConfig?.isSandbox ?? false;
+    const src = isSandbox
+      ? "https://jstest.authorize.net/v1/Accept.js"
+      : "https://js.authorize.net/v1/Accept.js";
+    const script = document.createElement("script");
+    script.id = "acceptjs-script";
+    script.src = src;
+    script.charset = "utf-8";
+    document.head.appendChild(script);
+  }, [checkoutStep, authnetConfig?.isSandbox]);
 
   // Reset quotes when order type changes away from delivery
   useEffect(() => {
@@ -214,11 +361,8 @@ export default function CartDrawer() {
   useEffect(() => {
     if (!isOpen) {
       setCheckoutStep("details");
-      setClientSecret(null);
-      setPaymentIntentId(null);
-      setPreloadedClientSecret(null);
-      setPreloadedPaymentIntentId(null);
-      setPreloadedTotal(null);
+      setPaymentError(null);
+      setIsProcessingPayment(false);
     }
   }, [isOpen]);
 
@@ -236,37 +380,23 @@ export default function CartDrawer() {
     },
   });
 
-  const createPaymentIntent = trpc.stripe.createPaymentIntent.useMutation({
+  const chargeCard = trpc.authnet.chargeCard.useMutation({
     onSuccess: (data) => {
-      setClientSecret(data.clientSecret);
-      setPaymentIntentId(data.paymentIntentId);
-      setCheckoutStep("payment");
+      clearCart();
+      navigate(`/order-success?payment=authnet&transaction_id=${data.transactionId}&auth_code=${data.authCode}&amount=${data.amount.toFixed(2)}&order_type=${data.orderType}&customer=${encodeURIComponent(data.customerName)}&items=${data.itemCount}`);
+      closeCart();
     },
     onError: (err) => {
-      toast.error("Could not start checkout: " + err.message);
-    },
-  });
-
-  const preloadPaymentIntent = trpc.stripe.createPaymentIntent.useMutation({
-    onSuccess: (data) => {
-      setPreloadedClientSecret(data.clientSecret);
-      setPreloadedPaymentIntentId(data.paymentIntentId);
-      setPreloadedTotal(preloadTotalRef.current); // Use ref value captured at trigger time
-    },
-    onError: () => {
-      // Silent failure — will fall back to on-demand creation
-      setPreloadedClientSecret(null);
-      setPreloadedPaymentIntentId(null);
+      setPaymentError(err.message);
+      setIsProcessingPayment(false);
     },
   });
 
   const utils = trpc.useUtils();
 
-  /** Build the order payload for PaymentIntent creation */
+  /** Build the order payload */
   const buildOrderPayload = useCallback(() => {
     const resolvedSchedule: ScheduleSelection = schedule ?? { type: "asap" };
-    const scheduledAt = resolvedSchedule.type === "asap" ? Date.now() : resolvedSchedule.scheduledAt;
-    const isAsap = resolvedSchedule.type === "asap";
     const apiOrderType = orderType === "scheduled" ? "pickup" : orderType as "delivery" | "pickup" | "dine-in";
     const subtotalVal = totalPrice;
     const discountAmountVal = appliedCoupon ? (subtotalVal * appliedCoupon.discountPercent) / 100 : 0;
@@ -278,35 +408,29 @@ export default function CartDrawer() {
     const grandTotalVal = discountedSubtotalVal + convenienceFeeVal + salesTaxVal + deliveryFeeDollarsVal;
     return {
       payload: {
-        items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category, description: i.description })),
+        items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category })),
         customerName,
         customerPhone: customerPhone || undefined,
         customerEmail: customerEmail || undefined,
         orderType: apiOrderType,
-        scheduledAt,
-        isAsap,
+        couponCode: appliedCoupon?.code || undefined,
+        discountPercent: appliedCoupon?.discountPercent || undefined,
+        convenienceFeeCents: Math.round(convenienceFeeVal * 100),
+        salesTaxCents: Math.round(salesTaxVal * 100),
+        scheduledAt: resolvedSchedule.type === "asap" ? Date.now() : resolvedSchedule.scheduledAt,
+        isAsap: resolvedSchedule.type === "asap",
         uberQuoteId: orderType === "delivery" && uberQuoteId ? uberQuoteId : undefined,
         dropoffAddress: orderType === "delivery" ? deliveryAddress : undefined,
         dropoffCity: orderType === "delivery" ? deliveryCity : undefined,
         dropoffState: orderType === "delivery" ? deliveryState : undefined,
         dropoffZip: orderType === "delivery" ? deliveryZip : undefined,
         dropoffNotes: orderType === "delivery" && deliveryNotes ? deliveryNotes : undefined,
-        couponCode: appliedCoupon?.code || undefined,
-        discountPercent: appliedCoupon?.discountPercent || undefined,
-        subtotal: subtotalVal,
-        discountAmount: discountAmountVal,
-        convenienceFee: convenienceFeeVal,
-        salesTax: salesTaxVal,
-        total: grandTotalVal,
-        convenienceFeeCents: Math.round(convenienceFeeVal * 100),
-        salesTaxCents: Math.round(salesTaxVal * 100),
-        deliveryFeeCents: selectedDeliveryFeeVal ?? 0,
       },
       grandTotalVal,
     };
   }, [items, customerName, customerPhone, customerEmail, orderType, schedule, appliedCoupon, liveFeeRate, uberFee, uberQuoteId, deliveryAddress, deliveryCity, deliveryState, deliveryZip, deliveryNotes, totalPrice]);
 
-  /** Geocode address and check 20-mile radius using Manus Maps proxy */
+  /** Geocode address and check 20-mile radius */
   const validateDeliveryRadius = useCallback(async (address: string, city: string, state: string, zip: string): Promise<boolean> => {
     if (!address.trim()) return false;
     setIsGeoChecking(true);
@@ -327,7 +451,7 @@ export default function CartDrawer() {
       const { lat, lng } = data.results[0].geometry.location;
       const miles = haversineMiles(RESTAURANT_LAT, RESTAURANT_LNG, lat, lng);
       if (miles > MAX_DELIVERY_MILES) {
-        setGeoError(`Sorry, we only deliver within ${MAX_DELIVERY_MILES} miles of our restaurant. Your address is approximately ${miles.toFixed(1)} miles away. Please call us at 725-204-0379 for catering or special arrangements.`);
+        setGeoError(`Sorry, we only deliver within ${MAX_DELIVERY_MILES} miles. Your address is ~${miles.toFixed(1)} miles away. Call 725-204-0379 for special arrangements.`);
         setIsGeoChecking(false);
         return false;
       }
@@ -341,6 +465,7 @@ export default function CartDrawer() {
   }, []);
 
   /** Trigger an Uber Direct quote — debounced 800ms */
+  const quoteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerUberQuote = (address: string, city: string, state: string, zip: string) => {
     if (quoteDebounceRef.current) clearTimeout(quoteDebounceRef.current);
     setUberQuoteId(null); setUberFee(null); setUberEta(null);
@@ -350,11 +475,9 @@ export default function CartDrawer() {
       getUberQuote.mutate({ dropoffAddress: address, dropoffCity: city, dropoffState: state, dropoffZip: zip });
     }, 800);
   };
-  const quoteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // When user manually edits address fields, invalidate the autocomplete-validated flag
   const handleAddressChange = (field: "address" | "city" | "state" | "zip", value: string) => {
-    setGeoValidated(false); // User edited manually — require re-validation
+    setGeoValidated(false);
     const newAddress = field === "address" ? value : deliveryAddress;
     const newCity    = field === "city"    ? value : deliveryCity;
     const newState   = field === "state"   ? value : deliveryState;
@@ -378,12 +501,13 @@ export default function CartDrawer() {
     setGeoError(null);
     const miles = haversineMiles(RESTAURANT_LAT, RESTAURANT_LNG, components.lat, components.lng);
     if (miles > MAX_DELIVERY_MILES) {
-      setGeoError(`Sorry, we only deliver within ${MAX_DELIVERY_MILES} miles of our restaurant. Your address is approximately ${miles.toFixed(1)} miles away. Please call us at 725-204-0379 for catering or special arrangements.`);
+      setGeoError(`Sorry, we only deliver within ${MAX_DELIVERY_MILES} miles. Your address is ~${miles.toFixed(1)} miles away. Call 725-204-0379 for special arrangements.`);
       setGeoValidated(false);
     } else {
-      setGeoValidated(true); // Address validated via autocomplete — skip re-geocode on proceed
+      setGeoValidated(true);
       triggerUberQuote(components.streetAddress, components.city || "North Las Vegas", components.state || "NV", components.zip || "");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleApplyCoupon = async () => {
@@ -417,99 +541,48 @@ export default function CartDrawer() {
   const deliveryFeeDollars = selectedDeliveryFee !== null ? selectedDeliveryFee / 100 : 0;
   const grandTotal = discountedSubtotal + convenienceFee + salesTax + deliveryFeeDollars;
 
-  // isStoreClosed must be declared before the preload useEffect
   const isStoreClosed = !storeIsOpen && orderType !== "scheduled";
-
-  // ── Background PaymentIntent pre-load ────────────────────────────────────────
-  // Trigger a silent PaymentIntent creation 1.5s after the customer fills their
-  // name (the last required field for non-delivery orders). This way the Stripe
-  // form appears instantly when they click "Enter Payment Details".
-  useEffect(() => {
-    if (checkoutStep !== "details") return; // Already in payment step
-    if (!customerName.trim() || items.length === 0) return; // Not ready yet
-    if (orderType === "delivery" && (!uberQuoteId || geoError)) return; // Delivery not ready
-    if (feeConfigLoading) return; // Wait for fee config
-    if (isStoreClosed) return; // Store closed
-
-    if (preloadDebounceRef.current) clearTimeout(preloadDebounceRef.current);
-    preloadDebounceRef.current = setTimeout(() => {
-      // Don't re-preload if we already have a valid preload for this total
-      if (
-        preloadedClientSecret &&
-        preloadedTotal !== null &&
-        Math.abs(preloadedTotal - grandTotal) < 0.01
-      ) return;
-
-      const { payload, grandTotalVal } = buildOrderPayload();
-      preloadTotalRef.current = grandTotalVal;
-      preloadPaymentIntent.mutate(payload);
-    }, 1500);
-
-    return () => {
-      if (preloadDebounceRef.current) clearTimeout(preloadDebounceRef.current);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerName, grandTotal, orderType, uberQuoteId, geoError, feeConfigLoading, checkoutStep, items.length, isStoreClosed]);
 
   const validateForm = () => {
     if (items.length === 0) return false;
-    if (!customerName.trim()) {
-      toast.error("Please enter your name.");
-      return false;
-    }
-    if (orderType === "delivery" && !deliveryAddress.trim()) {
-      toast.error("Please enter your delivery address.");
-      return false;
-    }
-    if (orderType === "delivery" && geoError) {
-      toast.error("Delivery address is outside our service area.");
-      return false;
-    }
-    if (orderType === "delivery" && !uberQuoteId) {
-      toast.error("Please wait for the delivery quote to load.");
-      return false;
-    }
+    if (!customerName.trim()) { toast.error("Please enter your name."); return false; }
+    if (orderType === "delivery" && !deliveryAddress.trim()) { toast.error("Please enter your delivery address."); return false; }
+    if (orderType === "delivery" && geoError) { toast.error("Delivery address is outside our service area."); return false; }
+    if (orderType === "delivery" && !uberQuoteId) { toast.error("Please wait for the delivery quote to load."); return false; }
     return true;
   };
 
   const handleProceedToPayment = async () => {
     if (!validateForm()) return;
-
-    // Skip geocoding if address was already validated via autocomplete (has precise lat/lng)
     if (orderType === "delivery" && !geoValidated) {
       const ok = await validateDeliveryRadius(deliveryAddress, deliveryCity, deliveryState, deliveryZip);
       if (!ok) return;
     }
-
-    const { payload: orderPayload, grandTotalVal } = buildOrderPayload();
-
-    // If we have a pre-loaded PaymentIntent with the same total, use it instantly
-    if (
-      preloadedClientSecret &&
-      preloadedPaymentIntentId &&
-      preloadedTotal !== null &&
-      Math.abs(preloadedTotal - grandTotalVal) < 0.01
-    ) {
-      setClientSecret(preloadedClientSecret);
-      setPaymentIntentId(preloadedPaymentIntentId);
-      setCheckoutStep("payment");
-      // Clear preloaded so it won't be reused
-      setPreloadedClientSecret(null);
-      setPreloadedPaymentIntentId(null);
-      setPreloadedTotal(null);
-      return;
-    }
-
-    createPaymentIntent.mutate(orderPayload);
+    setPaymentError(null);
+    setCheckoutStep("payment");
   };
 
-  const handlePaymentSuccess = (piId: string) => {
-    clearCart();
-    navigate(`/order-success?payment=stripe&payment_intent=${piId}`);
-    closeCart();
+  /** Called by AuthNetCardForm after Accept.js tokenizes the card */
+  const handleTokenize = async (descriptor: string, value: string) => {
+    setIsProcessingPayment(true);
+    setPaymentError(null);
+    const { payload } = buildOrderPayload();
+    chargeCard.mutate({
+      opaqueDataDescriptor: descriptor,
+      opaqueDataValue: value,
+      items: payload.items,
+      orderType: payload.orderType,
+      customerName: payload.customerName,
+      customerEmail: payload.customerEmail,
+      customerPhone: payload.customerPhone,
+      couponCode: payload.couponCode,
+      discountPercent: payload.discountPercent,
+      convenienceFeeCents: payload.convenienceFeeCents,
+      salesTaxCents: payload.salesTaxCents,
+    });
   };
 
-  const isLoading = createPaymentIntent.isPending || feeConfigLoading;
+  const isLoading = feeConfigLoading;
 
   return (
     <>
@@ -989,7 +1062,7 @@ export default function CartDrawer() {
                 {isLoading ? (
                   <>
                     <Loader2 size={16} className="animate-spin" />
-                    Preparing checkout...
+                    Loading...
                   </>
                 ) : orderType === "delivery" && isFetchingUberQuote ? (
                   <>
@@ -1005,15 +1078,15 @@ export default function CartDrawer() {
               </button>
               <p className="text-center text-xs pb-4" style={{ color: "oklch(0.60 0.03 30)" }}>
                 {orderType === "delivery"
-                  ? "Delivery by Uber Direct · Secured by Stripe"
-                  : "Secured by Stripe · PCI Compliant"}
+                  ? "Delivery by Uber Direct · Secured by Authorize.net"
+                  : "Secured by Authorize.net · PCI Compliant"}
               </p>
             </div>
           </div>
         )}
 
-        {/* ── PAYMENT STEP — embedded Stripe Elements ───────────────────────── */}
-        {items.length > 0 && checkoutStep === "payment" && clientSecret && (
+        {/* ── PAYMENT STEP — Authorize.net Accept.js form ───────────────────── */}
+        {items.length > 0 && checkoutStep === "payment" && (
           <div className="flex-1 overflow-y-auto px-4 py-4" style={{ background: "white" }}>
             {/* Order summary mini */}
             <div
@@ -1042,30 +1115,24 @@ export default function CartDrawer() {
               PAYMENT DETAILS
             </p>
 
-            <Elements
-              stripe={stripePromise}
-              options={{
-                clientSecret,
-                appearance: {
-                  theme: "stripe",
-                  variables: {
-                    colorPrimary: "#c0392b",
-                    colorBackground: "#ffffff",
-                    colorText: "#1a0a00",
-                    borderRadius: "6px",
-                    fontFamily: "Lato, sans-serif",
-                  },
-                },
-              }}
-            >
-              <PaymentForm
-                clientSecret={clientSecret}
-                paymentIntentId={paymentIntentId!}
+            {authnetConfig?.configured ? (
+              <AuthNetCardForm
+                apiLoginId={authnetConfig.apiLoginId}
+                clientKey={authnetConfig.clientKey}
                 grandTotal={grandTotal}
-                onSuccess={handlePaymentSuccess}
-                onCancel={() => setCheckoutStep("details")}
+                onTokenize={handleTokenize}
+                onCancel={() => { setCheckoutStep("details"); setPaymentError(null); }}
+                isProcessing={isProcessingPayment}
+                errorMsg={paymentError}
               />
-            </Elements>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 gap-3">
+                <Loader2 size={24} className="animate-spin" style={{ color: "var(--napoli-red)" }} />
+                <p className="text-xs text-center" style={{ color: "oklch(0.50 0.03 30)" }}>
+                  Loading payment system...
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

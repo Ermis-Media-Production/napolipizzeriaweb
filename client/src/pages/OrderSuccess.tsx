@@ -1,171 +1,35 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { CheckCircle, Phone, MapPin, Clock, ArrowRight, Loader2, Shield, Truck, ExternalLink } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { CheckCircle, Phone, MapPin, Clock, ArrowRight, Shield } from "lucide-react";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
 import { useCart } from "@/contexts/CartContext";
 import { RESTAURANT_INFO } from "@/lib/napoliData";
-import { toast } from "sonner";
 
 export default function OrderSuccess() {
   const { clearCart } = useCart();
 
-  // Stripe state
-  const [stripeSessionId, setStripeSessionId] = useState<string | null>(null);
-  const [stripePaymentIntentId, setStripePaymentIntentId] = useState<string | null>(null);
-
-  const [orderRef, setOrderRef] = useState<string | null>(null);
-
-  // Delivery dispatch state
-  const [deliveryId, setDeliveryId] = useState<string | null>(null);
-  const [trackingUrl, setTrackingUrl] = useState<string | null>(null);
-  const [isDispatching, setIsDispatching] = useState(false);
-  const dispatchedRef = useRef(false);
+  // Authorize.net params from URL
+  const [transactionId, setTransactionId] = useState<string | null>(null);
+  const [authCode, setAuthCode] = useState<string | null>(null);
+  const [amount, setAmount] = useState<string | null>(null);
+  const [orderType, setOrderType] = useState<string | null>(null);
+  const [customerName, setCustomerName] = useState<string | null>(null);
+  const [itemCount, setItemCount] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const sid = params.get("session_id");
-    const pi = params.get("payment_intent");
-    if (sid) setStripeSessionId(sid);
-    if (pi) setStripePaymentIntentId(pi);
+    setTransactionId(params.get("transaction_id"));
+    setAuthCode(params.get("auth_code"));
+    setAmount(params.get("amount"));
+    setOrderType(params.get("order_type"));
+    setCustomerName(params.get("customer") ? decodeURIComponent(params.get("customer")!) : null);
+    setItemCount(params.get("items"));
     clearCart();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Stripe queries ────────────────────────────────────────────────────────
-
-  // Poll for order ref after Stripe Checkout Session (legacy redirect flow)
-  const { data: stripeOrderData, isLoading: stripeOrderLoading } = trpc.stripe.getOrderRefBySession.useQuery(
-    { sessionId: stripeSessionId! },
-    {
-      enabled: !!stripeSessionId,
-      refetchInterval: (query) => {
-        const d = query.state.data;
-        if (d?.orderRef) return false;
-        return 3000;
-      },
-      refetchIntervalInBackground: false,
-    }
-  );
-
-  // Poll for order ref after embedded PaymentIntent flow
-  const { data: piOrderData } = trpc.stripe.getOrderRefByPaymentIntent.useQuery(
-    { paymentIntentId: stripePaymentIntentId! },
-    {
-      enabled: !!stripePaymentIntentId,
-      refetchInterval: (query) => {
-        const d = query.state.data;
-        if (d?.orderRef) return false;
-        return 3000;
-      },
-      refetchIntervalInBackground: false,
-    }
-  );
-
-  // Stripe session details for display (Checkout Session flow)
-  const { data: stripeSession } = trpc.stripe.getSession.useQuery(
-    { sessionId: stripeSessionId! },
-    { enabled: !!stripeSessionId }
-  );
-
-  // Stripe PaymentIntent details for display (embedded flow)
-  const { data: piSession } = trpc.stripe.getPaymentIntentDetails.useQuery(
-    { paymentIntentId: stripePaymentIntentId! },
-    { enabled: !!stripePaymentIntentId }
-  );
-
-  // Merge Stripe session data — prefer PaymentIntent details when available
-  const stripeActiveSession = piSession ?? stripeSession;
-
-  // ─── Unified active session ────────────────────────────────────────────────
-
-  const activeSession = stripeActiveSession;
-
-  // ─── Set orderRef ──────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    const ref = piOrderData?.orderRef ?? stripeOrderData?.orderRef;
-    if (ref && !orderRef) setOrderRef(ref);
-  }, [piOrderData, stripeOrderData, orderRef]);
-
-  const createUberDelivery = trpc.uber.createDelivery.useMutation();
-
-  // Auto-dispatch Uber delivery when order is confirmed
-  useEffect(() => {
-    if (
-      !activeSession ||
-      activeSession.status !== "paid" ||
-      activeSession.orderType !== "delivery" ||
-      !activeSession.dropoffAddress ||
-      !activeSession.uberQuoteId ||
-      dispatchedRef.current
-    ) return;
-
-    const storageKey = `delivery_dispatched_stripe_${stripeSessionId ?? stripePaymentIntentId}`;
-    const alreadyDispatched = sessionStorage.getItem(storageKey);
-
-    if (alreadyDispatched) {
-      try {
-        const saved = JSON.parse(alreadyDispatched) as { deliveryId: string; trackingUrl: string };
-        setDeliveryId(saved.deliveryId);
-        setTrackingUrl(saved.trackingUrl);
-      } catch { /* ignore */ }
-      dispatchedRef.current = true;
-      return;
-    }
-
-    dispatchedRef.current = true;
-    setIsDispatching(true);
-
-    createUberDelivery.mutate(
-      {
-        quoteId: activeSession.uberQuoteId,
-        dropoffAddress: activeSession.dropoffAddress,
-        dropoffCity: (activeSession as { dropoffCity?: string | null }).dropoffCity ?? "North Las Vegas",
-        dropoffState: (activeSession as { dropoffState?: string | null }).dropoffState ?? "NV",
-        dropoffZip: (activeSession as { dropoffZip?: string | null }).dropoffZip ?? "89032",
-        dropoffName: activeSession.customerName ?? "Customer",
-        dropoffPhone: (activeSession as { customerPhone?: string | null }).customerPhone ?? "+17025550000",
-        orderItems: ((activeSession as { cartItems?: Array<{ name: string; quantity: number }> }).cartItems ?? []).map((i) => ({ name: i.name, quantity: i.quantity })),
-        externalId: stripeSessionId ?? stripePaymentIntentId ?? undefined,
-      },
-      {
-        onSuccess: (data) => {
-          setDeliveryId(data.deliveryId);
-          setTrackingUrl(data.trackingUrl);
-          setIsDispatching(false);
-          sessionStorage.setItem(storageKey, JSON.stringify({ deliveryId: data.deliveryId, trackingUrl: data.trackingUrl }));
-          toast.success("Delivery dispatched via Uber Direct! Track your order in real time.");
-        },
-        onError: (err) => {
-          setIsDispatching(false);
-          dispatchedRef.current = false;
-          console.error("[Uber Direct] dispatch failed:", err);
-          toast.warning("Payment confirmed! We'll arrange your delivery shortly.");
-        },
-      }
-    );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSession]);
-
-  // ─── Derived display values ────────────────────────────────────────────────
-
-  const isLoading =
-    (!!stripeSessionId && stripeOrderLoading && !stripeOrderData) ||
-    (!!stripePaymentIntentId && !piOrderData && !piSession);
-
-  const isPending =
-    (!!stripeSessionId && !!stripeOrderData && !stripeOrderData.orderRef) ||
-    (!!stripePaymentIntentId && !!piOrderData && !piOrderData.orderRef);
-
-  const hasData = !!activeSession;
-  const isDelivery = activeSession?.orderType === "delivery";
-  const hasDelivery = !!trackingUrl;
-
-  const paymentBadgeLabel = "Paid via Stripe";
-  const paymentBadgeColor = { bg: "oklch(0.25 0.08 145)", text: "oklch(0.85 0.08 145)" };
-  const paymentIdDisplay = stripePaymentIntentId ?? stripeSessionId;
+  const hasData = !!transactionId;
 
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">
@@ -182,159 +46,89 @@ export default function OrderSuccess() {
             style={{ background: "var(--napoli-green, #1e6b3c)" }}
           >
             <div className="flex justify-center mb-4">
-              {isPending ? (
-                <Loader2 size={64} className="text-white animate-spin" />
-              ) : (
-                <CheckCircle size={64} className="text-white" />
-              )}
+              <CheckCircle size={64} className="text-white" />
             </div>
             <h1
               className="text-3xl font-bold text-white mb-2"
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
-              {isPending ? "Confirming Payment…" : "Order Confirmed!"}
+              Order Confirmed!
             </h1>
             <p className="text-white/80 text-sm" style={{ fontFamily: "'Lato', sans-serif" }}>
-              {isPending
-                ? "We're waiting for payment confirmation. This usually takes a few seconds."
-                : "Thank you for ordering from The Original Napoli Pizzeria"}
+              Thank you for ordering from The Original Napoli Pizzeria
             </p>
-            {hasData && !isPending && (
+            {hasData && (
               <div
                 className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-xs font-semibold"
-                style={{ background: paymentBadgeColor.bg, color: paymentBadgeColor.text }}
+                style={{ background: "oklch(0.25 0.08 145)", color: "oklch(0.85 0.08 145)" }}
               >
                 <Shield size={11} />
-                {paymentBadgeLabel}
+                Paid via Authorize.net
               </div>
             )}
           </div>
 
           {/* Order details */}
           <div className="px-8 py-6 space-y-4">
-            {isLoading && (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 size={24} className="animate-spin" style={{ color: "var(--napoli-red)" }} />
-              </div>
-            )}
-
-            {isPending && (
-              <div className="rounded-lg p-4 border flex items-center gap-3"
-                style={{ background: "oklch(0.97 0.04 80)", borderColor: "oklch(0.82 0.015 80)" }}>
-                <Loader2 size={20} className="animate-spin shrink-0" style={{ color: "oklch(0.55 0.03 30)" }} />
-                <div>
-                  <p className="text-sm font-bold" style={{ color: "oklch(0.30 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
-                    Waiting for Payment Confirmation
-                  </p>
-                  <p className="text-xs" style={{ color: "oklch(0.50 0.03 30)" }}>
-                    Stripe is processing your payment. This page will update automatically.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {hasData && !isPending && (
+            {hasData && (
               <div
                 className="rounded-lg p-4 border"
                 style={{ background: "oklch(0.97 0.012 80)", borderColor: "oklch(0.88 0.015 80)" }}
               >
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  {activeSession?.customerName && (
+                  {customerName && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
                         Name
                       </p>
-                      <p style={{ color: "oklch(0.22 0.04 30)" }}>{activeSession.customerName}</p>
+                      <p style={{ color: "oklch(0.22 0.04 30)" }}>{customerName}</p>
                     </div>
                   )}
-                  {paymentIdDisplay && (
+                  {transactionId && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
-                        Payment ID
+                        Transaction ID
                       </p>
-                      <p className="text-xs truncate" style={{ color: "oklch(0.42 0.03 30)" }}>
-                        {paymentIdDisplay}
+                      <p className="text-xs truncate font-mono" style={{ color: "oklch(0.42 0.03 30)" }}>
+                        {transactionId}
                       </p>
                     </div>
                   )}
-                  {activeSession?.orderType && (
+                  {orderType && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
                         Order Type
                       </p>
-                      <p className="capitalize" style={{ color: "oklch(0.22 0.04 30)" }}>{activeSession.orderType}</p>
+                      <p className="capitalize" style={{ color: "oklch(0.22 0.04 30)" }}>{orderType}</p>
                     </div>
                   )}
-                  {activeSession?.amountTotal != null && (
+                  {amount && (
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
                         Total Paid
                       </p>
                       <p className="font-bold" style={{ color: "var(--napoli-red)" }}>
-                        ${Number(activeSession.amountTotal).toFixed(2)}
+                        ${Number(amount).toFixed(2)}
                       </p>
                     </div>
                   )}
+                  {itemCount && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
+                        Items
+                      </p>
+                      <p style={{ color: "oklch(0.22 0.04 30)" }}>{itemCount} item{Number(itemCount) !== 1 ? "s" : ""}</p>
+                    </div>
+                  )}
+                  {authCode && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
+                        Auth Code
+                      </p>
+                      <p className="text-xs font-mono" style={{ color: "oklch(0.42 0.03 30)" }}>{authCode}</p>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
-
-            {/* Delivery dispatching spinner */}
-            {isDelivery && isDispatching && (
-              <div
-                className="rounded-lg p-4 border flex items-center gap-3"
-                style={{ background: "oklch(0.96 0.015 220)", borderColor: "oklch(0.75 0.12 220)" }}
-              >
-                <Loader2 size={20} className="animate-spin shrink-0" style={{ color: "oklch(0.40 0.15 220)" }} />
-                <div>
-                  <p className="text-sm font-bold" style={{ color: "oklch(0.28 0.12 220)", fontFamily: "'Oswald', sans-serif" }}>
-                    Dispatching Your Courier…
-                  </p>
-                  <p className="text-xs" style={{ color: "oklch(0.45 0.10 220)" }}>
-                    Connecting with Uber Direct — this takes a few seconds
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Delivery Tracking Section */}
-            {hasDelivery && trackingUrl && (
-              <div
-                className="rounded-lg p-4 border"
-                style={{ background: "oklch(0.96 0.015 220)", borderColor: "oklch(0.75 0.12 220)" }}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                    style={{ background: "oklch(0.40 0.15 220)" }}>
-                    <Truck size={16} className="text-white" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold" style={{ color: "oklch(0.28 0.12 220)", fontFamily: "'Oswald', sans-serif" }}>
-                      Your Order is On Its Way!
-                    </p>
-                    <p className="text-xs" style={{ color: "oklch(0.45 0.10 220)" }}>
-                      Powered by Uber Direct · Real-time tracking available
-                    </p>
-                  </div>
-                </div>
-
-                {deliveryId && (
-                  <p className="text-xs mb-3" style={{ color: "oklch(0.50 0.08 220)" }}>
-                    Delivery ID: <span className="font-mono font-semibold">{deliveryId}</span>
-                  </p>
-                )}
-
-                <a
-                  href={trackingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98]"
-                  style={{ background: "oklch(0.40 0.15 220)", color: "white", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}
-                >
-                  <Truck size={15} />
-                  Track Your Delivery (Uber Direct)
-                  <ExternalLink size={13} />
-                </a>
               </div>
             )}
 
@@ -363,25 +157,6 @@ export default function OrderSuccess() {
                 </div>
               ))}
             </div>
-
-            {/* Order tracking link */}
-            {orderRef && !isPending && (
-              <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
-                <p className="text-xs font-semibold text-blue-800 mb-1">Track &amp; Manage Your Order</p>
-                <p className="text-xs text-blue-700 mb-3">
-                  Use this link to view your order status, cancel items, or cancel the entire order (up to 1 hour before your scheduled time).
-                </p>
-                <Link href={`/my-order/${orderRef}`}>
-                  <button
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded font-bold text-sm border border-blue-300 text-blue-700 hover:bg-blue-100 transition-colors"
-                    style={{ fontFamily: "'Oswald', sans-serif" }}
-                  >
-                    View Order {orderRef}
-                    <ArrowRight size={14} />
-                  </button>
-                </Link>
-              </div>
-            )}
 
             {/* Actions */}
             <div className="flex flex-col gap-2 pt-2">

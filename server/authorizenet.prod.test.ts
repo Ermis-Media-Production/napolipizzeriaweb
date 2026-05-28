@@ -41,7 +41,13 @@ describe("Authorize.net production credentials", () => {
 
       expect(response.ok).toBe(true);
 
+      // Authorize.net returns the messages directly at the root level
+      // (not wrapped in authenticateTestResponse)
       const data = (await response.json()) as {
+        messages?: {
+          resultCode?: string;
+          message?: Array<{ code?: string; text?: string }>;
+        };
         authenticateTestResponse?: {
           messages?: {
             resultCode?: string;
@@ -50,8 +56,12 @@ describe("Authorize.net production credentials", () => {
         };
       };
 
-      const resultCode = data?.authenticateTestResponse?.messages?.resultCode;
+      // Handle both response shapes
+      const resultCode =
+        data?.messages?.resultCode ??
+        data?.authenticateTestResponse?.messages?.resultCode;
       const msgText =
+        data?.messages?.message?.[0]?.text ??
         data?.authenticateTestResponse?.messages?.message?.[0]?.text ??
         "Unknown";
 
