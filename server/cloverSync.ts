@@ -4,13 +4,19 @@
  * Shared helper used by both the Clover Hosted Checkout webhook and any other
  * payment confirmation path to push a confirmed order to Clover POS.
  *
- * Printer label mapping (by item name keywords):
- *   Pizza     → pizzas, calzones, stromboli, chicago deep dish, sicilian
- *   Pizzeria  → pasta, lasagna, ravioli, manicotti, stuffed shells, cannelloni,
- *               ziti, fettuccine, tortellini, spaghetti, eggplant parm, specials
- *   Food      → appetizers, wings, chicken fingers, burgers, subs, wraps,
- *               salads, soups, sides, triple deckers, kids menu, lunch specials
- *   Bar/Drinks → beverages, desserts, soda, water, beer, wine, milkshake
+ * Kitchen Printer label mapping (only 2 kitchen printers are used):
+ *
+ *   Pizza  (Star TSP100, 192.168.192.11)
+ *     → All pizzas (regular, specialty, gluten-free, stuffed dough, sicilian,
+ *       calzone, stromboli, half & half, 4-topp combo, etc.)
+ *
+ *   Food   (Star TSP100, 192.168.192.12)
+ *     → Everything else: wings, appetizers, burgers, sandwiches, wraps,
+ *       salads, pasta, sides, children's menu, lunch specials, anytime specials,
+ *       desserts, drinks, beverages — ALL non-pizza items
+ *
+ * NOTE: "Pizzeria" (TM-U220, 192.168.192.8) is a RECEIPT printer, NOT a kitchen
+ *       printer. It must NEVER be used for order routing.
  *
  * Employee / Tender:
  *   - All web orders are assigned to the employee named "Online"
@@ -42,43 +48,44 @@ export interface CloverOrderResult {
 // ── Printer label mapping ──────────────────────────────────────────────────────
 
 /**
- * Clover printer label names as configured in the Napoli Pizzeria Clover account.
- * These must match EXACTLY the label names in Clover Dashboard → Printers.
+ * Only two kitchen printer labels are used:
+ *   "Pizza"  → pizza station (Star TSP100)
+ *   "Food"   → food/prep station (Star TSP100)
+ *
+ * "Pizzeria" is a receipt printer — DO NOT route orders to it.
  */
 export const CLOVER_PRINTER_LABELS = {
   PIZZA: "Pizza",
-  PIZZERIA: "Pizzeria",
   FOOD: "Food",
-  BAR_DRINKS: "Bar/Drinks",
 } as const;
 
 type PrinterLabel = (typeof CLOVER_PRINTER_LABELS)[keyof typeof CLOVER_PRINTER_LABELS];
 
-// Keywords that map item names to printer labels (case-insensitive)
+/**
+ * Keywords that identify pizza-station items (case-insensitive).
+ * Everything that doesn't match goes to the Food printer.
+ */
 const PIZZA_KEYWORDS = [
-  "pizza", "calzone", "stromboli", "chicago deep dish", "sicilian",
-  "stuffed chicago", "nutella pizza",
-];
-
-const PIZZERIA_KEYWORDS = [
-  "pasta", "lasagna", "ravioli", "manicotti", "stuffed shells", "cannelloni",
-  "ziti", "fettuccine", "tortellini", "spaghetti", "eggplant parm",
-  "chicken parmigiana", "baked ziti", "chicken alfredo", "shrimp",
-  "garlic bread", "bread sticks", "garlic balls", "bruschetta",
-  "meatball", "sausage", "marinara",
-];
-
-const BAR_DRINKS_KEYWORDS = [
-  "soda", "water", "beer", "wine", "drink", "beverage", "juice",
-  "milkshake", "iced tea", "root beer float", "perrier", "2 liter",
-  "dessert", "zeppoli", "cannoli", "cheesecake", "tiramisu", "brownie",
-  "eclair", "baklava", "red velvet", "chocolate cake", "carrot cake",
-  "custard", "gold peak",
+  "pizza",
+  "calzone",
+  "stromboli",
+  "chicago deep dish",
+  "sicilian",
+  "stuffed chicago",
+  "nutella pizza",
+  "half & half",
+  "4 topp combo",
+  "stuffed dough",
+  "gluten free pizza",
+  "gluten-free pizza",
 ];
 
 /**
- * Determine which Clover printer label an item should be routed to
- * based on its name.
+ * Determine which Clover kitchen printer label an item should be routed to.
+ *
+ * Rule:
+ *   - If the item name contains any PIZZA_KEYWORDS → "Pizza" printer
+ *   - Everything else (wings, burgers, pasta, drinks, desserts, sides, etc.) → "Food" printer
  */
 export function getPrinterLabel(itemName: string): PrinterLabel {
   const lower = itemName.toLowerCase();
@@ -86,12 +93,10 @@ export function getPrinterLabel(itemName: string): PrinterLabel {
   if (PIZZA_KEYWORDS.some((kw) => lower.includes(kw))) {
     return CLOVER_PRINTER_LABELS.PIZZA;
   }
-  if (BAR_DRINKS_KEYWORDS.some((kw) => lower.includes(kw))) {
-    return CLOVER_PRINTER_LABELS.BAR_DRINKS;
-  }
-  if (PIZZERIA_KEYWORDS.some((kw) => lower.includes(kw))) {
-    return CLOVER_PRINTER_LABELS.PIZZERIA;
-  }
+
+  // All other items go to Food: wings, appetizers, burgers, sandwiches, wraps,
+  // salads, pasta, sides, children's menu, lunch specials, anytime specials,
+  // desserts, drinks, beverages, etc.
   return CLOVER_PRINTER_LABELS.FOOD;
 }
 
@@ -172,7 +177,6 @@ async function getTableTenderId(): Promise<string | null> {
       res.data?.elements ?? [];
 
     // Try exact match first, then partial match
-    // Try multiple name variations: "Table", "Tables", "Tab", "Dine In", "Dine-In"
     const TABLE_PATTERNS = ["table", "tab", "dine in", "dine-in", "dinein"];
     const table =
       tenders.find((t) => t.label?.toLowerCase() === "table") ??
@@ -200,7 +204,9 @@ async function getTableTenderId(): Promise<string | null> {
  * Push a confirmed order to Clover POS.
  * - Assigns the "Online" employee to the order
  * - Sets the tender to "Table"
- * - Routes each line item to the correct kitchen printer via label
+ * - Routes each line item to the correct kitchen printer via label:
+ *     Pizza items  → "Pizza" printer (Star TSP100)
+ *     All others   → "Food" printer (Star TSP100)
  */
 export async function pushOrderToClover(input: CloverOrderInput): Promise<CloverOrderResult> {
   if (!CLOVER_ENV.apiToken || !CLOVER_ENV.merchantId) {
@@ -262,6 +268,7 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
   const orderId: string = orderRes.data.id;
 
   // Step 2: Add all line items with printer label assignments
+  // Pizza items → "Pizza" printer | Everything else → "Food" printer
   const lineItems = input.items.map((item) => {
     const printerLabel = getPrinterLabel(item.name);
     return {
@@ -300,10 +307,14 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     }
   }
 
+  // Log label routing for debugging
+  const labelSummary = input.items
+    .map((i) => `${i.name} → ${getPrinterLabel(i.name)}`)
+    .join(", ");
   console.log(
     `[Clover] Order ${orderId} created for ${input.customerName ?? "unknown"} (${orderTypeLabel}). ` +
     `Employee: ${onlineEmployeeId ?? "none"} | Tender: ${tableTenderId ?? "none"} | ` +
-    `Labels: ${Array.from(new Set(input.items.map((i) => getPrinterLabel(i.name)))).join(", ")}`
+    `Routing: ${labelSummary}`
   );
 
   // Fire-and-forget owner notification

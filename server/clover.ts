@@ -109,6 +109,10 @@ export const cloverRouter = router({
   /**
    * Preview which Clover kitchen printer each item name would be routed to.
    * Useful for admins to verify routing before a real order is placed.
+   *
+   * Only two kitchen printers are used:
+   *   "Pizza" → pizza items
+   *   "Food"  → everything else (wings, burgers, pasta, drinks, desserts, etc.)
    */
   previewPrinterRouting: publicProcedure
     .input(
@@ -122,12 +126,10 @@ export const cloverRouter = router({
         printer: getPrinterLabel(item.name),
       }));
 
-      // Group by printer for a summary view
+      // Group by printer for a summary view (only Pizza and Food kitchen printers)
       const summary: Record<string, string[]> = {
         [CLOVER_PRINTER_LABELS.PIZZA]: [],
-        [CLOVER_PRINTER_LABELS.PIZZERIA]: [],
         [CLOVER_PRINTER_LABELS.FOOD]: [],
-        [CLOVER_PRINTER_LABELS.BAR_DRINKS]: [],
       };
       for (const r of routing) {
         summary[r.printer].push(r.name);

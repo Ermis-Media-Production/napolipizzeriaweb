@@ -368,9 +368,9 @@
 - [x] TypeScript: 0 errors
 
 ## 3 Next-Step Improvements
-- [ ] Authorize.net production vitest — automated charge test with sandbox card
-- [ ] Clover printer routing verification — admin endpoint to test item→printer mapping
-- [ ] Authorize.net webhook endpoint — receive transaction approved/declined notifications at /api/authorizenet/webhook
+- [x] Authorize.net production vitest — automated charge test with sandbox card
+- [x] Clover printer routing verification — admin endpoint to test item→printer mapping
+- [x] Authorize.net webhook endpoint — receive transaction approved/declined notifications at /api/authorizenet/webhook
 
 ## Authorize.net + Clover 3-Improvement Round
 - [x] Clover printer routing verification endpoint (clover.previewPrinterRouting) — preview which printer each item name routes to
