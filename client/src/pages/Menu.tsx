@@ -29,6 +29,7 @@ import {
   ANYTIME_SPECIALS, SOUPS, WRAPS, SIDES, CHICAGO_DEEP_DISH, SICILIAN_PIZZA,
 } from "@/lib/napoliData";
 import { getMenuPhoto, getBurgerPhoto } from "@/lib/napoliPhotos";
+import { NutritionBadges } from "@/components/NutritionBadges";
 
 function SectionHeader({ id, title, emoji, photo }: { id: string; title: string; emoji: string; photo?: string }) {
   if (photo) {
@@ -137,6 +138,7 @@ function MultiSizeItemRow({ name, desc, prices, highlight, category }: {
       <div className="flex-1 min-w-0">
         <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{name}</span>
         {desc && <p className="text-xs napoli-body mt-0.5 leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>{desc}</p>}
+        <NutritionBadges itemName={name} />
       </div>
       <div className="flex gap-2 shrink-0 flex-wrap justify-end">
         {prices.map((p) => {
@@ -207,6 +209,7 @@ function WingsTypeCard({
       {/* Description */}
       <div className="px-3 pt-2 pb-1">
         <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{description}</p>
+        <NutritionBadges itemName={label} compact />
       </div>
       {/* Price rows */}
       <div className="flex-1 divide-y" style={{ borderColor: "oklch(0.93 0.012 80)" }}>
@@ -267,6 +270,7 @@ function BurgerRow({
         {item.desc && (
           <p className="text-xs napoli-body mt-0.5 leading-snug" style={{ color: "oklch(0.52 0.03 30)" }}>{item.desc}</p>
         )}
+        <NutritionBadges itemName={item.name} compact />
         <div className="flex gap-1.5 mt-1.5">
           {halfPrice && (
             <span className="text-xs font-medium" style={{ color: "oklch(0.52 0.03 30)" }}>½ lb {item.half}</span>
@@ -313,6 +317,7 @@ function AnytimeSpecialRow({
       </span>
       <div className="flex-1 min-w-0">
         <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
+        <NutritionBadges itemName={item.name} compact />
       </div>
       <span className="napoli-price text-sm shrink-0" style={{ color: "var(--napoli-red)" }}>{item.price}</span>
       <button
@@ -444,6 +449,7 @@ function ItemRow({ name, desc, price, highlight, category }: { name: string; des
       <div className="flex-1 min-w-0">
         <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{name}</span>
         {desc && <p className="text-xs napoli-body mt-0.5 leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>{desc}</p>}
+        <NutritionBadges itemName={name} />
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {price && (
@@ -545,6 +551,7 @@ function AppetizersItemRow({
         {desc && (
           <p className="text-xs napoli-body mt-0.5 leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>{desc}</p>
         )}
+        <NutritionBadges itemName={name} />
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {price && (
@@ -615,6 +622,7 @@ function KidsMenuCard({
       {/* Info */}
       <div className="flex flex-col gap-2 p-3 flex-1">
         <span className="text-sm font-semibold napoli-body leading-tight" style={{ color: "oklch(0.28 0.12 240)" }}>{item}</span>
+        <NutritionBadges itemName={item} compact />
         {/* Sauce selector */}
         {hasSauceChoice && (
           <div className="flex gap-1.5">
@@ -1143,6 +1151,7 @@ export default function Menu() {
                     <div>
                       <span className="text-sm napoli-body font-bold" style={{ color: "var(--napoli-dark)" }}>{pizza.name}</span>
                       <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{pizza.desc}</p>
+                      <NutritionBadges itemName={pizza.name} compact />
                     </div>
                   </div>
                   <button
