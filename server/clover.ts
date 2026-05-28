@@ -16,7 +16,7 @@ import axios from "axios";
 import { z } from "zod";
 import { CLOVER_ENV } from "./_core/env";
 import { publicProcedure, router } from "./_core/trpc";
-import { pushOrderToClover } from "./cloverSync";
+import { pushOrderToClover, getPrinterLabel, CLOVER_PRINTER_LABELS } from "./cloverSync";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -104,6 +104,36 @@ export const cloverRouter = router({
           unitQty: number;
         }>,
       };
+    }),
+
+  /**
+   * Preview which Clover kitchen printer each item name would be routed to.
+   * Useful for admins to verify routing before a real order is placed.
+   */
+  previewPrinterRouting: publicProcedure
+    .input(
+      z.object({
+        items: z.array(z.object({ name: z.string().min(1) })).min(1),
+      })
+    )
+    .query(({ input }) => {
+      const routing = input.items.map((item) => ({
+        name: item.name,
+        printer: getPrinterLabel(item.name),
+      }));
+
+      // Group by printer for a summary view
+      const summary: Record<string, string[]> = {
+        [CLOVER_PRINTER_LABELS.PIZZA]: [],
+        [CLOVER_PRINTER_LABELS.PIZZERIA]: [],
+        [CLOVER_PRINTER_LABELS.FOOD]: [],
+        [CLOVER_PRINTER_LABELS.BAR_DRINKS]: [],
+      };
+      for (const r of routing) {
+        summary[r.printer].push(r.name);
+      }
+
+      return { routing, summary };
     }),
 
   /**

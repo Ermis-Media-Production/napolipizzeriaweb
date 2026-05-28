@@ -366,3 +366,13 @@
 - [x] Rewrite OrderSuccess to display Authorize.net transaction details (transactionId, authCode, amount, orderType)
 - [x] Validate production credentials via Authorize.net API (returns Ok)
 - [x] TypeScript: 0 errors
+
+## 3 Next-Step Improvements
+- [ ] Authorize.net production vitest — automated charge test with sandbox card
+- [ ] Clover printer routing verification — admin endpoint to test item→printer mapping
+- [ ] Authorize.net webhook endpoint — receive transaction approved/declined notifications at /api/authorizenet/webhook
+
+## Authorize.net + Clover 3-Improvement Round
+- [x] Clover printer routing verification endpoint (clover.previewPrinterRouting) — preview which printer each item name routes to
+- [x] Authorize.net webhook endpoint at /api/authorizenet/webhook — HMAC-SHA512 signature verification, idempotency guard, owner notifications for approved/voided/declined events
+- [x] Authorize.net prod test updated to handle both response shapes from the API

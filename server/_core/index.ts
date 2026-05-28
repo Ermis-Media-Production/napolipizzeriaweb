@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { handleStripeWebhook } from "../stripe";
+import { handleAuthorizeNetWebhook } from "../authorizenetWebhook";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -41,6 +42,16 @@ async function startServer() {
       // Attach raw body for signature verification
       (req as express.Request & { rawBody?: Buffer }).rawBody = req.body as Buffer;
       handleStripeWebhook(req, res);
+    }
+  );
+
+  // Authorize.net webhook — also needs raw body for HMAC-SHA512 signature verification
+  app.post(
+    "/api/authorizenet/webhook",
+    express.raw({ type: "application/json" }),
+    (req, res) => {
+      (req as express.Request & { rawBody?: Buffer }).rawBody = req.body as Buffer;
+      handleAuthorizeNetWebhook(req, res);
     }
   );
 
