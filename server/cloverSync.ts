@@ -281,8 +281,12 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     };
     // Attach modifier/customization details as a note on the line item
     // so they appear on both the kitchen receipt and the Clover order view.
+    // Each modifier is placed on its own line for easy reading by kitchen staff.
     if (item.description && item.description.trim()) {
-      lineItem.note = item.description.trim();
+      // Replace " · " separator (used in the frontend) with newlines
+      lineItem.note = item.description
+        .trim()
+        .replace(/ · /g, "\n");
     }
     return lineItem;
   });
