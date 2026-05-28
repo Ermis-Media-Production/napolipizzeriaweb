@@ -11,6 +11,7 @@ import NapoliFooter from "@/components/NapoliFooter";
 import { RESTAURANT_INFO, LUNCH_SPECIALS, PIZZA_SPECIALS, APPETIZERS, ANYTIME_SPECIALS } from "@/lib/napoliData";
 import SpecialCustomizerModal from "@/components/SpecialCustomizerModal";
 import LunchTimerBadge from "@/components/LunchTimerBadge";
+import PickUpSpecialModal from "@/components/PickUpSpecialModal";
 
 const handleOrder = () => toast.info("Order online at napolipizzerianorthlasvegas.com or call 725-204-0379!");
 
@@ -428,9 +429,12 @@ function DailySpecialBanner() {
 }
 
 export default function Home() {
+  const [pickupModalOpen, setPickupModalOpen] = useState(false);
+
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">
       <NapoliNavbar />
+      <PickUpSpecialModal open={pickupModalOpen} onClose={() => setPickupModalOpen(false)} />
 
       {/* ── DAILY SPECIAL BANNER ─────────────────────────────── */}
       <DailySpecialBanner />
@@ -526,14 +530,13 @@ export default function Home() {
               <div className="napoli-price text-2xl" style={{ color: "var(--napoli-gold)" }}>
                 {RESTAURANT_INFO.pickupSpecial.price}
               </div>
-              <Link href="/menu">
-                <button
+              <button
+                  onClick={() => setPickupModalOpen(true)}
                   className="flex items-center gap-1 px-3 py-2 rounded text-xs font-bold napoli-label transition-all active:scale-95"
                   style={{ background: "var(--napoli-red)", color: "white" }}
                 >
                   Order Now <ChevronRight size={13} />
                 </button>
-              </Link>
             </div>
           </div>
         </div>
@@ -655,23 +658,22 @@ export default function Home() {
                 />
               </div>
               {/* Floating badge */}
-              <Link href="/menu">
-                <div
-                  className="absolute -bottom-4 -left-4 px-4 py-3 rounded shadow-lg border-2 cursor-pointer transition-opacity hover:opacity-90"
-                  style={{
-                    background: "var(--napoli-red)",
-                    borderColor: "var(--napoli-gold)",
-                    color: "white",
-                  }}
-                >
-                  <div className="napoli-label text-xs" style={{ color: "var(--napoli-gold)" }}>Pick Up Special</div>
-                  <div className="napoli-price text-xl">$12.99</div>
-                  <div className="text-xs napoli-body opacity-90">16" 1 Topping</div>
-                  <div className="flex items-center gap-1 mt-1 text-xs font-bold napoli-label">
-                    Order Now <ChevronRight size={11} />
-                  </div>
+              <button
+                onClick={() => setPickupModalOpen(true)}
+                className="absolute -bottom-4 -left-4 px-4 py-3 rounded shadow-lg border-2 cursor-pointer transition-opacity hover:opacity-90 text-left"
+                style={{
+                  background: "var(--napoli-red)",
+                  borderColor: "var(--napoli-gold)",
+                  color: "white",
+                }}
+              >
+                <div className="napoli-label text-xs" style={{ color: "var(--napoli-gold)" }}>Pick Up Special</div>
+                <div className="napoli-price text-xl">$12.99</div>
+                <div className="text-xs napoli-body opacity-90">16" 1 Topping</div>
+                <div className="flex items-center gap-1 mt-1 text-xs font-bold napoli-label">
+                  Order Now <ChevronRight size={11} />
                 </div>
-              </Link>
+              </button>
             </div>
           </div>
         </div>

@@ -10,6 +10,7 @@ import { ANYTIME_SPECIALS, LUNCH_SPECIALS, RESTAURANT_INFO } from "@/lib/napoliD
 import LunchTimerBadge from "@/components/LunchTimerBadge";
 import SpecialCustomizerModal from "@/components/SpecialCustomizerModal";
 import LunchCustomizerModal, { type LunchItem } from "@/components/LunchCustomizerModal";
+import PickUpSpecialModal from "@/components/PickUpSpecialModal";
 import { useCart } from "@/contexts/CartContext";
 import { useLunchTimer } from "@/hooks/useLunchTimer";
 import { toast } from "sonner";
@@ -25,6 +26,7 @@ const NEEDS_CUSTOMIZER = new Set([2, 3, 4, 6, 9, 13, 16, 19, 24]);
 export default function Specials() {
   const [specialNum, setSpecialNum] = useState<number | null>(null);
   const [lunchItem, setLunchItem] = useState<LunchItem | null>(null);
+  const [pickupModalOpen, setPickupModalOpen] = useState(false);
   const { addItem, openCart } = useCart();
   const lunchTimer = useLunchTimer();
   const isLunchOpen = lunchTimer.isOpen;
@@ -68,6 +70,7 @@ export default function Specials() {
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">
       <NapoliNavbar />
+      <PickUpSpecialModal open={pickupModalOpen} onClose={() => setPickupModalOpen(false)} />
 
       {/* Header */}
       <div className="py-10 border-b" style={{ background: "var(--napoli-dark)", borderColor: "oklch(0.28 0.04 30)" }}>
@@ -92,11 +95,13 @@ export default function Specials() {
           </div>
           <div className="text-center">
             <div className="napoli-price text-5xl" style={{ color: "var(--napoli-red)" }}>{RESTAURANT_INFO.pickupSpecial.price}</div>
-            <Link href="/menu">
-              <button className="napoli-btn-red flex items-center gap-2 px-6 py-3 rounded text-sm mt-3">
-                Order Now <ArrowRight size={15} />
-              </button>
-            </Link>
+            <button
+              onClick={() => setPickupModalOpen(true)}
+              className="napoli-btn-red flex items-center gap-2 px-6 py-3 rounded text-sm mt-3"
+              style={{ background: "var(--napoli-red)", color: "white" }}
+            >
+              Order Now <ArrowRight size={15} />
+            </button>
           </div>
         </div>
 

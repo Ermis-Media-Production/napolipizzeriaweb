@@ -1,16 +1,20 @@
 /**
  * Napoli Pizzeria — Order Page
  */
+import { useState } from "react";
 import { Phone, Globe, MapPin, Clock, Truck, UtensilsCrossed, ShoppingBag, ArrowRight } from "lucide-react";
-import { Link } from "wouter";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
 import { RESTAURANT_INFO } from "@/lib/napoliData";
+import PickUpSpecialModal from "@/components/PickUpSpecialModal";
 
 export default function Order() {
+  const [pickupModalOpen, setPickupModalOpen] = useState(false);
+
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">
       <NapoliNavbar />
+      <PickUpSpecialModal open={pickupModalOpen} onClose={() => setPickupModalOpen(false)} />
 
       <div className="py-10 border-b" style={{ background: "var(--napoli-dark)", borderColor: "oklch(0.28 0.04 30)" }}>
         <div className="container text-center">
@@ -34,14 +38,13 @@ export default function Order() {
             <div className="napoli-price text-4xl mb-3" style={{ color: "var(--napoli-red)" }}>
               {RESTAURANT_INFO.pickupSpecial.price}
             </div>
-            <Link href="/menu">
-              <button
-                className="napoli-btn-red inline-flex items-center gap-2 px-6 py-3 rounded text-sm font-bold"
-                style={{ background: "var(--napoli-red)", color: "white" }}
-              >
-                Order Now <ArrowRight size={15} />
-              </button>
-            </Link>
+            <button
+              onClick={() => setPickupModalOpen(true)}
+              className="napoli-btn-red inline-flex items-center gap-2 px-6 py-3 rounded text-sm font-bold"
+              style={{ background: "var(--napoli-red)", color: "white" }}
+            >
+              Order Now <ArrowRight size={15} />
+            </button>
           </div>
 
           {/* Order options */}
