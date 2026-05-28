@@ -19,7 +19,7 @@ export const MENU_PHOTOS: Record<string, string> = {
   "Garlic Balls w/ Cheese (20)":    "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/napoli-garlic-balls-6a5y9k6vhDLNtrAefSjwL2.webp",
   "Breaded Mushrooms (12)":         S + "breaded_mushrooms_12pc_8331cf0e.webp",
   "Fried Ravioli (8)":              S + "fried_ravioli_2a7da3d8.webp",
-  "Zucchini Sticks (12)":           C + "QKCA3T979YYJA.jpeg",
+  "Zucchini Sticks (12)":           S + "zucchini_sticks_15792dc7.png",
   "Jalapeño Poppers (6)":           S + "jalapeno-poppers-golden-crispy-breaded-jalapeno-pe_d03ab464.jpeg",
   "Cheese Quesadilla":              "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/napoli-cheese-quesadilla-CvtmLtSu8mUpoq8aXLgnrZ.webp",
   "Chili Cheese Fries":             "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/napoli-chili-cheese-fries-PC49xr4AL3qD6voTzYFoZk.webp",
