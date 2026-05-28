@@ -1,7 +1,7 @@
 /**
  * Napoli Pizzeria — Specials Page
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { ArrowRight, Star, Plus, ShoppingCart } from "lucide-react";
 import NapoliNavbar from "@/components/NapoliNavbar";
@@ -28,6 +28,21 @@ export default function Specials() {
   const { addItem, openCart } = useCart();
   const lunchTimer = useLunchTimer();
   const isLunchOpen = lunchTimer.isOpen;
+
+  // Scroll to hash anchor on mount (e.g. /specials#anytime-specials)
+  useEffect(() => {
+    const hash = window.location.hash.replace("#", "");
+    if (!hash) return;
+    const scrollToHash = () => {
+      const el = document.getElementById(hash);
+      if (!el) return;
+      const navbarHeight = 90;
+      const top = el.getBoundingClientRect().top + window.scrollY - navbarHeight;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    };
+    setTimeout(scrollToHash, 200);
+    setTimeout(scrollToHash, 700);
+  }, []);
 
   const handleLunchAdd = (item: LunchItem) => {
     if (!isLunchOpen) return;
