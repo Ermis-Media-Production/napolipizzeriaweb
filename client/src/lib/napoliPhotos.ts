@@ -120,21 +120,24 @@ export const MENU_PHOTOS: Record<string, string> = {
   "Beef or Chicken Philly":         S + "napoli-beef-chicken-philly_6d157067.jpg",
 
   // ── BURGERS ──────────────────────────────────────────────────
-  "Hamburger":                      C + "G466MHHDNVMNM.jpeg?v=1777000350505",
-  "Cheeseburger":                   C + "NPJHV2VPR08FG.jpeg",
-  "Bacon Burger":                   C + "WDYBEQZZ2YC7E.jpeg?v=1777000035159",
-  "Chili Cheese":                   C + "45H36H56FKJ2R.jpeg?v=1777000151004",
-  "Blue Beef & Cheese":             S + "napoli-blue-beef-cheese_7a7a783c.jpg",
-  "Crispy Chicken Burger":          C + "W3NQFJC3YNK1E.jpeg?v=1777000296422",
-  "Bacon Cheeseburger":             C + "VBB9YSZFJRYN0.jpeg?v=1777000112473",
-  "Napoli's 1000 Island":           C + "T7W6XFNBS758T.jpeg?v=1776997642425",
-  "Mexican Style Burger":           C + "NRDHHY0RA7ETM.jpeg?v=1779394436674",
-  "Napoli Cheeseburger":            C + "CZRF18505G1SJ.jpeg?v=1777000498759",
-  "Sunrise":                        S + "napoli-sunrise-burger_f988d523.jpg",
-  "Greek Burger":                   C + "E91XF0Y5YFVJC.jpeg",
-  "Pastrami":                       C + "Y937364D0FP24.jpeg",
-  "Texas":                          S + "napoli-texas-burger_25a3ce22.jpg",
-  "Southwestern":                   C + "07MP7NNRHKKGR.jpeg",
+  "Hamburger":                      S + "napoli_hamburger_regular_no_cheese_621b8d14.webp",
+  "Cheeseburger":                   S + "napoli_cheeseburger_88e6c254.webp",
+  "Bacon Burger":                   S + "napoli_bacon_d87bd55c.webp",
+  "Chili Cheese":                   S + "napoli_chili_cheese_84760a59.webp",
+  "Blue Beef & Cheese":             S + "napoli_blue_cheese_74d66a5c.webp",
+  "Crispy Chicken Burger":          S + "napoli_crispy_chicken_9569e18e.webp",
+  "Bacon Cheeseburger":             S + "napoli_bacon_cheese_1dfbb5a1.webp",
+  "Napoli's 1000 Island":           S + "napoli_1000_island_4fb04ca8.webp",
+  "Mexican Style Burger":           S + "napoli_mexican_style_34b6a694.webp",
+  "Napoli Cheeseburger":            S + "napoli_cheeseburger_88e6c254.webp",
+  "Sunrise":                        S + "napoli_hamburger_regular_807b7b42.webp",
+  "Greek Burger":                   S + "napoli_greek_dbca63bc.webp",
+  // Burger-specific overrides (same name as pizza items — resolved in getBurgerPhoto)
+  "Burger:Mexican Style":           S + "napoli_mexican_style_34b6a694.webp",
+  "Burger:Greek":                   S + "napoli_greek_dbca63bc.webp",
+  "Pastrami":                       S + "napoli_pastrami_f47ba9ba.webp",
+  "Texas":                          S + "napoli_texas_2c41a252.webp",
+  "Southwestern":                   S + "napoli_southwestern_f96fb67e.webp",
 
   // ── TRIPLE DECKERS ───────────────────────────────────────────
   "Turkey":                         C + "21WHCK9MDQENT.jpeg",
@@ -181,4 +184,12 @@ export const MENU_PHOTOS: Record<string, string> = {
  */
 export function getMenuPhoto(name: string): string | undefined {
   return MENU_PHOTOS[name];
+}
+
+/**
+ * Get a photo URL specifically for a burger item.
+ * Uses burger-prefixed keys to avoid conflicts with pizza items that share names (e.g. Greek, Mexican Style).
+ */
+export function getBurgerPhoto(name: string): string | undefined {
+  return MENU_PHOTOS[`Burger:${name}`] ?? MENU_PHOTOS[name];
 }

@@ -28,7 +28,7 @@ import {
   BURGERS, TRIPLE_DECKERS, SALADS, DESSERTS, CHILDRENS_MENU, BEVERAGES,
   ANYTIME_SPECIALS, SOUPS, WRAPS, SIDES, CHICAGO_DEEP_DISH, SICILIAN_PIZZA,
 } from "@/lib/napoliData";
-import { getMenuPhoto } from "@/lib/napoliPhotos";
+import { getMenuPhoto, getBurgerPhoto } from "@/lib/napoliPhotos";
 
 function SectionHeader({ id, title, emoji, photo }: { id: string; title: string; emoji: string; photo?: string }) {
   if (photo) {
@@ -241,46 +241,65 @@ function BurgerRow({
   item: { name: string; desc?: string; half: string; single: string };
   onOpenModal: (burgerName: string, size: "half" | "single") => void;
 }) {
-  const photo = getMenuPhoto(item.name);
+  const photo = getBurgerPhoto(item.name);
 
   const halfPrice = parsePrice(item.half);
   const singlePrice = parsePrice(item.single);
 
   return (
-    <div
-      className="napoli-menu-item flex items-center gap-3 px-4 py-3 border-b last:border-b-0"
-      style={{ borderColor: "oklch(0.93 0.012 80)" }}
-    >
-      {photo && (
-        <div className="shrink-0 rounded overflow-hidden" style={{ width: 64, height: 64 }}>
-          <img src={photo} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
-        </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <span className="napoli-body text-sm font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
-        {item.desc && <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{item.desc}</p>}
+    <div className="flex flex-col" style={{ borderBottom: "1px solid oklch(0.93 0.012 80)" }}>
+      {/* Photo */}
+      <div className="relative overflow-hidden" style={{ height: "180px" }}>
+        {photo ? (
+          <img
+            src={photo}
+            alt={item.name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            style={{ transition: "transform 0.4s cubic-bezier(0.23,1,0.32,1)" }}
+            onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.05)")}
+            onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center" style={{ background: "oklch(0.95 0.012 80)" }}>
+            <span style={{ fontSize: 48 }}>🍔</span>
+          </div>
+        )}
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.60) 0%, transparent 55%)" }} />
+        <span
+          className="absolute bottom-3 left-4 text-white font-bold text-base"
+          style={{ fontFamily: "'Oswald', sans-serif", textShadow: "0 1px 4px rgba(0,0,0,0.7)", maxWidth: "calc(100% - 2rem)" }}
+        >
+          {item.name}
+        </span>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {halfPrice && (
-          <button
-            onClick={() => onOpenModal(item.name, "half")}
-            className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
-            style={{ background: "oklch(0.97 0.012 80)", color: "var(--napoli-red)", border: "1px solid oklch(0.88 0.015 80)" }}
-          >
-            <Plus size={11} />
-            <span>½ lb {item.half}</span>
-          </button>
+      {/* Content */}
+      <div className="flex flex-col flex-1 px-4 py-3 gap-2">
+        {item.desc && (
+          <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{item.desc}</p>
         )}
-        {singlePrice && (
-          <button
-            onClick={() => onOpenModal(item.name, "single")}
-            className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
-            style={{ background: "var(--napoli-red)", color: "white" }}
-          >
-            <Plus size={11} />
-            <span>1 lb {item.single}</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2 mt-auto">
+          {halfPrice && (
+            <button
+              onClick={() => onOpenModal(item.name, "half")}
+              className="flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
+              style={{ background: "oklch(0.97 0.012 80)", color: "var(--napoli-red)", border: "1px solid oklch(0.88 0.015 80)" }}
+            >
+              <Plus size={11} />
+              <span>½ lb {item.half}</span>
+            </button>
+          )}
+          {singlePrice && (
+            <button
+              onClick={() => onOpenModal(item.name, "single")}
+              className="flex-1 flex items-center justify-center gap-1 px-2 py-2 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
+              style={{ background: "var(--napoli-red)", color: "white" }}
+            >
+              <Plus size={11} />
+              <span>1 lb {item.single}</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1420,16 +1439,18 @@ export default function Menu() {
               <span className="text-xs px-2 py-0.5 rounded border napoli-body" style={{ borderColor: "oklch(0.88 0.015 80)", color: "oklch(0.42 0.03 30)" }}>🥑 Add Avocado $1</span>
             </div>
           </div>
-          {BURGERS.items.map((item) => (
-            <BurgerRow
-              key={item.name}
-              item={item}
-              onOpenModal={(burgerName, size) => {
-                setBurgerModalKey(k => k + 1);
-                setBurgerTrigger({ open: true, preselectedBurger: burgerName, preselectedSize: size });
-              }}
-            />
-          ))}
+          <div className="grid grid-cols-2 sm:grid-cols-3">
+            {BURGERS.items.map((item) => (
+              <BurgerRow
+                key={item.name}
+                item={item}
+                onOpenModal={(burgerName, size) => {
+                  setBurgerModalKey(k => k + 1);
+                  setBurgerTrigger({ open: true, preselectedBurger: burgerName, preselectedSize: size });
+                }}
+              />
+            ))}
+          </div>
         </MenuCard>
 
         {/* ── SALADS ─────────────────────────────────────────── */}
