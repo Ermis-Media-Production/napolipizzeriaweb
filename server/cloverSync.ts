@@ -297,7 +297,22 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     { headers: cloverHeaders() }
   );
 
-  // Step 3: Add a "Table" tender payment to the order so it appears under Table
+  // Step 3: Fire the print event so Clover routes items to kitchen printers
+  // This is what sets printed=true on line items and triggers physical printing.
+  try {
+    await axios.post(
+      cloverUrl(`/print_event`),
+      { orderRef: { id: orderId } },
+      { headers: cloverHeaders() }
+    );
+    console.log(`[Clover] Print event fired for order ${orderId}`);
+  } catch (err: unknown) {
+    // Non-fatal — order is still visible in Clover, just may not auto-print
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[Clover] Failed to fire print event for order ${orderId}:`, msg);
+  }
+
+  // Step 4: Add a "Table" tender payment to the order so it appears under Table
   if (tableTenderId) {
     try {
       await axios.post(
