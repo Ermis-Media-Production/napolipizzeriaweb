@@ -168,71 +168,67 @@ function MultiSizeItemRow({ name, desc, prices, highlight, category }: {
   );
 }
 
-function WingsRow({
-  qty,
-  boneIn,
-  boneless,
-  fingers,
-  onSelect,
-}: {
+// WingsRow kept for compatibility but replaced inline in the wings section below
+function WingsRow(_props: {
   qty: string;
   boneIn: { qty: string; price: string; addFries: string };
   boneless: { qty: string; price: string; addFries: string };
   fingers: { qty: string; price: string; addFries: string };
   onSelect: (sel: WingsSelection) => void;
-}) {
-  const boneInPrice = parsePrice(boneIn.price);
-  const bonelessPrice = parsePrice(boneless.price);
-  const fingersPrice = parsePrice(fingers.price);
-  const friesAddonPrice = parsePrice(boneIn.addFries) ?? 2;
+}) { return null; }
 
+function WingsTypeCard({
+  type,
+  label,
+  description,
+  photo,
+  accentColor,
+  rows,
+  onSelect,
+}: {
+  type: WingsSelection["type"];
+  label: string;
+  description: string;
+  photo: string;
+  accentColor: string;
+  rows: { qty: string; price: string; addFries: string }[];
+  onSelect: (sel: WingsSelection) => void;
+}) {
   return (
-    <div
-      className="napoli-menu-item flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-4 border-b last:border-b-0"
-      style={{ borderColor: "oklch(0.93 0.012 80)" }}
-    >
-      <div className="w-12 shrink-0">
-        <span
-          className="inline-flex items-center justify-center px-2 py-1 rounded text-xs font-bold napoli-price"
-          style={{ background: "oklch(0.97 0.012 80)", color: "var(--napoli-dark)", border: "1px solid oklch(0.88 0.015 80)" }}
-        >
-          {qty}
-        </span>
+    <div className="flex flex-col" style={{ border: `1px solid oklch(0.88 0.015 80)`, borderRadius: "10px", overflow: "hidden", background: "white" }}>
+      {/* Photo header */}
+      <div className="relative" style={{ height: "120px" }}>
+        <img src={photo} alt={label} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+        <div className="absolute inset-0" style={{ background: `linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.6) 100%)` }} />
+        <div className="absolute bottom-0 left-0 px-3 pb-2">
+          <span className="text-white font-bold text-sm napoli-label tracking-wide drop-shadow">{label}</span>
+        </div>
       </div>
-      <div className="flex flex-wrap gap-2 flex-1">
-        {boneInPrice && (
-          <button
-            onClick={() => onSelect({ type: "Bone-In", qty: boneIn.qty, basePrice: boneInPrice, friesAddonPrice })}
-            className="flex items-center gap-1.5 px-3 py-2 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
-            style={{ background: "var(--napoli-red)", color: "white" }}
-          >
-            <Plus size={11} />
-            <span>Bone-In {boneIn.price}</span>
-          </button>
-        )}
-        {bonelessPrice && (
-          <button
-            onClick={() => onSelect({ type: "Boneless", qty: boneless.qty, basePrice: bonelessPrice, friesAddonPrice })}
-            className="flex items-center gap-1.5 px-3 py-2 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
-            style={{ background: "oklch(0.97 0.012 80)", color: "var(--napoli-red)", border: "1px solid oklch(0.88 0.015 80)" }}
-          >
-            <Plus size={11} />
-            <span>Boneless {boneless.price}</span>
-          </button>
-        )}
-        {fingersPrice && (
-          <button
-            onClick={() => onSelect({ type: "Chicken Fingers", qty: fingers.qty, basePrice: fingersPrice, friesAddonPrice })}
-            className="flex items-center gap-1.5 px-3 py-2 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
-            style={{ background: "oklch(0.26 0.10 145)", color: "white" }}
-          >
-            <Plus size={11} />
-            <span>Fingers {fingers.price}</span>
-          </button>
-        )}
+      {/* Description */}
+      <div className="px-3 pt-2 pb-1">
+        <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{description}</p>
       </div>
-      <div className="text-xs napoli-body shrink-0" style={{ color: "oklch(0.62 0.03 30)" }}>
-        +Fries {boneIn.addFries}
+      {/* Price rows */}
+      <div className="flex-1 divide-y" style={{ borderColor: "oklch(0.93 0.012 80)" }}>
+        {rows.map((row) => {
+          const price = parsePrice(row.price);
+          const friesAddon = parsePrice(row.addFries) ?? 2;
+          return (
+            <div key={row.qty} className="flex items-center justify-between px-3 py-2">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-10 h-6 rounded text-xs font-bold napoli-price" style={{ background: "oklch(0.97 0.012 80)", color: "var(--napoli-dark)", border: "1px solid oklch(0.88 0.015 80)" }}>{row.qty}</span>
+                <span className="text-xs napoli-body" style={{ color: "oklch(0.55 0.03 30)" }}>+Fries {row.addFries}</span>
+              </div>
+              <button
+                onClick={() => price && onSelect({ type, qty: row.qty, basePrice: price, friesAddonPrice: friesAddon })}
+                className="flex items-center gap-1 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
+                style={{ background: accentColor, color: "white", fontFamily: "'Oswald', sans-serif" }}
+              >
+                <Plus size={11} /> {row.price}
+              </button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1111,34 +1107,52 @@ export default function Menu() {
         {/* ── WINGS ──────────────────────────────────────────── */}
         <SectionHeader id="wings" title="Wings, Wing Dings & Fingers" emoji="🍗" photo="/manus-storage/napoli-wings_5305444c.jpg" />
         <MenuCard>
+          {/* Note + Flavors */}
           <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
-            <p className="text-xs napoli-body mb-1" style={{ color: "oklch(0.52 0.03 30)" }}>{WINGS.note}</p>
-            <div className="flex flex-wrap gap-2 mt-2">
-              <span className="napoli-label text-xs" style={{ color: "var(--napoli-red)" }}>Flavors:</span>
+            <p className="text-xs napoli-body mb-2" style={{ color: "oklch(0.52 0.03 30)" }}>{WINGS.note}</p>
+            <div className="flex flex-wrap gap-1.5">
+              <span className="napoli-label text-xs shrink-0" style={{ color: "var(--napoli-red)" }}>Flavors:</span>
               {WINGS.flavors.map((f) => (
                 <span key={f} className="text-xs px-2 py-0.5 rounded border napoli-body" style={{ borderColor: "oklch(0.88 0.015 80)", color: "oklch(0.42 0.03 30)" }}>{f}</span>
               ))}
             </div>
           </div>
-          <div className="divide-y" style={{ borderColor: "oklch(0.93 0.012 80)" }}>
-            {WINGS.boneIn.map((row, i) => (
-              <WingsRow
-                key={row.qty}
-                qty={row.qty}
-                boneIn={row}
-                boneless={WINGS.boneless[i]}
-                fingers={WINGS.chickenFingers[i]}
-                onSelect={(sel) => { setWingsModalKey(k => k + 1); setWingsSelection(sel); }}
-              />
-            ))}
-
-            {/* Wings Customizer Modal */}
-            <WingsCustomizerModal
-              key={wingsModalKey}
-              selection={wingsSelection}
-              onClose={() => setWingsSelection(null)}
+          {/* 3-column card grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4">
+            <WingsTypeCard
+              type="Bone-In"
+              label="Bone-In Wings"
+              description="Traditional bone-in chicken wings — crispy outside, juicy inside. Tossed in your choice of sauce."
+              photo="/manus-storage/chicken_wings_07165612.webp"
+              accentColor="var(--napoli-red)"
+              rows={WINGS.boneIn}
+              onSelect={(sel) => { setWingsModalKey(k => k + 1); setWingsSelection(sel); }}
+            />
+            <WingsTypeCard
+              type="Boneless"
+              label="Boneless Wings"
+              description="All-white meat boneless bites — same great flavors, no bones. Perfect for sharing."
+              photo="/manus-storage/boneless_wings_d47c8973.webp"
+              accentColor="oklch(0.52 0.12 250)"
+              rows={WINGS.boneless}
+              onSelect={(sel) => { setWingsModalKey(k => k + 1); setWingsSelection(sel); }}
+            />
+            <WingsTypeCard
+              type="Chicken Fingers"
+              label="Chicken Fingers"
+              description="Golden-fried chicken tenders — crispy, tender strips served with your choice of dipping sauce."
+              photo="/manus-storage/chicken_tenders_850105df.webp"
+              accentColor="oklch(0.26 0.10 145)"
+              rows={WINGS.chickenFingers}
+              onSelect={(sel) => { setWingsModalKey(k => k + 1); setWingsSelection(sel); }}
             />
           </div>
+          {/* Wings Customizer Modal */}
+          <WingsCustomizerModal
+            key={wingsModalKey}
+            selection={wingsSelection}
+            onClose={() => setWingsSelection(null)}
+          />
         </MenuCard>
 
         {/* Pizza Customizer Modal — rendered at top level so it overlays everything */}
