@@ -6,12 +6,18 @@
  * Card data never touches our server — Accept.js tokenizes it on the frontend
  * and returns an opaque data token that we pass to the Authorize.net API.
  */
+import { createRequire } from "module";
 import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { AUTHNET_ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
 import { TRPCError } from "@trpc/server";
 import { pushOrderToClover } from "./cloverSync";
+
+// authorizenet is a CommonJS package — use createRequire to load it in ESM context
+const _require = createRequire(import.meta.url);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const _authorizenet: any = _require("authorizenet");
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -46,9 +52,8 @@ export async function chargeOpaqueData(
   params: ChargeParams,
   sdk?: ANetSDK
 ): Promise<ChargeResult> {
-  // Use injected SDK in tests, otherwise load the real one
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { APIContracts, APIControllers, Constants }: ANetSDK = sdk ?? require("authorizenet");
+  // Use injected SDK in tests, otherwise load the real one via createRequire (ESM-safe)
+  const { APIContracts, APIControllers, Constants }: ANetSDK = sdk ?? _authorizenet;
 
   return new Promise((resolve, reject) => {
     // ── Merchant authentication ──────────────────────────────────────────────
