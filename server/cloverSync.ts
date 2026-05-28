@@ -306,6 +306,40 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
       { headers: cloverHeaders() }
     );
     console.log(`[Clover] Print event fired for order ${orderId}`);
+
+    // Fire-and-forget verification: check printed status on line items after 6s
+    // Clover sets printed=true on each line item once the printer confirms receipt.
+    setTimeout(async () => {
+      try {
+        const verifyRes = await axios.get(
+          cloverUrl(`/orders/${orderId}/line_items?expand=printerLabel`),
+          { headers: cloverHeaders() }
+        );
+        const items: Array<{ id: string; name: string; printed?: boolean }> =
+          verifyRes.data?.elements ?? [];
+        const printedCount = items.filter((i) => i.printed).length;
+        const totalCount = items.length;
+        if (printedCount === totalCount && totalCount > 0) {
+          console.log(
+            `[Clover] ✅ Print confirmed for order ${orderId}: all ${totalCount} line item(s) printed=true`
+          );
+        } else {
+          console.warn(
+            `[Clover] ⚠️  Print status for order ${orderId}: ${printedCount}/${totalCount} item(s) printed=true` +
+            ` — printers may be offline or still processing`
+          );
+          // Log each item's printed status for debugging
+          items.forEach((item) => {
+            console.log(
+              `[Clover]   - "${item.name}" printed=${item.printed ?? false}`
+            );
+          });
+        }
+      } catch (verifyErr: unknown) {
+        const msg = verifyErr instanceof Error ? verifyErr.message : String(verifyErr);
+        console.warn(`[Clover] Could not verify print status for order ${orderId}:`, msg);
+      }
+    }, 6000);
   } catch (err: unknown) {
     // Non-fatal — order is still visible in Clover, just may not auto-print
     const msg = err instanceof Error ? err.message : String(err);
