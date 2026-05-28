@@ -8,6 +8,7 @@ import LunchTimerBadge from "@/components/LunchTimerBadge";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { translateItem, translateCategory } from "@/lib/napoliTranslations";
 import { toast } from "sonner";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
@@ -33,6 +34,8 @@ import { getMenuPhoto, getBurgerPhoto } from "@/lib/napoliPhotos";
 import { NutritionBadges } from "@/components/NutritionBadges";
 
 function SectionHeader({ id, title, emoji, photo }: { id: string; title: string; emoji: string; photo?: string }) {
+  const { lang } = useLanguage();
+  const displayTitle = translateCategory(title, lang);
   if (photo) {
     return (
       <div
@@ -52,7 +55,7 @@ function SectionHeader({ id, title, emoji, photo }: { id: string; title: string;
         />
         <div className="relative flex items-center gap-3 h-full px-5">
           <span className="text-3xl drop-shadow">{emoji}</span>
-          <h2 className="napoli-label text-xl text-white tracking-widest drop-shadow-md">{title}</h2>
+          <h2 className="napoli-label text-xl text-white tracking-widest drop-shadow-md">{displayTitle}</h2>
         </div>
       </div>
     );
@@ -64,7 +67,7 @@ function SectionHeader({ id, title, emoji, photo }: { id: string; title: string;
       style={{ background: "var(--napoli-red)" }}
     >
       <span className="text-xl">{emoji}</span>
-      <h2 className="napoli-label text-base text-white tracking-widest">{title}</h2>
+      <h2 className="napoli-label text-base text-white tracking-widest">{displayTitle}</h2>
     </div>
   );
 }
@@ -98,6 +101,8 @@ function MultiSizeItemRow({ name, desc, prices, highlight, category }: {
   category?: string;
 }) {
   const { addItem, openCart } = useCart();
+  const { lang } = useLanguage();
+  const translated = translateItem(name, desc, lang);
 
   const handleAdd = (size: string, priceStr: string) => {
     const numericPrice = parsePrice(priceStr);
@@ -137,8 +142,8 @@ function MultiSizeItemRow({ name, desc, prices, highlight, category }: {
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{name}</span>
-        {desc && <p className="text-xs napoli-body mt-0.5 leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>{desc}</p>}
+        <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{translated.name}</span>
+        {translated.desc && <p className="text-xs napoli-body mt-0.5 leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>{translated.desc}</p>}
         <NutritionBadges itemName={name} />
       </div>
       <div className="flex gap-2 shrink-0 flex-wrap justify-end">
@@ -305,6 +310,8 @@ function AnytimeSpecialRow({
   item: { num: number; name: string; price: string };
   onCustomize: (num: number) => void;
 }) {
+  const { lang } = useLanguage();
+  const translated = translateItem(item.name, undefined, lang);
   return (
     <div
       className="napoli-menu-item flex items-center gap-3 px-5 py-4 border-b"
@@ -317,7 +324,7 @@ function AnytimeSpecialRow({
         {item.num}
       </span>
       <div className="flex-1 min-w-0">
-        <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
+        <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{translated.name}</span>
         <NutritionBadges itemName={item.name} compact />
       </div>
       <span className="napoli-price text-sm shrink-0" style={{ color: "var(--napoli-red)" }}>{item.price}</span>
@@ -335,6 +342,8 @@ function AnytimeSpecialRow({
 
 function LunchSpecialRow({ item, isLeft, isLunchOpen }: { item: { num: number; name: string; price: string }; isLeft: boolean; isLunchOpen: boolean }) {
   const { addItem, openCart } = useCart();
+  const { lang } = useLanguage();
+  const translated = translateItem(item.name, undefined, lang);
   const numericPrice = parsePrice(item.price);
   const [showCustomizer, setShowCustomizer] = useState(false);
 
@@ -380,7 +389,7 @@ function LunchSpecialRow({ item, isLeft, isLunchOpen }: { item: { num: number; n
           {item.num}
         </span>
         <div className="flex-1 min-w-0">
-          <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
+          <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{translated.name}</span>
         </div>
         <span className="napoli-price text-sm shrink-0" style={{ color: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)" }}>{item.price}</span>
         {numericPrice && (
@@ -411,6 +420,8 @@ function LunchSpecialRow({ item, isLeft, isLunchOpen }: { item: { num: number; n
 
 function ItemRow({ name, desc, price, highlight, category }: { name: string; desc?: string; price?: string; highlight?: boolean; category?: string }) {
   const { addItem, openCart } = useCart();
+  const { lang } = useLanguage();
+  const translated = translateItem(name, desc, lang);
   const numericPrice = parsePrice(price);
   const photo = getMenuPhoto(name);
 
@@ -448,8 +459,8 @@ function ItemRow({ name, desc, price, highlight, category }: { name: string; des
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{name}</span>
-        {desc && <p className="text-xs napoli-body mt-0.5 leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>{desc}</p>}
+        <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{translated.name}</span>
+        {translated.desc && <p className="text-xs napoli-body mt-0.5 leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>{translated.desc}</p>}
         <NutritionBadges itemName={name} />
       </div>
       <div className="flex items-center gap-2 shrink-0">
@@ -533,6 +544,8 @@ function AppetizersItemRow({
   highlight?: boolean;
   onOpen: () => void;
 }) {
+  const { lang } = useLanguage();
+  const translated = translateItem(name, desc, lang);
   const photo = getMenuPhoto(name);
   return (
     <div
@@ -547,10 +560,10 @@ function AppetizersItemRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           {highlight && <span className="napoli-badge-gold text-xs">Popular</span>}
-          <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{name}</span>
+          <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{translated.name}</span>
         </div>
-        {desc && (
-          <p className="text-xs napoli-body mt-0.5 leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>{desc}</p>
+        {translated.desc && (
+          <p className="text-xs napoli-body mt-0.5 leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>{translated.desc}</p>
         )}
         <NutritionBadges itemName={name} />
       </div>
@@ -588,7 +601,8 @@ function KidsMenuCard({
   const numericPrice = parseFloat(price.replace("$", ""));
   const hasSauceChoice = SAUCE_ITEMS.has(item);
   const [sauce, setSauce] = React.useState<"Marinara" | "Butter">("Marinara");
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const translated = translateItem(item, undefined, lang);
   const handleAdd = () => {
     const itemName = hasSauceChoice ? `${item} (${sauce})` : item;
     addItem({
@@ -620,7 +634,7 @@ function KidsMenuCard({
       </div>
       {/* Info */}
       <div className="flex flex-col gap-1.5 p-2.5 flex-1">
-        <span className="text-xs font-semibold napoli-body leading-tight" style={{ color: "oklch(0.28 0.12 240)" }}>{item}</span>
+        <span className="text-xs font-semibold napoli-body leading-tight" style={{ color: "oklch(0.28 0.12 240)" }}>{translated.name}</span>
         <NutritionBadges itemName={item} compact />
         {/* Sauce selector */}
         {hasSauceChoice && (
@@ -680,6 +694,7 @@ function KidsMenuGrid({
 
 export default function Menu() {
   const { addItem, openCart } = useCart();
+  const { lang, t } = useLanguage();
   const lunchTimer = useLunchTimer();
   const [activeCategory, setActiveCategory] = useState("appetizers");
   const navScrollRef = useRef<HTMLDivElement>(null);
@@ -784,10 +799,10 @@ export default function Menu() {
             The Original Napoli Pizzeria
           </p>
           <h1 className="napoli-display text-4xl md:text-5xl mb-2" style={{ color: "oklch(0.99 0.015 80)" }}>
-            Our Menu
+            {lang === "es" ? "Nuestro Menú" : "Our Menu"}
           </h1>
           <p className="napoli-body text-sm" style={{ color: "oklch(0.72 0.015 80)" }}>
-            Taxes not included · Prices subject to change without notice
+            {lang === "es" ? "Impuestos no incluidos · Precios sujetos a cambio sin previo aviso" : "Taxes not included · Prices subject to change without notice"}
           </p>
         </div>
       </div>
@@ -813,7 +828,7 @@ export default function Menu() {
                 }}
               >
                 <span>{cat.emoji}</span>
-                {cat.label}
+                {translateCategory(cat.label, lang)}
               </button>
             ))}
           </div>
