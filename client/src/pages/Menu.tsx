@@ -2,7 +2,7 @@
  * Napoli Pizzeria — Full Menu Page
  * All categories: Appetizers, Lunch Specials, Pizzeria, Wings, Pasta, Subs, Burgers, Salads, Desserts, Specials
  */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLunchTimer } from "@/hooks/useLunchTimer";
 import LunchTimerBadge from "@/components/LunchTimerBadge";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
@@ -567,6 +567,7 @@ export default function Menu() {
   const { addItem } = useCart();
   const lunchTimer = useLunchTimer();
   const [activeCategory, setActiveCategory] = useState("appetizers");
+  const navScrollRef = useRef<HTMLDivElement>(null);
   const [showAllToppings, setShowAllToppings] = useState(false);
   const [wingsSelection, setWingsSelection] = useState<WingsSelection | null>(null);
   const [wingsModalKey, setWingsModalKey] = useState(0);
@@ -586,11 +587,48 @@ export default function Menu() {
   const [glutenFreeModalOpen, setGlutenFreeModalOpen] = useState(false);
   const [specialNum, setSpecialNum] = useState<number | null>(null);
 
+  // Auto-scroll the sticky nav bar to center the active category button
+  const scrollNavToActive = (id: string) => {
+    const nav = navScrollRef.current;
+    if (!nav) return;
+    const btn = nav.querySelector<HTMLElement>(`[data-cat-id="${id}"]`);
+    if (!btn) return;
+    const navWidth = nav.offsetWidth;
+    const btnLeft = btn.offsetLeft;
+    const btnWidth = btn.offsetWidth;
+    nav.scrollTo({ left: btnLeft - navWidth / 2 + btnWidth / 2, behavior: "smooth" });
+  };
+
   const scrollTo = (id: string) => {
     setActiveCategory(id);
+    scrollNavToActive(id);
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  // Update active category as user scrolls through the menu
+  useEffect(() => {
+    const sectionIds = MENU_CATEGORIES.map((c) => c.id);
+    const observers: IntersectionObserver[] = [];
+
+    sectionIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setActiveCategory(id);
+            scrollNavToActive(id);
+          }
+        },
+        { rootMargin: "-30% 0px -60% 0px", threshold: 0 }
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+
+    return () => observers.forEach((o) => o.disconnect());
+  }, []);
 
   // Scroll to hash section on mount (e.g. /menu#pizza)
   useEffect(() => {
@@ -641,6 +679,7 @@ export default function Menu() {
 
       {/* Sticky category tabs */}
       <div
+        ref={navScrollRef}
         className="sticky top-[72px] z-40 border-b shadow-sm overflow-x-auto"
         style={{ background: "oklch(0.99 0.015 80)", borderColor: "oklch(0.88 0.015 80)" }}
       >
@@ -649,6 +688,7 @@ export default function Menu() {
             {MENU_CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
+                data-cat-id={cat.id}
                 onClick={() => scrollTo(cat.id)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded text-xs napoli-label whitespace-nowrap transition-colors"
                 style={{
