@@ -1779,6 +1779,32 @@ export default function Menu() {
         </MenuCard>
       </div>
 
+      {/* ── NUTRITIONAL & ALLERGY DISCLAIMER ─────────────────── */}
+      <div
+        className="mx-auto max-w-4xl px-4 py-5 mb-6"
+        style={{ borderTop: "1px solid oklch(0.90 0.012 80)" }}
+      >
+        <p
+          className="text-center text-xs leading-relaxed napoli-body"
+          style={{ color: "oklch(0.58 0.03 30)" }}
+        >
+          <span className="font-semibold" style={{ color: "oklch(0.45 0.05 30)" }}>⚠️ Allergy & Nutritional Notice:</span>{" "}
+          Calorie counts and nutritional values shown are <em>approximate estimates</em> based on standard recipes and may vary depending on portion size, preparation method, and ingredient substitutions.{" "}
+          Menu items may contain or come into contact with common allergens including{" "}
+          <strong>milk, eggs, wheat, soy, peanuts, tree nuts, fish, shellfish, and sesame</strong>.{" "}
+          If you have a food allergy or dietary restriction, please inform our staff before placing your order.{" "}
+          We cannot guarantee that any item is completely free of allergens due to shared kitchen equipment and preparation areas.{" "}
+          For detailed nutritional information or allergen inquiries, please contact us at{" "}
+          <a
+            href="tel:+17027038777"
+            className="underline hover:opacity-80 transition-opacity"
+            style={{ color: "var(--napoli-red)" }}
+          >
+            (702) 703-8777
+          </a>.
+        </p>
+      </div>
+
       <NapoliFooter />
     </div>
   );
