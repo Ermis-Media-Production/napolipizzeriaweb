@@ -970,44 +970,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── PIZZA SPECIALS GRID ───────────────────────────────── */}
-      <section className="py-14">
-        <div className="container">
-          <div className="flex items-end justify-between mb-8">
-            <div>
-              <p className="napoli-label text-xs mb-1" style={{ color: "var(--napoli-red)", letterSpacing: "0.2em" }}>
-                Signature Creations
-              </p>
-              <h2 className="napoli-display text-3xl" style={{ color: "var(--napoli-dark)" }}>
-                Specialty Pizzas
-              </h2>
-            </div>
-            <Link href="/menu#pizza">
-              <button className="hidden md:flex items-center gap-1.5 text-sm napoli-label" style={{ color: "var(--napoli-red)", fontSize: "0.75rem" }}>
-                Full Pizza Menu <ArrowRight size={13} />
-              </button>
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {PIZZA_SPECIALS.slice(0, 8).map((pizza) => (
-              <div
-                key={pizza.name}
-                className="napoli-menu-item p-4 rounded border bg-white"
-                style={{ borderColor: "oklch(0.88 0.015 80)" }}
-              >
-                <h4 className="napoli-heading text-sm mb-1" style={{ color: "var(--napoli-dark)" }}>
-                  {pizza.name}
-                </h4>
-                <p className="text-xs napoli-body leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>
-                  {pizza.desc}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── GOOGLE REVIEWS ───────────────────────────────────── */}
       <GoogleReviewsSection />
 
