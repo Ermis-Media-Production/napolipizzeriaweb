@@ -1,4 +1,6 @@
 export const COOKIE_NAME = "app_session_id";
+/** Admin/restaurant manager phone number for order notifications */
+export const ADMIN_PHONE = "+17025448930";
 
 // ── Pricing constants ─────────────────────────────────────────────────────────
 /** 3% convenience fee applied to the food subtotal (non-taxable). */

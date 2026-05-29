@@ -376,3 +376,11 @@
 - [x] Clover printer routing verification endpoint (clover.previewPrinterRouting) — preview which printer each item name routes to
 - [x] Authorize.net webhook endpoint at /api/authorizenet/webhook — HMAC-SHA512 signature verification, idempotency guard, owner notifications for approved/voided/declined events
 - [x] Authorize.net prod test updated to handle both response shapes from the API
+## Admin SMS Notifications + Last Name Field
+- [x] shared/const.ts: Added ADMIN_PHONE = "+17025448930" constant
+- [x] server/authorizenet.ts: Imported ADMIN_PHONE from shared/const
+- [x] server/authorizenet.ts: chargeCard — fire-and-forget admin SMS after customer SMS (order summary: customer name, phone, type, total, transaction ID, items)
+- [x] server/authorizenet.ts: sendPayByLink — fire-and-forget admin SMS after customer SMS (pay-by-link details: customer, type, total, items, payment URL)
+- [x] client/src/components/CartDrawer.tsx: Added customerLastName state and Last name input field
+- [x] CartDrawer buildOrderPayload: combines first + last name into customerName when last name is provided
+- [x] CartDrawer order summary: shows full name (first + last) in "For:" line

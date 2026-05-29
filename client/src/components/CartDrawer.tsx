@@ -269,6 +269,7 @@ export default function CartDrawer() {
   const [, navigate] = useLocation();
   const [orderType, setOrderType] = useState<"delivery" | "pickup" | "dine-in" | "scheduled">("pickup");
   const [customerName, setCustomerName] = useState("");
+  const [customerLastName, setCustomerLastName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
 
@@ -452,7 +453,7 @@ export default function CartDrawer() {
     return {
       payload: {
         items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category, description: i.description ?? "" })),
-        customerName,
+        customerName: customerLastName.trim() ? `${customerName} ${customerLastName}` : customerName,
         customerPhone: customerPhone || undefined,
         customerEmail: customerEmail || undefined,
         orderType: apiOrderType,
@@ -471,7 +472,7 @@ export default function CartDrawer() {
       },
       grandTotalVal,
     };
-  }, [items, customerName, customerPhone, customerEmail, orderType, schedule, appliedCoupon, liveFeeRate, uberFee, uberQuoteId, deliveryAddress, deliveryCity, deliveryState, deliveryZip, deliveryNotes, totalPrice]);
+  }, [items, customerName, customerLastName, customerPhone, customerEmail, orderType, schedule, appliedCoupon, liveFeeRate, uberFee, uberQuoteId, deliveryAddress, deliveryCity, deliveryState, deliveryZip, deliveryNotes, totalPrice]);
 
   /** Geocode address and check 20-mile radius */
   const validateDeliveryRadius = useCallback(async (address: string, city: string, state: string, zip: string): Promise<boolean> => {
@@ -977,6 +978,14 @@ export default function CartDrawer() {
                 className="w-full text-xs px-3 py-2 rounded border outline-none focus:ring-1"
                 style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
               />
+              <input
+                type="text"
+                placeholder="Last name"
+                value={customerLastName}
+                onChange={(e) => setCustomerLastName(e.target.value)}
+                className="w-full text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+              />
               {/* Phone — required for SMS pay link, highlighted prominently */}
               <div className="space-y-0.5">
                 <div className="flex items-center gap-1.5 px-0.5">
@@ -1218,7 +1227,7 @@ export default function CartDrawer() {
               </p>
               {customerName && (
                 <p className="text-xs mt-1" style={{ color: "oklch(0.52 0.03 30)" }}>
-                  For: {customerName}{customerPhone ? ` · ${customerPhone}` : ""}
+                  For: {customerName}{customerLastName.trim() ? ` ${customerLastName}` : ""}{customerPhone ? ` · ${customerPhone}` : ""}
                 </p>
               )}
             </div>

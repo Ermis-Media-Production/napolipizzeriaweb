@@ -14,6 +14,7 @@ import { notifyOwner } from "./_core/notification";
 import { TRPCError } from "@trpc/server";
 import { pushOrderToClover } from "./cloverSync";
 import { sendSms } from "./_core/sms";
+import { ADMIN_PHONE } from "../shared/const";
 
 // authorizenet is a CommonJS package — use createRequire to load it in ESM context
 const _require = createRequire(import.meta.url);
@@ -443,6 +444,21 @@ export const authorizeNetRouter = router({
           );
         }
 
+        // Fire-and-forget: notify admin/restaurant manager of new paid order
+        {
+          const itemsSummary = input.items.map((i) => `${i.quantity}x ${i.name}`).join(", ");
+          const adminSms = [
+            `💳 NEW PAID ORDER — Napoli Pizzeria`,
+            `Customer: ${input.customerName}${input.customerPhone ? ` | ${input.customerPhone}` : ""}`,
+            `Type: ${input.orderType} | Total: $${amount.toFixed(2)}`,
+            `Transaction: ${result.transactionId}`,
+            `Items: ${itemsSummary}`,
+          ].join("\n");
+          sendSms(ADMIN_PHONE, adminSms).catch((err) =>
+            console.error("[SMS] Failed to send admin notification:", err)
+          );
+        }
+
         return {
           success: true,
           transactionId: result.transactionId,
@@ -529,6 +545,21 @@ export const authorizeNetRouter = router({
 
         const smsSent = await sendSms(input.customerPhone, smsBody);
 
+
+        // Fire-and-forget: notify admin/restaurant manager of new pay-by-link order
+        {
+          const itemsSummary = input.items.map((i) => `${i.quantity}x ${i.name}`).join(", ");
+          const adminSms = [
+            `📱 PAY BY LINK SENT — Napoli Pizzeria`,
+            `Customer: ${input.customerName} | ${input.customerPhone}`,
+            `Type: ${input.orderType} | Total: $${amount.toFixed(2)}`,
+            `Items: ${itemsSummary}`,
+            `Link: ${paymentUrl}`,
+          ].join("\n");
+          sendSms(ADMIN_PHONE, adminSms).catch((err) =>
+            console.error("[SMS] Failed to send admin pay-by-link notification:", err)
+          );
+        }
         // Notify owner
         notifyOwner({
           title: `📱 Pay by Link Sent — $${amount.toFixed(2)} (${input.orderType})`,
