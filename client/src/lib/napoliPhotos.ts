@@ -89,7 +89,7 @@ export const MENU_PHOTOS: Record<string, string> = {
   "Fettuccine Alfredo":             S + "napoli_pasta_fettuccine_alfredo_fd610632.jpg",
   "Chicken Fettuccine Alfredo":     S + "napoli_pasta_chicken_alfredo_4573bd13.jpg",
   "Shrimp & Chicken Fettuccine Alfredo": S + "napoli_pasta_shrimp_chicken_6c9e5da1.jpg",
-  "Stuffed Shells w/ Ricotta":      C + "EA4SX42TRT7GM.jpeg",
+  "Stuffed Shells w/ Ricotta":      S + "napoli_pasta_stuffed_shells_2e2180dc.jpg",
   "Creamy Butter Ravioli":          C + "EA4SX42TRT7GM.jpeg",
   "Marinara Ravioli":               C + "EA4SX42TRT7GM.jpeg",
   "Baked Ravioli":                  C + "EA4SX42TRT7GM.jpeg",
