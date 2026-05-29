@@ -13,6 +13,7 @@ import { AUTHNET_ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
 import { TRPCError } from "@trpc/server";
 import { pushOrderToClover } from "./cloverSync";
+import { sendSms } from "./_core/sms";
 
 // authorizenet is a CommonJS package — use createRequire to load it in ESM context
 const _require = createRequire(import.meta.url);
@@ -153,6 +154,150 @@ export async function chargeOpaqueData(
   });
 }
 
+// ── Accept Hosted (Pay by Link) ──────────────────────────────────────────────
+
+export type PayByLinkParams = {
+  amount: number;
+  customerName: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  orderDescription: string;
+  orderType: string;
+  returnUrl: string;  // where to send customer after payment
+  cancelUrl: string;
+};
+
+export type PayByLinkResult = {
+  token: string;
+  paymentUrl: string; // full URL to redirect/send to customer
+};
+
+/**
+ * Generate an Authorize.net Accept Hosted payment page token.
+ * Returns a URL the customer can open to pay securely on Authorize.net's hosted form.
+ * The token is valid for 15 minutes.
+ */
+export async function getHostedPaymentPageToken(
+  params: PayByLinkParams,
+  sdk?: ANetSDK
+): Promise<PayByLinkResult> {
+  const { APIContracts, APIControllers, Constants }: ANetSDK = sdk ?? _authorizenet;
+
+  return new Promise((resolve, reject) => {
+    const merchantAuth = new APIContracts.MerchantAuthenticationType();
+    merchantAuth.setName(AUTHNET_ENV.apiLoginId);
+    merchantAuth.setTransactionKey(AUTHNET_ENV.transactionKey);
+
+    // Transaction request (auth+capture)
+    const transactionRequest = new APIContracts.TransactionRequestType();
+    transactionRequest.setTransactionType(APIContracts.TransactionTypeEnum.AUTHCAPTURETRANSACTION);
+    transactionRequest.setAmount(params.amount.toFixed(2));
+
+    const orderDetails = new APIContracts.OrderType();
+    orderDetails.setInvoiceNumber(`NAPOLI-${Date.now()}`);
+    orderDetails.setDescription(params.orderDescription.substring(0, 255));
+    transactionRequest.setOrder(orderDetails);
+
+    // Pre-fill customer info on the hosted form
+    const nameParts = params.customerName.trim().split(" ");
+    const billTo = new APIContracts.CustomerAddressType();
+    billTo.setFirstName(nameParts[0] ?? "Customer");
+    billTo.setLastName(nameParts.slice(1).join(" ") || "Guest");
+    if (params.customerPhone) billTo.setPhoneNumber(params.customerPhone);
+    if (params.customerEmail) billTo.setEmail(params.customerEmail);
+    transactionRequest.setBillTo(billTo);
+
+    // Hosted form settings
+    const settingList: unknown[] = [];
+
+    const returnOptions = new APIContracts.SettingType();
+    returnOptions.setSettingName("hostedPaymentReturnOptions");
+    returnOptions.setSettingValue(
+      JSON.stringify({
+        showReceipt: true,
+        url: params.returnUrl,
+        urlText: "Back to Order",
+        cancelUrl: params.cancelUrl,
+        cancelUrlText: "Cancel",
+      })
+    );
+    settingList.push(returnOptions);
+
+    const buttonOptions = new APIContracts.SettingType();
+    buttonOptions.setSettingName("hostedPaymentButtonOptions");
+    buttonOptions.setSettingValue(JSON.stringify({ text: "Pay Now" }));
+    settingList.push(buttonOptions);
+
+    const styleOptions = new APIContracts.SettingType();
+    styleOptions.setSettingName("hostedPaymentStyleOptions");
+    styleOptions.setSettingValue(JSON.stringify({ bgColor: "#c0392b" })); // Napoli red
+    settingList.push(styleOptions);
+
+    const paymentOptions = new APIContracts.SettingType();
+    paymentOptions.setSettingName("hostedPaymentPaymentOptions");
+    paymentOptions.setSettingValue(
+      JSON.stringify({ cardCodeRequired: true, showCreditCard: true, showBankAccount: false })
+    );
+    settingList.push(paymentOptions);
+
+    const orderOptions = new APIContracts.SettingType();
+    orderOptions.setSettingName("hostedPaymentOrderOptions");
+    orderOptions.setSettingValue(
+      JSON.stringify({ show: true, merchantName: "Napoli Pizzeria" })
+    );
+    settingList.push(orderOptions);
+
+    const iframeOptions = new APIContracts.SettingType();
+    iframeOptions.setSettingName("hostedPaymentIFrameCommunicatorUrl");
+    iframeOptions.setSettingValue(JSON.stringify({ url: params.returnUrl }));
+    settingList.push(iframeOptions);
+
+    const settings = new APIContracts.ArrayOfSetting();
+    settings.setSetting(settingList);
+
+    const request = new APIContracts.GetHostedPaymentPageRequest();
+    request.setMerchantAuthentication(merchantAuth);
+    request.setTransactionRequest(transactionRequest);
+    request.setHostedPaymentSettings(settings);
+
+    const ctrl = new APIControllers.GetHostedPaymentPageController(request.getJSON());
+    ctrl.setEnvironment(
+      AUTHNET_ENV.isSandbox ? Constants.endpoint.sandbox : Constants.endpoint.production
+    );
+
+    ctrl.execute(() => {
+      try {
+        const apiResponse = ctrl.getResponse();
+        if (!apiResponse) return reject(new Error("No response from Authorize.net"));
+
+        const response = new APIContracts.GetHostedPaymentPageResponse(apiResponse);
+        const messages = response.getMessages();
+
+        if (!messages || messages.getResultCode() !== APIContracts.MessageTypeEnum.OK) {
+          const errMsg = messages?.getMessage?.()?.length
+            ? messages.getMessage()[0].getText()
+            : "Failed to generate payment page token";
+          return reject(new Error(errMsg));
+        }
+
+        const token = response.getToken();
+        if (!token) return reject(new Error("Empty token from Authorize.net"));
+
+        const baseUrl = AUTHNET_ENV.isSandbox
+          ? "https://test.authorize.net/payment/payment"
+          : "https://accept.authorize.net/payment/payment";
+
+        resolve({
+          token,
+          paymentUrl: `${baseUrl}?token=${encodeURIComponent(token)}`,
+        });
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+}
+
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
 const CartItemSchema = z.object({
@@ -283,6 +428,21 @@ export const authorizeNetRouter = router({
           console.error("[Clover] Failed to push Authorize.net order:", err)
         );
 
+        // Fire-and-forget: send SMS confirmation to customer
+        if (input.customerPhone) {
+          const firstName = input.customerName.trim().split(/\s+/)[0] ?? input.customerName;
+          const smsBody = [
+            `Hi ${firstName}! 🍕 Your Napoli Pizzeria order is confirmed.`,
+            `Total charged: $${amount.toFixed(2)}`,
+            `Order type: ${input.orderType}`,
+            `Transaction: ${result.transactionId}`,
+            `Questions? Call us: (702) 544-8930`,
+          ].join("\n");
+          sendSms(input.customerPhone, smsBody).catch((err) =>
+            console.error("[SMS] Failed to send order confirmation:", err)
+          );
+        }
+
         return {
           success: true,
           transactionId: result.transactionId,
@@ -296,6 +456,108 @@ export const authorizeNetRouter = router({
         };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Payment failed";
+        throw new TRPCError({ code: "BAD_REQUEST", message });
+      }
+    }),
+
+  /**
+   * Generate an Authorize.net Accept Hosted payment link and send it via SMS.
+   * The customer receives a secure URL they can open on any device to pay.
+   * Token is valid for 15 minutes.
+   */
+  sendPayByLink: publicProcedure
+    .input(
+      z.object({
+        items: z.array(CartItemSchema).min(1),
+        orderType: z.enum(["pickup", "delivery", "dine-in"]),
+        customerName: z.string().min(1).max(100),
+        customerEmail: z.string().email().optional(),
+        customerPhone: z.string().min(10),
+        couponCode: z.string().optional(),
+        discountPercent: z.number().int().min(1).max(100).optional(),
+        convenienceFeeCents: z.number().int().min(0).optional(),
+        salesTaxCents: z.number().int().min(0).optional(),
+        origin: z.string().url(), // e.g. https://napolipizzerianorthlasvegas.com
+      })
+    )
+    .mutation(async ({ input }) => {
+      if (!AUTHNET_ENV.apiLoginId || !AUTHNET_ENV.transactionKey) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Authorize.net is not configured.",
+        });
+      }
+
+      const rawAmount = input.items.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+      const discountMultiplier = input.discountPercent ? (100 - input.discountPercent) / 100 : 1;
+      const discountedSubtotal = rawAmount * discountMultiplier;
+      const convenienceFee = (input.convenienceFeeCents ?? 0) / 100;
+      const salesTax = (input.salesTaxCents ?? 0) / 100;
+      const amount = discountedSubtotal + convenienceFee + salesTax;
+
+      if (amount <= 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Order total must be greater than zero." });
+      }
+
+      const orderDescription = input.items.map((i) => `${i.quantity}x ${i.name}`).join(", ");
+
+      try {
+        const { paymentUrl } = await getHostedPaymentPageToken({
+          amount,
+          customerName: input.customerName,
+          customerEmail: input.customerEmail,
+          customerPhone: input.customerPhone,
+          orderDescription,
+          orderType: input.orderType,
+          returnUrl: `${input.origin}/order-success?payment=authnet&order_type=${input.orderType}&customer=${encodeURIComponent(input.customerName)}`,
+          cancelUrl: `${input.origin}/menu`,
+        });
+
+        // Send payment link via SMS
+        const firstName = input.customerName.trim().split(/\s+/)[0] ?? input.customerName;
+        const smsBody = [
+          `Hi ${firstName}! 🍕 Your Napoli Pizzeria order is ready to pay.`,
+          `Order: ${orderDescription.substring(0, 80)}${orderDescription.length > 80 ? "..." : ""}`,
+          `Total: $${amount.toFixed(2)} (${input.orderType})`,
+          `Pay securely here (link valid 15 min):`,
+          paymentUrl,
+          `Questions? Call: (702) 544-8930`,
+        ].join("\n");
+
+        const smsSent = await sendSms(input.customerPhone, smsBody);
+
+        // Notify owner
+        notifyOwner({
+          title: `📱 Pay by Link Sent — $${amount.toFixed(2)} (${input.orderType})`,
+          content: [
+            `Customer: ${input.customerName}`,
+            `Phone: ${input.customerPhone}`,
+            input.customerEmail ? `Email: ${input.customerEmail}` : null,
+            `Order Type: ${input.orderType}`,
+            `Total: $${amount.toFixed(2)}`,
+            `SMS sent: ${smsSent ? "Yes" : "No (check Twilio config)"}`,
+            ``,
+            `Items:`,
+            ...input.items.map((i) => `  • ${i.quantity}x ${i.name} — $${(i.price * i.quantity).toFixed(2)}`),
+            ``,
+            `Payment link: ${paymentUrl}`,
+          ].filter(Boolean).join("\n"),
+        }).catch(console.error);
+
+        return {
+          success: true,
+          smsSent,
+          amount,
+          paymentUrl,
+          orderType: input.orderType,
+          customerName: input.customerName,
+          itemCount: input.items.reduce((s, i) => s + i.quantity, 0),
+        };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to generate payment link";
         throw new TRPCError({ code: "BAD_REQUEST", message });
       }
     }),

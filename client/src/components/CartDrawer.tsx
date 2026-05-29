@@ -9,7 +9,7 @@ import { useCart } from "@/contexts/CartContext";
 import AddressAutocomplete, { type AddressComponents } from "@/components/AddressAutocomplete";
 import {
   ShoppingCart, X, Minus, Plus, Trash2, Lock, Loader2, MapPin,
-  AlertTriangle, CheckCircle2, Clock, Calendar, Info, CreditCard,
+  AlertTriangle, CheckCircle2, Clock, Calendar, Info, CreditCard, MessageSquare,
 } from "lucide-react";
 
 // ─── Restaurant center (3131 W Craig Rd, North Las Vegas, NV) ─────────────────
@@ -391,6 +391,46 @@ export default function CartDrawer() {
       setIsProcessingPayment(false);
     },
   });
+
+  // Pay by Link mutation — generates Authorize.net hosted payment URL and sends via SMS
+  const sendPayByLink = trpc.authnet.sendPayByLink.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        data.smsSent
+          ? `✅ Payment link sent to ${customerPhone}!`
+          : `Payment link generated but SMS failed. Share manually.`,
+        { duration: 6000 }
+      );
+    },
+    onError: (err) => {
+      toast.error(`Pay by Link failed: ${err.message}`);
+    },
+  });
+
+  const handleSendPayByLink = async () => {
+    if (!validateForm()) return;
+    if (!customerPhone || customerPhone.trim().length < 10) {
+      toast.error("Please enter a valid phone number to send the payment link.");
+      return;
+    }
+    if (orderType === "delivery" && !geoValidated) {
+      const ok = await validateDeliveryRadius(deliveryAddress, deliveryCity, deliveryState, deliveryZip);
+      if (!ok) return;
+    }
+    const { payload } = buildOrderPayload();
+    sendPayByLink.mutate({
+      items: payload.items,
+      orderType: payload.orderType,
+      customerName: payload.customerName,
+      customerPhone: payload.customerPhone!,
+      customerEmail: payload.customerEmail,
+      couponCode: payload.couponCode,
+      discountPercent: payload.discountPercent,
+      convenienceFeeCents: payload.convenienceFeeCents,
+      salesTaxCents: payload.salesTaxCents,
+      origin: window.location.origin,
+    });
+  };
 
   const utils = trpc.useUtils();
 
@@ -1073,6 +1113,35 @@ export default function CartDrawer() {
                   <>
                     <Lock size={15} />
                     Enter Payment Details — ${grandTotal.toFixed(2)}
+                  </>
+                )}
+              </button>
+              {/* ── PAY BY LINK (SMS) button ── */}
+              <button
+                onClick={handleSendPayByLink}
+                disabled={sendPayByLink.isPending || isLoading || !!geoError || isStoreClosed}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded font-bold text-sm transition-all active:scale-[0.98] border-2"
+                style={{
+                  background: "transparent",
+                  borderColor: sendPayByLink.isPending || isLoading || !!geoError || isStoreClosed
+                    ? "oklch(0.75 0.03 30)"
+                    : "oklch(0.38 0.18 25)",
+                  color: sendPayByLink.isPending || isLoading || !!geoError || isStoreClosed
+                    ? "oklch(0.65 0.03 30)"
+                    : "oklch(0.38 0.18 25)",
+                  fontFamily: "'Oswald', sans-serif",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                {sendPayByLink.isPending ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    Sending SMS...
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare size={15} />
+                    Send Pay Link via SMS — ${grandTotal.toFixed(2)}
                   </>
                 )}
               </button>
