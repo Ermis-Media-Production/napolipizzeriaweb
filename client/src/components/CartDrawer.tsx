@@ -948,22 +948,33 @@ export default function CartDrawer() {
               )}
 
               {/* Customer info */}
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="text"
-                  placeholder="Your name *"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-                  style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
-                />
+              <input
+                type="text"
+                placeholder="Your name *"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                className="w-full text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+              />
+              {/* Phone — required for SMS pay link, highlighted prominently */}
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-1.5 px-0.5">
+                  <span className="text-xs font-semibold" style={{ color: "oklch(0.40 0.18 25)", fontFamily: "'Oswald', sans-serif" }}>📱 PHONE NUMBER</span>
+                  <span className="text-xs font-bold" style={{ color: "oklch(0.40 0.18 25)" }}>*</span>
+                  <span className="text-xs" style={{ color: "oklch(0.55 0.03 30)" }}>— required to receive your pay link via SMS</span>
+                </div>
                 <input
                   type="tel"
-                  placeholder="Phone number"
+                  placeholder="(702) 555-1234"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-                  style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+                  className="w-full text-sm px-3 py-2.5 rounded border-2 outline-none focus:ring-2 font-semibold"
+                  style={{
+                    borderColor: customerPhone.trim().length >= 10 ? "oklch(0.55 0.18 145)" : "oklch(0.65 0.18 25)",
+                    background: customerPhone.trim().length >= 10 ? "oklch(0.97 0.03 145)" : "oklch(0.99 0.02 25)",
+                    fontFamily: "'Lato', sans-serif",
+                    color: "oklch(0.25 0.03 30)",
+                  }}
                 />
               </div>
               <input
