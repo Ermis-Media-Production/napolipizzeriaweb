@@ -600,70 +600,140 @@ function KidsMenuCard({
   const photo = getMenuPhoto(item);
   const numericPrice = parseFloat(price.replace("$", ""));
   const hasSauceChoice = SAUCE_ITEMS.has(item);
-  const [sauce, setSauce] = React.useState<"Marinara" | "Butter">("Marinara");
+  const [showSaucePicker, setShowSaucePicker] = React.useState(false);
   const { t, lang } = useLanguage();
   const translated = translateItem(item, undefined, lang);
-  const handleAdd = () => {
-    const itemName = hasSauceChoice ? `${item} (${sauce})` : item;
+
+  const confirmAdd = (sauce: "Marinara" | "Butter") => {
+    const itemName = `${item} (${sauce})`;
     addItem({
       id: `kids-${item}-${sauce}-${Date.now()}`,
       name: itemName,
       price: numericPrice,
       quantity: 1,
       category: "childrens-menu",
-      description: hasSauceChoice ? `Sauce: ${sauce}` : undefined,
+      description: `Sauce: ${sauce}`,
     });
     toast.success(`${itemName} added to cart!`, {
       action: { label: t.ui.viewCart, onClick: openCart },
     });
+    setShowSaucePicker(false);
   };
+
+  const handleAdd = () => {
+    if (hasSauceChoice) {
+      setShowSaucePicker(true);
+    } else {
+      addItem({
+        id: `kids-${item}-${Date.now()}`,
+        name: item,
+        price: numericPrice,
+        quantity: 1,
+        category: "childrens-menu",
+      });
+      toast.success(`${item} added to cart!`, {
+        action: { label: t.ui.viewCart, onClick: openCart },
+      });
+    }
+  };
+
   return (
-    <div
-      className="napoli-menu-item flex items-start gap-3 px-4 py-3 border-b last:border-b-0"
-      style={{ borderColor: "oklch(0.93 0.012 80)" }}
-    >
-      {/* Square photo — same size as ItemRow (64×64) */}
-      {photo && (
-        <div className="shrink-0 rounded overflow-hidden" style={{ width: 64, height: 64 }}>
-          <img src={photo} alt={item} className="w-full h-full object-cover" loading="lazy" />
-        </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{translated.name}</span>
-        <NutritionBadges itemName={item} />
-        {/* Sauce selector inline */}
-        {hasSauceChoice && (
-          <div className="flex gap-1 mt-1">
-            {(["Marinara", "Butter"] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => setSauce(s)}
-                className="px-2 py-0.5 rounded text-xs font-semibold transition-all active:scale-95"
-                style={{
-                  background: sauce === s ? "var(--napoli-red)" : "oklch(0.93 0.012 80)",
-                  color: sauce === s ? "white" : "var(--napoli-dark)",
-                  border: `1px solid ${sauce === s ? "var(--napoli-red)" : "oklch(0.80 0.015 80)"}`,
-                  fontSize: "0.65rem",
-                }}
-              >
-                {s === "Marinara" ? t.ui.marinara : t.ui.butter}
-              </button>
-            ))}
+    <>
+      <div
+        className="napoli-menu-item flex items-start gap-3 px-4 py-3 border-b last:border-b-0"
+        style={{ borderColor: "oklch(0.93 0.012 80)" }}
+      >
+        {/* Square photo */}
+        {photo && (
+          <div className="shrink-0 rounded overflow-hidden" style={{ width: 64, height: 64 }}>
+            <img src={photo} alt={item} className="w-full h-full object-cover" loading="lazy" />
           </div>
         )}
+        <div className="flex-1 min-w-0">
+          <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{translated.name}</span>
+          {hasSauceChoice && (
+            <p className="text-xs mt-0.5" style={{ color: "oklch(0.52 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+              {lang === "es" ? "Elige salsa al ordenar" : "Choose sauce when ordering"}
+            </p>
+          )}
+          <NutritionBadges itemName={item} />
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{price}</span>
+          <button
+            onClick={handleAdd}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90 hover:opacity-90"
+            style={{ background: "var(--napoli-red)", color: "white" }}
+            title={`Add ${item} to cart`}
+          >
+            <Plus size={14} />
+          </button>
+        </div>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{price}</span>
-        <button
-          onClick={handleAdd}
-          className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90 hover:opacity-90"
-          style={{ background: "var(--napoli-red)", color: "white" }}
-          title={`Add ${item} to cart`}
+
+      {/* Sauce picker modal */}
+      {showSaucePicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.45)" }}
+          onClick={() => setShowSaucePicker(false)}
         >
-          <Plus size={14} />
-        </button>
-      </div>
-    </div>
+          <div
+            className="rounded-xl shadow-2xl p-6 mx-4 w-full max-w-xs"
+            style={{ background: "white" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-1">
+              {photo && (
+                <div className="shrink-0 rounded overflow-hidden" style={{ width: 44, height: 44 }}>
+                  <img src={photo} alt={item} className="w-full h-full object-cover" />
+                </div>
+              )}
+              <div>
+                <p className="font-bold text-sm" style={{ color: "var(--napoli-dark)", fontFamily: "'Oswald', sans-serif" }}>
+                  {translated.name}
+                </p>
+                <p className="text-xs" style={{ color: "oklch(0.52 0.03 30)" }}>{price}</p>
+              </div>
+            </div>
+
+            <hr className="my-3" style={{ borderColor: "oklch(0.93 0.012 80)" }} />
+
+            <p className="text-sm font-semibold mb-3" style={{ color: "var(--napoli-dark)", fontFamily: "'Oswald', sans-serif" }}>
+              {lang === "es" ? "¿Con qué salsa?" : "Choose your sauce:"}
+            </p>
+
+            <div className="flex flex-col gap-2">
+              {(["Marinara", "Butter"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => confirmAdd(s)}
+                  className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all active:scale-95 hover:opacity-90"
+                  style={{
+                    background: s === "Marinara" ? "var(--napoli-red)" : "oklch(0.96 0.015 80)",
+                    color: s === "Marinara" ? "white" : "var(--napoli-dark)",
+                    border: s === "Butter" ? "1px solid oklch(0.80 0.015 80)" : "none",
+                    fontFamily: "'Oswald', sans-serif",
+                    letterSpacing: "0.03em",
+                  }}
+                >
+                  {s === "Marinara" ? (lang === "es" ? "Marinara" : "Marinara") : (lang === "es" ? "Mantequilla" : "Butter")}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setShowSaucePicker(false)}
+              className="w-full mt-3 py-2 rounded-lg text-xs transition-all active:scale-95"
+              style={{ color: "oklch(0.52 0.03 30)", background: "transparent" }}
+            >
+              {lang === "es" ? "Cancelar" : "Cancel"}
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
