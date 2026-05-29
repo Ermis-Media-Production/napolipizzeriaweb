@@ -55,6 +55,18 @@ export default function NapoliFooter() {
                 <a href={`https://${RESTAURANT_INFO.website}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded transition-colors hover:bg-napoli-red" style={{ color: "oklch(0.65 0.015 80)" }}>
                   <Globe size={16} />
                 </a>
+                <a
+                  href="https://www.doordash.com/en/store/napoli-pizzeria-craig-north-las-vegas-43074369/109691748/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Order on DoorDash"
+                  className="p-2 rounded transition-colors hover:bg-napoli-red"
+                  style={{ color: "oklch(0.65 0.015 80)" }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12.004 0C5.374 0 0 5.373 0 12.004 0 18.63 5.374 24 12.004 24 18.63 24 24 18.63 24 12.004 24 5.373 18.63 0 12.004 0zm5.578 7.26c1.967 0 3.56 1.594 3.56 3.56 0 1.967-1.593 3.56-3.56 3.56H7.26v-2.373h10.322c.655 0 1.187-.532 1.187-1.187 0-.655-.532-1.187-1.187-1.187H7.26V7.26h10.322z"/>
+                  </svg>
+                </a>
               </div>
             </div>
 
