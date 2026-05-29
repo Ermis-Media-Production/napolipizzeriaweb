@@ -123,6 +123,32 @@ export async function handleAuthorizeNetWebhook(req: Request, res: Response): Pr
           `Notification ID: ${notificationId}`,
         ].join("\n"),
       }).catch((err) => console.error("[AuthNet Webhook] Notification error:", err));
+
+      // Fire-and-forget: email receipt to restaurant owner
+      {
+        const forgeBaseUrl = (process.env.BUILT_IN_FORGE_API_URL || "").replace(/\/+$/, "");
+        const forgeKey = process.env.BUILT_IN_FORGE_API_KEY;
+        if (forgeBaseUrl && forgeKey) {
+          const emailBody = [
+            `✅ PAYMENT CONFIRMED — Napoli Pizzeria`,
+            ``,
+            `Transaction ID: ${transactionId}`,
+            `Auth Code:      ${authCode}`,
+            `Amount:         $${amount.toFixed(2)}`,
+            `Event:          ${eventType}`,
+            `Notification:   ${notificationId}`,
+          ].join("\n");
+          fetch(`${forgeBaseUrl}/v1/email/send`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${forgeKey}` },
+            body: JSON.stringify({
+              to: "henys2325@gmail.com",
+              subject: `✅ Payment Confirmed — $${amount.toFixed(2)} — TxnID ${transactionId}`,
+              text: emailBody,
+            }),
+          }).catch((err) => console.error("[Email] Webhook receipt failed:", err));
+        }
+      }
       break;
     }
 

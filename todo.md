@@ -384,3 +384,8 @@
 - [x] client/src/components/CartDrawer.tsx: Added customerLastName state and Last name input field
 - [x] CartDrawer buildOrderPayload: combines first + last name into customerName when last name is provided
 - [x] CartDrawer order summary: shows full name (first + last) in "For:" line
+
+## Email Receipts + Pay by Link Removal
+- [x] Send order receipt email to henys2325@gmail.com on every successful Authorize.net payment (chargeCard)
+- [x] Send order receipt email to henys2325@gmail.com on every successful Authorize.net webhook (approved event)
+- [x] Hide Pay by Link (SMS) option from CartDrawer checkout UI

@@ -459,6 +459,41 @@ export const authorizeNetRouter = router({
           );
         }
 
+        // Fire-and-forget: email receipt to restaurant owner
+        {
+          const forgeBaseUrl = (process.env.BUILT_IN_FORGE_API_URL || "").replace(/\/+$/, "");
+          const forgeKey = process.env.BUILT_IN_FORGE_API_KEY;
+          if (forgeBaseUrl && forgeKey) {
+            const itemLines = input.items
+              .map((i) => `  • ${i.quantity}x ${i.name}${i.description ? ` (${i.description})` : ""} — $${(i.price * i.quantity).toFixed(2)}`)
+              .join("\n");
+            const emailBody = [
+              `🍕 NEW ORDER — Napoli Pizzeria`,
+              ``,
+              `Customer:    ${input.customerName}`,
+              input.customerPhone ? `Phone:       ${input.customerPhone}` : null,
+              input.customerEmail ? `Email:       ${input.customerEmail}` : null,
+              `Order Type:  ${input.orderType}`,
+              input.discountPercent ? `Coupon:      ${input.couponCode} (${input.discountPercent}% off)` : null,
+              `Total:       $${amount.toFixed(2)}`,
+              `Transaction: ${result.transactionId}`,
+              `Auth Code:   ${result.authCode}`,
+              ``,
+              `Items:`,
+              itemLines,
+            ].filter(Boolean).join("\n");
+            fetch(`${forgeBaseUrl}/v1/email/send`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${forgeKey}` },
+              body: JSON.stringify({
+                to: "henys2325@gmail.com",
+                subject: `🍕 New Order — $${amount.toFixed(2)} (${input.orderType}) — ${input.customerName}`,
+                text: emailBody,
+              }),
+            }).catch((err) => console.error("[Email] Failed to send receipt:", err));
+          }
+        }
+
         return {
           success: true,
           transactionId: result.transactionId,

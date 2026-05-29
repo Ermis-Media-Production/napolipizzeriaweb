@@ -1168,35 +1168,7 @@ export default function CartDrawer() {
                   </>
                 )}
               </button>
-              {/* ── PAY BY LINK (SMS) button ── */}
-              <button
-                onClick={handleSendPayByLink}
-                disabled={sendPayByLink.isPending || isLoading || !!geoError || isStoreClosed}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded font-bold text-sm transition-all active:scale-[0.98] border-2"
-                style={{
-                  background: "transparent",
-                  borderColor: sendPayByLink.isPending || isLoading || !!geoError || isStoreClosed
-                    ? "oklch(0.75 0.03 30)"
-                    : "oklch(0.38 0.18 25)",
-                  color: sendPayByLink.isPending || isLoading || !!geoError || isStoreClosed
-                    ? "oklch(0.65 0.03 30)"
-                    : "oklch(0.38 0.18 25)",
-                  fontFamily: "'Oswald', sans-serif",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                {sendPayByLink.isPending ? (
-                  <>
-                    <Loader2 size={15} className="animate-spin" />
-                    Sending SMS...
-                  </>
-                ) : (
-                  <>
-                    <MessageSquare size={15} />
-                    Send Pay Link via SMS — ${grandTotal.toFixed(2)}
-                  </>
-                )}
-              </button>
+              {/* ── PAY BY LINK (SMS) button — temporarily hidden until Twilio A2P is approved ── */}
               <p className="text-center text-xs pb-4" style={{ color: "oklch(0.60 0.03 30)" }}>
                 {orderType === "delivery"
                   ? "Delivery by Uber Direct · Secured by Authorize.net"

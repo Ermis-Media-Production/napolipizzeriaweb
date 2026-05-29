@@ -4,19 +4,18 @@
  * Shared helper used by both the Clover Hosted Checkout webhook and any other
  * payment confirmation path to push a confirmed order to Clover POS.
  *
- * Kitchen Printer label mapping (only 2 kitchen printers are used):
+ * Kitchen Printer label mapping (3 printers):
  *
- *   Pizza  (Star TSP100, 192.168.192.11)
+ *   Pizza     (Star TSP100, 192.168.192.11)
  *     → All pizzas (regular, specialty, gluten-free, stuffed dough, sicilian,
  *       calzone, stromboli, half & half, 4-topp combo, etc.)
  *
- *   Food   (Star TSP100, 192.168.192.12)
- *     → Everything else: wings, appetizers, burgers, sandwiches, wraps,
- *       salads, pasta, sides, children's menu, lunch specials, anytime specials,
- *       desserts, drinks, beverages — ALL non-pizza items
+ *   Food      (Star TSP100, 192.168.192.12)
+ *     → Hot food: wings, appetizers, burgers, sandwiches, wraps,
+ *       salads, pasta, sides, children's menu, lunch specials, anytime specials
  *
- * NOTE: "Pizzeria" (TM-U220, 192.168.192.8) is a RECEIPT printer, NOT a kitchen
- *       printer. It must NEVER be used for order routing.
+ *   Pizzeria  (TM-U220, 192.168.192.8)
+ *     → Desserts and beverages (sodas, water, milkshakes, beer, wine, etc.)
  *
  * Employee / Tender:
  *   - All web orders are assigned to the employee named "Online"
@@ -48,22 +47,21 @@ export interface CloverOrderResult {
 // ── Printer label mapping ──────────────────────────────────────────────────────
 
 /**
- * Only two kitchen printer labels are used:
- *   "Pizza"  → pizza station (Star TSP100)
- *   "Food"   → food/prep station (Star TSP100)
- *
- * "Pizzeria" is a receipt printer — DO NOT route orders to it.
+ * Three printer labels:
+ *   "Pizza"    → pizza station (Star TSP100, 192.168.192.11)
+ *   "Food"     → hot food station (Star TSP100, 192.168.192.12)
+ *   "Pizzeria" → desserts & beverages (TM-U220, 192.168.192.8)
  */
 export const CLOVER_PRINTER_LABELS = {
   PIZZA: "Pizza",
   FOOD: "Food",
+  PIZZERIA: "Pizzeria",
 } as const;
 
 type PrinterLabel = (typeof CLOVER_PRINTER_LABELS)[keyof typeof CLOVER_PRINTER_LABELS];
 
 /**
  * Keywords that identify pizza-station items (case-insensitive).
- * Everything that doesn't match goes to the Food printer.
  */
 const PIZZA_KEYWORDS = [
   "pizza",
@@ -81,11 +79,55 @@ const PIZZA_KEYWORDS = [
 ];
 
 /**
- * Determine which Clover kitchen printer label an item should be routed to.
+ * Keywords that identify dessert items → Pizzeria printer (TM-U220).
+ */
+const DESSERT_KEYWORDS = [
+  "zeppoli",
+  "red velvet cake",
+  "eclair",
+  "brownie",
+  "cannoli",
+  "baklava",
+  "cheesecake",
+  "tiramisu",
+  "chocolate cake",
+  "carrot cake",
+  "dessert",
+];
+
+/**
+ * Keywords that identify beverage items → Pizzeria printer (TM-U220).
+ */
+const BEVERAGE_KEYWORDS = [
+  "soda can",
+  "glass bottle soda",
+  "perrier",
+  "bottled water",
+  "2 liter",
+  "iced tea",
+  "root beer float",
+  "milkshake",
+  "frozen custard",
+  "wine",
+  "beer",
+  "juice",
+  "lemonade",
+  "water",
+  "beverage",
+  "drink",
+  "coffee",
+  "espresso",
+  "cappuccino",
+];
+
+/**
+ * Determine which Clover printer label an item should be routed to.
  *
- * Rule:
- *   - If the item name contains any PIZZA_KEYWORDS → "Pizza" printer
- *   - Everything else (wings, burgers, pasta, drinks, desserts, sides, etc.) → "Food" printer
+ * Rules (evaluated in order):
+ *   1. PIZZA_KEYWORDS match  → "Pizza"    (Star TSP100, pizza station)
+ *   2. DESSERT_KEYWORDS match → "Pizzeria" (TM-U220, desserts/beverages)
+ *   3. BEVERAGE_KEYWORDS match → "Pizzeria" (TM-U220, desserts/beverages)
+ *   4. Everything else        → "Food"     (Star TSP100, hot food station)
  */
 export function getPrinterLabel(itemName: string): PrinterLabel {
   const lower = itemName.toLowerCase();
@@ -94,9 +136,15 @@ export function getPrinterLabel(itemName: string): PrinterLabel {
     return CLOVER_PRINTER_LABELS.PIZZA;
   }
 
-  // All other items go to Food: wings, appetizers, burgers, sandwiches, wraps,
-  // salads, pasta, sides, children's menu, lunch specials, anytime specials,
-  // desserts, drinks, beverages, etc.
+  if (
+    DESSERT_KEYWORDS.some((kw) => lower.includes(kw)) ||
+    BEVERAGE_KEYWORDS.some((kw) => lower.includes(kw))
+  ) {
+    return CLOVER_PRINTER_LABELS.PIZZERIA;
+  }
+
+  // Everything else: wings, appetizers, burgers, sandwiches, wraps,
+  // salads, pasta, sides, children's menu, lunch specials, anytime specials.
   return CLOVER_PRINTER_LABELS.FOOD;
 }
 
