@@ -409,8 +409,11 @@ export default function CartDrawer() {
 
   const handleSendPayByLink = async () => {
     if (!validateForm()) return;
-    if (!customerPhone || customerPhone.trim().length < 10) {
-      toast.error("Please enter a valid phone number to send the payment link.");
+    if (!customerPhone || !isPhoneValid(customerPhone)) {
+      toast.error(
+        "📱 Please enter a valid 10-digit phone number to receive the pay link via SMS. / Por favor ingresa un número de teléfono válido de 10 dígitos para recibir el link de pago.",
+        { duration: 5000 }
+      );
       return;
     }
     if (orderType === "delivery" && !geoValidated) {
@@ -583,12 +586,30 @@ export default function CartDrawer() {
 
   const isStoreClosed = !storeIsOpen && orderType !== "scheduled";
 
+  /** Strip non-digits and return digit-only string */
+  const digitsOnly = (v: string) => v.replace(/\D/g, "");
+
+  /** Returns true if phone has at least 10 digits */
+  const isPhoneValid = (phone: string) => digitsOnly(phone).length >= 10;
+
   const validateForm = () => {
     if (items.length === 0) return false;
-    if (!customerName.trim()) { toast.error("Please enter your name."); return false; }
-    if (orderType === "delivery" && !deliveryAddress.trim()) { toast.error("Please enter your delivery address."); return false; }
-    if (orderType === "delivery" && geoError) { toast.error("Delivery address is outside our service area."); return false; }
-    if (orderType === "delivery" && !uberQuoteId) { toast.error("Please wait for the delivery quote to load."); return false; }
+    if (!customerName.trim()) {
+      toast.error("Please enter your name. / Por favor ingresa tu nombre.");
+      return false;
+    }
+    if (orderType === "delivery" && !deliveryAddress.trim()) {
+      toast.error("Please enter your delivery address. / Por favor ingresa tu dirección.");
+      return false;
+    }
+    if (orderType === "delivery" && geoError) {
+      toast.error("Delivery address is outside our service area. / Dirección fuera del área de entrega.");
+      return false;
+    }
+    if (orderType === "delivery" && !uberQuoteId) {
+      toast.error("Please wait for the delivery quote to load.");
+      return false;
+    }
     return true;
   };
 
@@ -970,12 +991,23 @@ export default function CartDrawer() {
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   className="w-full text-sm px-3 py-2.5 rounded border-2 outline-none focus:ring-2 font-semibold"
                   style={{
-                    borderColor: customerPhone.trim().length >= 10 ? "oklch(0.55 0.18 145)" : "oklch(0.65 0.18 25)",
-                    background: customerPhone.trim().length >= 10 ? "oklch(0.97 0.03 145)" : "oklch(0.99 0.02 25)",
+                    borderColor: customerPhone.trim() === "" ? "oklch(0.65 0.18 25)" : isPhoneValid(customerPhone) ? "oklch(0.55 0.18 145)" : "oklch(0.55 0.18 25)",
+                    background: customerPhone.trim() === "" ? "oklch(0.99 0.02 25)" : isPhoneValid(customerPhone) ? "oklch(0.97 0.03 145)" : "oklch(0.99 0.03 25)",
                     fontFamily: "'Lato', sans-serif",
                     color: "oklch(0.25 0.03 30)",
                   }}
                 />
+                {/* Inline validation hint */}
+                {customerPhone.trim() !== "" && !isPhoneValid(customerPhone) && (
+                  <p className="text-xs mt-0.5 px-0.5" style={{ color: "oklch(0.45 0.18 25)", fontFamily: "'Lato', sans-serif" }}>
+                    ⚠️ At least 10 digits required · Se requieren al menos 10 dígitos
+                  </p>
+                )}
+                {customerPhone.trim() !== "" && isPhoneValid(customerPhone) && (
+                  <p className="text-xs mt-0.5 px-0.5" style={{ color: "oklch(0.40 0.15 145)", fontFamily: "'Lato', sans-serif" }}>
+                    ✓ Phone number valid · Número válido
+                  </p>
+                )}
               </div>
               <input
                 type="email"
