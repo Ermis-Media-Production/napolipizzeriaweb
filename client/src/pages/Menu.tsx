@@ -619,35 +619,30 @@ function KidsMenuCard({
   };
   return (
     <div
-      className="flex flex-col overflow-hidden rounded-lg"
-      style={{ border: "1px solid oklch(0.85 0.08 240)", background: "white" }}
+      className="napoli-menu-item flex items-start gap-3 px-4 py-3 border-b last:border-b-0"
+      style={{ borderColor: "oklch(0.93 0.012 80)" }}
     >
-      {/* Photo — compact height matching Desserts style */}
-      <div className="relative" style={{ height: 100 }}>
-        {photo ? (
-          <img src={photo} alt={item} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center" style={{ background: "oklch(0.93 0.06 240)" }}>
-            <span style={{ fontSize: 36 }}>🍽️</span>
-          </div>
-        )}
-      </div>
-      {/* Info */}
-      <div className="flex flex-col gap-1.5 p-2.5 flex-1">
-        <span className="text-xs font-semibold napoli-body leading-tight" style={{ color: "oklch(0.28 0.12 240)" }}>{translated.name}</span>
-        <NutritionBadges itemName={item} compact />
-        {/* Sauce selector */}
+      {/* Square photo — same size as ItemRow (64×64) */}
+      {photo && (
+        <div className="shrink-0 rounded overflow-hidden" style={{ width: 64, height: 64 }}>
+          <img src={photo} alt={item} className="w-full h-full object-cover" loading="lazy" />
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{translated.name}</span>
+        <NutritionBadges itemName={item} />
+        {/* Sauce selector inline */}
         {hasSauceChoice && (
-          <div className="flex gap-1">
+          <div className="flex gap-1 mt-1">
             {(["Marinara", "Butter"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setSauce(s)}
-                className="flex-1 py-0.5 rounded text-xs font-semibold transition-all active:scale-95"
+                className="px-2 py-0.5 rounded text-xs font-semibold transition-all active:scale-95"
                 style={{
-                  background: sauce === s ? "oklch(0.55 0.18 240)" : "oklch(0.93 0.06 240)",
-                  color: sauce === s ? "white" : "oklch(0.40 0.12 240)",
-                  border: `1px solid ${sauce === s ? "oklch(0.55 0.18 240)" : "oklch(0.80 0.08 240)"}`,
+                  background: sauce === s ? "var(--napoli-red)" : "oklch(0.93 0.012 80)",
+                  color: sauce === s ? "white" : "var(--napoli-dark)",
+                  border: `1px solid ${sauce === s ? "var(--napoli-red)" : "oklch(0.80 0.015 80)"}`,
                   fontSize: "0.65rem",
                 }}
               >
@@ -656,17 +651,17 @@ function KidsMenuCard({
             ))}
           </div>
         )}
-        {/* Price + Add */}
-        <div className="flex items-center justify-between mt-auto pt-1">
-          <span className="napoli-price text-sm font-bold" style={{ color: "oklch(0.35 0.18 240)" }}>{price}</span>
-          <button
-            onClick={handleAdd}
-            className="flex items-center gap-0.5 px-2 py-1 rounded text-xs font-semibold transition-all active:scale-95 hover:opacity-90"
-            style={{ background: "oklch(0.55 0.18 240)", color: "white", fontSize: "0.7rem" }}
-          >
-            <Plus size={10} /> {t.ui.add}
-          </button>
-        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{price}</span>
+        <button
+          onClick={handleAdd}
+          className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90 hover:opacity-90"
+          style={{ background: "var(--napoli-red)", color: "white" }}
+          title={`Add ${item} to cart`}
+        >
+          <Plus size={14} />
+        </button>
       </div>
     </div>
   );
@@ -684,9 +679,11 @@ function KidsMenuGrid({
   openCart: () => void;
 }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
       {items.map((item) => (
-        <KidsMenuCard key={item} item={item} price={price} addItem={addItem} openCart={openCart} />
+        <div key={item} style={{ borderBottom: "1px solid oklch(0.93 0.012 80)", borderRight: "1px solid oklch(0.93 0.012 80)" }}>
+          <KidsMenuCard item={item} price={price} addItem={addItem} openCart={openCart} />
+        </div>
       ))}
     </div>
   );
@@ -1661,33 +1658,16 @@ export default function Menu() {
         </MenuCard>
 
         {/* ── CHILDREN'S MENU ────────────────────────────────────── */}
-        {/* Custom header — sky blue theme for kids */}
-        <div
-          id="childrens"
-          className="flex items-center gap-3 py-3 px-5 rounded-t-md scroll-mt-24"
-          style={{ background: "oklch(0.55 0.18 240)" }}
-        >
-          <span className="text-xl">🧒</span>
-          <h2 className="napoli-label text-base text-white tracking-widest">Children's Menu</h2>
-        </div>
-        <div
-          className="rounded-b-md border border-t-0 mb-8 overflow-hidden"
-          style={{ borderColor: "oklch(0.75 0.12 240)", background: "oklch(0.97 0.03 240)" }}
-        >
-          {/* Banner */}
-          <div
-            className="px-5 py-3 border-b flex items-center gap-3"
-            style={{ borderColor: "oklch(0.85 0.08 240)", background: "oklch(0.93 0.06 240)" }}
-          >
-            <span className="text-lg">⭐</span>
-            <div>
-              <span className="napoli-price text-xl font-bold" style={{ color: "oklch(0.35 0.18 240)" }}>{CHILDRENS_MENU.price}</span>
-              <span className="text-xs napoli-body ml-2" style={{ color: "oklch(0.45 0.10 240)" }}>each · Includes drink & dessert</span>
-            </div>
+        <SectionHeader id="childrens" title={lang === "es" ? "Menú Infantil" : "Children's Menu"} emoji="🧒" photo="/manus-storage/kids_chicken_fingers_d6e5299d.jpeg" />
+        <MenuCard>
+          <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
+            <span className="napoli-price text-lg" style={{ color: "var(--napoli-red)" }}>{CHILDRENS_MENU.price}</span>
+            <span className="text-xs napoli-body ml-2" style={{ color: "oklch(0.52 0.03 30)" }}>
+              {lang === "es" ? "c/u · Incluye bebida y postre" : "each · Includes drink & dessert"}
+            </span>
           </div>
-          {/* Items grid — photo cards with sauce selector */}
           <KidsMenuGrid price={CHILDRENS_MENU.price} items={CHILDRENS_MENU.items} addItem={addItem} openCart={openCart} />
-        </div>
+        </MenuCard>
 
         {/* ── BEVERAGES ──────────────────────────────────────────────── */}
         {/* Custom header — deep navy theme for drinks */}
