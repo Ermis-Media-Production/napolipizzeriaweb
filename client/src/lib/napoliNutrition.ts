@@ -64,20 +64,20 @@ export const NUTRITION: Record<string, NutritionInfo> = {
   "Lentil, Bowl of Chili, Chicken Noodle, Cream of Broccoli or Minestrone": { cal: 220, protein: 10, tags: ["V"], allergens: ["wheat", "milk"] },
 
   // ── SALADS ───────────────────────────────────────────────────
-  "Dinner Side Salad":             { cal: 120,  protein: 4,  tags: ["V", "VG", "GF", "DF"] },
-  "Antipasto Salad":               { cal: 380,  protein: 14, tags: ["GF"],        allergens: ["milk"] },
-  "Egg's Chef Salad":              { cal: 420,  protein: 22, tags: ["GF"],        allergens: ["milk", "eggs"] },
-  "Blackened Chicken Salad":       { cal: 380,  protein: 32, tags: ["GF"],        allergens: ["milk"] },
-  "Buffalo Crispy Chicken Salad":  { cal: 520,  protein: 34, tags: ["HOT"],       allergens: ["wheat", "milk", "eggs"] },
-  "Crispy Chicken Salad":          { cal: 480,  protein: 30, allergens: ["wheat", "milk", "eggs"] },
-  "Chicken Caesar Salad":          { cal: 440,  protein: 34, allergens: ["wheat", "milk", "eggs", "fish"] },
-  "Mediterranean Salad":           { cal: 320,  protein: 12, tags: ["V", "GF"],   allergens: ["milk"] },
-  "Greek Salad":                   { cal: 290,  protein: 10, tags: ["V", "GF"],   allergens: ["milk"] },
-  "Napoli Italian Chopped Salad":  { cal: 460,  protein: 18, allergens: ["wheat", "milk"] },
-  "Gyro Salad":                    { cal: 480,  protein: 26, tags: ["GF"],        allergens: ["milk"] },
-  "Spinach Salad":                 { cal: 360,  protein: 16, tags: ["GF"],        allergens: ["milk", "eggs"] },
-  "Caesar Salad":                  { cal: 340,  protein: 10, allergens: ["wheat", "milk", "eggs", "fish"] },
-  "Steak Salad (Sirloin Beef Flap)": { cal: 520, protein: 38, tags: ["GF", "BEST"], allergens: ["milk"] },
+  "Dinner Side Salad":             { cal: 120,  protein: 4,  carbs: 12,  tags: ["V", "VG", "GF", "DF"] },
+  "Antipasto Salad":               { cal: 380,  protein: 14, carbs: 18,  tags: ["GF"],        allergens: ["milk"] },
+  "Egg's Chef Salad":              { cal: 420,  protein: 22, carbs: 16,  tags: ["GF"],        allergens: ["milk", "eggs"] },
+  "Blackened Chicken Salad":       { cal: 380,  protein: 32, carbs: 14,  tags: ["GF"],        allergens: ["milk"] },
+  "Buffalo Crispy Chicken Salad":  { cal: 520,  protein: 34, carbs: 32,  tags: ["HOT"],       allergens: ["wheat", "milk", "eggs"] },
+  "Crispy Chicken Salad":          { cal: 480,  protein: 30, carbs: 30,  allergens: ["wheat", "milk", "eggs"] },
+  "Chicken Caesar Salad":          { cal: 440,  protein: 34, carbs: 22,  allergens: ["wheat", "milk", "eggs", "fish"] },
+  "Mediterranean Salad":           { cal: 320,  protein: 12, carbs: 20,  tags: ["V", "GF"],   allergens: ["milk"] },
+  "Greek Salad":                   { cal: 290,  protein: 10, carbs: 18,  tags: ["V", "GF"],   allergens: ["milk"] },
+  "Napoli Italian Chopped Salad":  { cal: 460,  protein: 18, carbs: 26,  allergens: ["wheat", "milk"] },
+  "Gyro Salad":                    { cal: 480,  protein: 26, carbs: 22,  tags: ["GF"],        allergens: ["milk"] },
+  "Spinach Salad":                 { cal: 360,  protein: 16, carbs: 16,  tags: ["GF"],        allergens: ["milk", "eggs"] },
+  "Caesar Salad":                  { cal: 340,  protein: 10, carbs: 24,  allergens: ["wheat", "milk", "eggs", "fish"] },
+  "Steak Salad (Sirloin Beef Flap)": { cal: 520, protein: 38, carbs: 14, tags: ["GF", "BEST"], allergens: ["milk"] },
 
   // ── PASTA ────────────────────────────────────────────────────
   "Spaghetti & Meatballs":         { cal: 720,  protein: 34, carbs: 82,  tags: ["BEST"],      allergens: ["wheat", "milk", "eggs"] },
@@ -139,9 +139,9 @@ export const NUTRITION: Record<string, NutritionInfo> = {
   "Greek Burger":                  { cal: 680,  protein: 36, carbs: 44,  allergens: ["wheat", "eggs", "milk"] },
 
   // ── WINGS & FINGERS ──────────────────────────────────────────
-  "Bone-In Wings":                 { cal: 420,  protein: 36, tags: ["GF"],        allergens: ["milk"] },
-  "Boneless Wings":                { cal: 380,  protein: 28, allergens: ["wheat", "eggs"] },
-  "Chicken Fingers":               { cal: 440,  protein: 32, allergens: ["wheat", "eggs"] },
+  "Bone-In Wings":                 { cal: 420,  protein: 36, carbs: 4,   tags: ["GF"],        allergens: ["milk"] },
+  "Boneless Wings":                { cal: 380,  protein: 28, carbs: 22,  allergens: ["wheat", "eggs"] },
+  "Chicken Fingers":               { cal: 440,  protein: 32, carbs: 28,  allergens: ["wheat", "eggs"] },
 
   // ── PIZZA (per slice / 14" reference) ────────────────────────
   "Plain Cheese":                  { cal: 280,  protein: 12, tags: ["V"],         allergens: ["wheat", "milk"] },
