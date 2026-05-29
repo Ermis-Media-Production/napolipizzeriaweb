@@ -304,7 +304,7 @@ export const SUBS = {
     { name: "Newton", price: "$12.49" },
     { name: "Meatball Parmigiana", price: "$12.49" },
     { name: "Meatball & Sausage Parmigiana", price: "$12.49" },
-    { name: "Eggplant Parmigiana", price: "$12.49" },
+    { name: "Eggplant Parmigiana Sub", price: "$12.49" },
     { name: "Beef or Chicken Philly", price: "$12.49" },
   ],
 };

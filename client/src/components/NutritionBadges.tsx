@@ -28,7 +28,7 @@ export function NutritionBadges({
   const info = getNutrition(itemName);
   if (!info) return null;
 
-  const { cal, protein, tags = [], allergens = [] } = info;
+  const { cal, protein, carbs, tags = [], allergens = [] } = info;
 
   return (
     <div className="flex flex-col gap-0.5 mt-1">
@@ -50,6 +50,16 @@ export function NutritionBadges({
             title="Approximate protein"
           >
             💪 {protein}g
+          </span>
+        )}
+        {/* Carbs */}
+        {carbs != null && carbs > 0 && (
+          <span
+            className="inline-flex items-center gap-0.5 text-[10px] font-medium leading-none px-1.5 py-0.5 rounded"
+            style={{ background: "oklch(0.94 0.06 145)", color: "oklch(0.36 0.12 145)" }}
+            title="Approximate carbohydrates"
+          >
+            🌾 {carbs}g
           </span>
         )}
         {/* Diet tags */}

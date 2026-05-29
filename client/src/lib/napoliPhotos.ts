@@ -118,6 +118,7 @@ export const MENU_PHOTOS: Record<string, string> = {
   "Meatball Parmigiana":            C + "9WPMWQ71D6AWP.jpeg",
   "Meatball & Sausage Parmigiana":  S + "napoli-meatball-sausage-parm_bfcb31dd.jpg",
   "Beef or Chicken Philly":         S + "napoli-beef-chicken-philly_6d157067.jpg",
+  "Eggplant Parmigiana Sub":        S + "napoli_sandwich_eggplant_parm_7ce46d96.webp",
 
   // ── BURGERS ──────────────────────────────────────────────────
   "Hamburger":                      S + "napoli_hamburger_regular_no_cheese_621b8d14.webp",

@@ -1530,8 +1530,9 @@ export default function Menu() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{s.name}</span>
+                    <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{s.name === "Eggplant Parmigiana Sub" ? "Eggplant Parmigiana" : s.name}</span>
                     {addNote && <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{addNote}</p>}
+                    <NutritionBadges itemName={s.name} />
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>${basePrice.toFixed(2)}</span>
