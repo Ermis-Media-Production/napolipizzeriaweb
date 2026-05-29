@@ -67,6 +67,18 @@ export default function NapoliFooter() {
                     <path d="M12.004 0C5.374 0 0 5.373 0 12.004 0 18.63 5.374 24 12.004 24 18.63 24 24 18.63 24 12.004 24 5.373 18.63 0 12.004 0zm5.578 7.26c1.967 0 3.56 1.594 3.56 3.56 0 1.967-1.593 3.56-3.56 3.56H7.26v-2.373h10.322c.655 0 1.187-.532 1.187-1.187 0-.655-.532-1.187-1.187-1.187H7.26V7.26h10.322z"/>
                   </svg>
                 </a>
+                <a
+                  href="https://www.order.store/store/napoli-pizza-w-craig-rd/bqve_6_DWRS4HuIlPMKKDQ"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Order on Uber Eats"
+                  className="p-2 rounded transition-colors hover:bg-napoli-red"
+                  style={{ color: "oklch(0.65 0.015 80)" }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm-1.5 6h3v6.75c0 1.657-1.343 3-3 3s-3-1.343-3-3V6h3v6.75c0 0 0 .75.75.75s.75-.75.75-.75V6zm4.5 9.75V6h1.5v9.75h-1.5z"/>
+                  </svg>
+                </a>
               </div>
             </div>
 

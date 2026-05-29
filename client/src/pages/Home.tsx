@@ -12,6 +12,7 @@ import { RESTAURANT_INFO, LUNCH_SPECIALS, PIZZA_SPECIALS, APPETIZERS, ANYTIME_SP
 import SpecialCustomizerModal from "@/components/SpecialCustomizerModal";
 import LunchTimerBadge from "@/components/LunchTimerBadge";
 import PickUpSpecialModal from "@/components/PickUpSpecialModal";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const handleOrder = () => toast.info("Order online at napolipizzerianorthlasvegas.com or call 725-204-0379!");
 
@@ -75,6 +76,7 @@ const FEATURED_SPECIALS = [
 
 function AnytimeSpecialsFeatured() {
   const [activeSpecial, setActiveSpecial] = useState<number | null>(null);
+  const { t } = useLanguage();
 
   return (
     <section
@@ -86,13 +88,13 @@ function AnytimeSpecialsFeatured() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
           <div>
             <p className="napoli-label text-xs mb-2" style={{ color: "var(--napoli-gold)", letterSpacing: "0.2em" }}>
-              Available Any Time
+              {t.home.anytimeEyebrow}
             </p>
             <h2 className="napoli-display text-3xl md:text-4xl" style={{ color: "oklch(0.99 0.015 80)" }}>
-              Anytime Specials
+              {t.home.anytimeHeading}
             </h2>
             <p className="napoli-body text-sm mt-2" style={{ color: "oklch(0.68 0.015 80)" }}>
-              19 combo deals — pizzas, wings, sodas & more at unbeatable prices
+              {t.home.anytimeDesc}
             </p>
           </div>
           <Link href="/specials#anytime-specials">
@@ -100,7 +102,7 @@ function AnytimeSpecialsFeatured() {
               className="shrink-0 flex items-center gap-2 px-5 py-2.5 rounded text-sm napoli-label transition-colors"
               style={{ background: "var(--napoli-red)", color: "white" }}
             >
-              See All 19 Specials <ArrowRight size={14} />
+              {t.home.seeAllSpecials} <ArrowRight size={14} />
             </button>
           </Link>
         </div>
@@ -153,7 +155,7 @@ function AnytimeSpecialsFeatured() {
 
         {/* Disclaimer */}
         <p className="text-center text-xs napoli-body mt-6" style={{ color: "oklch(0.50 0.03 27)" }}>
-          Taxes not included · Offers cannot be combined · Prices subject to change
+          {t.home.taxNote}
         </p>
       </div>
 
@@ -169,6 +171,7 @@ function AnytimeSpecialsFeatured() {
 }
 
 function GoogleReviewsSection() {
+  const { t } = useLanguage();
   return (
     <section
       className="py-14 overflow-hidden"
@@ -179,10 +182,10 @@ function GoogleReviewsSection() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
           <div>
             <p className="napoli-label text-xs mb-2" style={{ color: "var(--napoli-red)", letterSpacing: "0.2em" }}>
-              Lo Que Dicen Nuestros Clientes
+              {t.home.reviewsEyebrow}
             </p>
             <h2 className="napoli-display text-3xl md:text-4xl" style={{ color: "var(--napoli-dark)" }}>
-              Reseñas de Google
+              {t.home.reviewsHeading}
             </h2>
           </div>
           {/* Google badge */}
@@ -200,7 +203,7 @@ function GoogleReviewsSection() {
               <path d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.3 5.5l6.5 5.5C37.3 39.4 44 34.5 44 24c0-1.3-.1-2.7-.4-3.9z" fill="#1976D2"/>
             </svg>
             <span className="text-sm font-semibold napoli-label" style={{ color: "oklch(0.35 0.03 30)" }}>
-              Ver en Google Maps
+              {t.home.viewOnGoogle}
             </span>
           </a>
         </div>
@@ -261,7 +264,7 @@ function GoogleReviewsSection() {
           <div className="text-center">
             <div className="napoli-price text-4xl" style={{ color: "var(--napoli-dark)" }}>5.0</div>
             <StarRating count={5} />
-            <div className="text-xs napoli-body mt-1" style={{ color: "oklch(0.55 0.015 80)" }}>Basado en reseñas de Google</div>
+            <div className="text-xs napoli-body mt-1" style={{ color: "oklch(0.55 0.015 80)" }}>{t.home.basedOn}</div>
           </div>
           <div className="hidden sm:block w-px h-12" style={{ background: "oklch(0.88 0.015 80)" }} />
           <div className="text-center sm:text-left">
@@ -278,7 +281,7 @@ function GoogleReviewsSection() {
               className="inline-flex items-center gap-1 mt-2 text-xs napoli-label transition-opacity hover:opacity-70"
               style={{ color: "var(--napoli-red)" }}
             >
-              Dejar una reseña <ArrowRight size={11} />
+              {t.home.leaveReview} <ArrowRight size={11} />
             </a>
           </div>
         </div>
@@ -287,12 +290,7 @@ function GoogleReviewsSection() {
   );
 }
 
-const SERVICES = [
-  { icon: <Truck size={22} />, label: "Delivery", desc: "Fast delivery to your door", href: null },
-  { icon: <UtensilsCrossed size={22} />, label: "Dine-In", desc: "Enjoy the full Italian experience", href: null },
-  { icon: <ShoppingBag size={22} />, label: "Pick Up", desc: "Order ahead, skip the wait", href: null },
-  { icon: <CalendarClock size={22} />, label: "Reservations", desc: "Book your table or event", href: "/reservations" },
-];
+// SERVICES is now built dynamically inside the component using translations
 
 // ── DAILY SPECIALS for rotating banner ────────────────────────────────────────
 const DAILY_SPECIALS = [
@@ -310,6 +308,7 @@ function DailySpecialBanner() {
   const [idx, setIdx] = useState(0);
   const [animating, setAnimating] = useState(false);
   const [direction, setDirection] = useState<"left" | "right">("left");
+  const { t } = useLanguage();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -343,7 +342,7 @@ function DailySpecialBanner() {
             className="napoli-label text-xs font-bold"
             style={{ color: "var(--napoli-gold)", letterSpacing: "0.15em" }}
           >
-            ANYTIME SPECIALS
+            {t.home.anytimeSpecials}
           </span>
         </div>
 
@@ -404,7 +403,7 @@ function DailySpecialBanner() {
             className="shrink-0 napoli-label text-xs font-bold px-3 py-1.5 rounded transition-colors hover:opacity-90"
             style={{ background: "var(--napoli-red)", color: "white" }}
           >
-            Order Now
+            {t.home.orderNowBtn}
           </span>
         </Link>
       </div>
@@ -430,6 +429,14 @@ function DailySpecialBanner() {
 
 export default function Home() {
   const [pickupModalOpen, setPickupModalOpen] = useState(false);
+  const { t } = useLanguage();
+
+  const SERVICES = [
+    { icon: <Truck size={22} />, label: t.home.delivery, desc: t.home.deliveryDesc, href: null },
+    { icon: <UtensilsCrossed size={22} />, label: t.home.dineIn, desc: t.home.dineInDesc, href: null },
+    { icon: <ShoppingBag size={22} />, label: t.home.pickUp, desc: t.home.pickUpDesc, href: null },
+    { icon: <CalendarClock size={22} />, label: t.home.reservations, desc: t.home.reservationsDesc, href: "/reservations" },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">
@@ -459,14 +466,14 @@ export default function Home() {
           <div className="max-w-xl">
             {/* Eyebrow */}
             <div className="flex items-center gap-2 mb-4 animate-fade-up">
-              <span className="napoli-badge-gold">North Las Vegas, NV</span>
-              <span className="napoli-badge-green">Best Pizzeria</span>
+              <span className="napoli-badge-gold">{t.home.heroEyebrow1}</span>
+              <span className="napoli-badge-green">{t.home.heroEyebrow2}</span>
             </div>
 
             {/* Headline */}
             <div className="animate-fade-up" style={{ animationDelay: "60ms" }}>
               <p className="napoli-label text-sm mb-1" style={{ color: "oklch(0.80 0.015 80)", letterSpacing: "0.2em" }}>
-                3131 W Craig Rd
+                {t.home.heroAddress}
               </p>
               <h1 className="napoli-display text-5xl md:text-6xl mb-2" style={{ color: "oklch(0.99 0.015 80)" }}>
                 Napoli
@@ -489,7 +496,7 @@ export default function Home() {
                 <Star key={s} size={16} fill="var(--napoli-gold)" stroke="none" />
               ))}
               <span className="text-sm napoli-body ml-1" style={{ color: "oklch(0.75 0.015 80)" }}>
-                Loved by the community
+                {t.home.heroStars}
               </span>
             </div>
 
@@ -500,7 +507,7 @@ export default function Home() {
                 className="napoli-btn-red flex items-center gap-2 px-7 py-3.5 rounded text-sm"
               >
                 <Phone size={16} />
-                Call Us
+                {t.home.callUs}
               </a>
               <Link href="/menu">
                 <button
@@ -510,7 +517,7 @@ export default function Home() {
                     color: "oklch(0.92 0.015 80)",
                   }}
                 >
-                  View Menu
+                  {t.home.viewMenu}
                   <ChevronRight size={16} />
                 </button>
               </Link>
@@ -522,7 +529,7 @@ export default function Home() {
               style={{ borderColor: "var(--napoli-gold)", background: "oklch(0.14 0.03 27 / 0.6)", animationDelay: "240ms" }}
             >
               <div>
-                <div className="napoli-label text-xs" style={{ color: "var(--napoli-gold)" }}>Pick Up Special</div>
+                <div className="napoli-label text-xs" style={{ color: "var(--napoli-gold)" }}>{t.home.pickupSpecial}</div>
                 <div className="napoli-body text-sm" style={{ color: "oklch(0.90 0.015 80)" }}>
                   {RESTAURANT_INFO.pickupSpecial.label}
                 </div>
@@ -616,21 +623,21 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
             <div>
               <p className="napoli-label text-xs mb-2" style={{ color: "var(--napoli-red)", letterSpacing: "0.2em" }}>
-                Hand Tossed New York Style
+                {t.home.pizzaEyebrow}
               </p>
               <h2 className="napoli-display text-4xl md:text-5xl mb-4" style={{ color: "var(--napoli-dark)" }}>
-                Home of the<br />
-                <span style={{ color: "var(--napoli-red)" }}>30" & 36" Pizza</span>
+                {t.home.pizzaHeading}<br />
+                <span style={{ color: "var(--napoli-red)" }}>{t.home.pizzaHeadingAccent}</span>
               </h2>
               <p className="napoli-body text-base leading-relaxed mb-6" style={{ color: "oklch(0.42 0.03 30)" }}>
-                Our hand-tossed New York style pizzas come in sizes from 10" all the way to a massive 36". With over 30 toppings to choose from and specialty creations like BBQ Chicken, Meat Lover, and our famous Napoli's Special — there's a pizza for every craving.
+                {t.home.pizzaDesc}
               </p>
               <div className="grid grid-cols-2 gap-3 mb-6">
                 {[
-                  { label: "Sizes Available", value: "10\" – 36\"" },
-                  { label: "Toppings", value: "30+" },
-                  { label: "Plain Cheese from", value: "$9.49" },
-                  { label: "Gluten Free", value: "14\" Available" },
+                  { label: t.home.sizesLabel, value: "10\" – 36\"" },
+                  { label: t.home.toppingsLabel, value: "30+" },
+                  { label: t.home.cheeseFromLabel, value: "$9.49" },
+                  { label: t.home.glutenFreeLabel, value: t.home.glutenFreeVal },
                 ].map((stat) => (
                   <div
                     key={stat.label}
@@ -644,7 +651,7 @@ export default function Home() {
               </div>
               <Link href="/menu#pizza">
                 <button className="napoli-btn-red flex items-center gap-2 px-6 py-3 rounded text-sm">
-                  See Full Pizza Menu <ArrowRight size={15} />
+                  {t.home.seePizzaMenu} <ArrowRight size={15} />
                 </button>
               </Link>
             </div>
@@ -667,11 +674,11 @@ export default function Home() {
                   color: "white",
                 }}
               >
-                <div className="napoli-label text-xs" style={{ color: "var(--napoli-gold)" }}>Pick Up Special</div>
+                <div className="napoli-label text-xs" style={{ color: "var(--napoli-gold)" }}>{t.home.pickupSpecial}</div>
                 <div className="napoli-price text-xl">$12.99</div>
-                <div className="text-xs napoli-body opacity-90">16" 1 Topping</div>
+                <div className="text-xs napoli-body opacity-90">{t.home.pickupDesc}</div>
                 <div className="flex items-center gap-1 mt-1 text-xs font-bold napoli-label">
-                  Order Now <ChevronRight size={11} />
+                  {t.home.orderNowBtn} <ChevronRight size={11} />
                 </div>
               </button>
             </div>
@@ -687,10 +694,10 @@ export default function Home() {
         <div className="container">
           <div className="text-center mb-10">
             <p className="napoli-label text-xs mb-2" style={{ color: "var(--napoli-red)", letterSpacing: "0.2em" }}>
-              Something for Everyone
+              {t.home.servicesEyebrow}
             </p>
             <h2 className="napoli-display text-3xl md:text-4xl" style={{ color: "var(--napoli-dark)" }}>
-              Explore Our Menu
+              {t.home.servicesHeading}
             </h2>
           </div>
 
@@ -717,13 +724,13 @@ export default function Home() {
                 </div>
                 <div className="p-4">
                   <h3 className="napoli-heading text-lg mb-1" style={{ color: "var(--napoli-dark)" }}>
-                    Starters & Sides
+                    {t.home.appetizersTitle}
                   </h3>
                   <p className="text-sm napoli-body mb-3" style={{ color: "oklch(0.50 0.03 30)" }}>
-                    Napoli's Combo Platter, Mozzarella Sticks, Bruschetta, Garlic Bread & more
+                    {t.home.appetizersDesc}
                   </p>
                   <div className="flex items-center gap-1 text-sm font-semibold napoli-label" style={{ color: "var(--napoli-red)", fontSize: "0.75rem" }}>
-                    View Menu <ChevronRight size={13} />
+                    {t.home.viewMenu} <ChevronRight size={13} />
                   </div>
                 </div>
               </div>
@@ -751,16 +758,16 @@ export default function Home() {
                 </div>
                 <div className="p-4">
                   <h3 className="napoli-heading text-lg mb-1" style={{ color: "var(--napoli-dark)" }}>
-                    Lunch Specials
+                    {t.home.lunchTitle}
                   </h3>
                   <p className="text-sm napoli-body mb-1" style={{ color: "oklch(0.50 0.03 30)" }}>
-                    Mon–Fri 9AM–3PM · 24 options starting at $9.49
+                    {t.home.lunchSubtitle}
                   </p>
                   <p className="text-xs font-bold napoli-label mb-3" style={{ color: "var(--napoli-green)" }}>
-                    FREE Can of Soda with every order!
+                    {t.home.lunchFreeSoda}
                   </p>
                   <div className="flex items-center gap-1 text-sm font-semibold napoli-label" style={{ color: "var(--napoli-red)", fontSize: "0.75rem" }}>
-                    View Menu <ChevronRight size={13} />
+                    {t.home.viewMenu} <ChevronRight size={13} />
                   </div>
                 </div>
               </div>
@@ -788,13 +795,13 @@ export default function Home() {
                 </div>
                 <div className="p-4">
                   <h3 className="napoli-heading text-lg mb-1" style={{ color: "var(--napoli-dark)" }}>
-                    Hand Tossed Pizzas
+                    {t.home.pizzaCardTitle}
                   </h3>
                   <p className="text-sm napoli-body mb-3" style={{ color: "oklch(0.50 0.03 30)" }}>
-                    17 specialty creations, 30+ toppings, sizes 10"–36", stuffed dough & more
+                    {t.home.pizzaCardDesc}
                   </p>
                   <div className="flex items-center gap-1 text-sm font-semibold napoli-label" style={{ color: "var(--napoli-red)", fontSize: "0.75rem" }}>
-                    View Menu <ChevronRight size={13} />
+                    {t.home.viewMenu} <ChevronRight size={13} />
                   </div>
                 </div>
               </div>
@@ -822,13 +829,13 @@ export default function Home() {
                 </div>
                 <div className="p-4">
                   <h3 className="napoli-heading text-lg mb-1" style={{ color: "var(--napoli-dark)" }}>
-                    Wings & Fingers
+                    {t.home.wingsTitle}
                   </h3>
                   <p className="text-sm napoli-body mb-3" style={{ color: "oklch(0.50 0.03 30)" }}>
-                    Buffalo, BBQ, Honey Garlic & more — Wings, Wing Dings, Boneless & Chicken Fingers
+                    {t.home.wingsDesc}
                   </p>
                   <div className="flex items-center gap-1 text-sm font-semibold napoli-label" style={{ color: "var(--napoli-red)", fontSize: "0.75rem" }}>
-                    View Menu <ChevronRight size={13} />
+                    {t.home.viewMenu} <ChevronRight size={13} />
                   </div>
                 </div>
               </div>
@@ -856,13 +863,13 @@ export default function Home() {
                 </div>
                 <div className="p-4">
                   <h3 className="napoli-heading text-lg mb-1" style={{ color: "var(--napoli-dark)" }}>
-                    Sub Sandwiches
+                    {t.home.subsTitle}
                   </h3>
                   <p className="text-sm napoli-body mb-3" style={{ color: "oklch(0.50 0.03 30)" }}>
-                    Italian, Meatball, Chicken Parm, Steak & Cheese, Veggie & more on fresh-baked bread
+                    {t.home.subsDesc}
                   </p>
                   <div className="flex items-center gap-1 text-sm font-semibold napoli-label" style={{ color: "var(--napoli-red)", fontSize: "0.75rem" }}>
-                    View Menu <ChevronRight size={13} />
+                    {t.home.viewMenu} <ChevronRight size={13} />
                   </div>
                 </div>
               </div>
@@ -890,13 +897,13 @@ export default function Home() {
                 </div>
                 <div className="p-4">
                   <h3 className="napoli-heading text-lg mb-1" style={{ color: "var(--napoli-dark)" }}>
-                    100% Angus Beef Burgers
+                    {t.home.burgersTitle}
                   </h3>
                   <p className="text-sm napoli-body mb-3" style={{ color: "oklch(0.50 0.03 30)" }}>
-                    Classic, BBQ Bacon, Mushroom Swiss, Double Stack & more — all on a brioche bun
+                    {t.home.burgersDesc}
                   </p>
                   <div className="flex items-center gap-1 text-sm font-semibold napoli-label" style={{ color: "var(--napoli-red)", fontSize: "0.75rem" }}>
-                    View Menu <ChevronRight size={13} />
+                    {t.home.viewMenu} <ChevronRight size={13} />
                   </div>
                 </div>
               </div>
@@ -915,21 +922,21 @@ export default function Home() {
             <div>
               <div className="flex flex-wrap items-center gap-3 mb-2">
                 <p className="napoli-label text-xs" style={{ color: "oklch(0.75 0.08 145)", letterSpacing: "0.2em" }}>
-                  Monday – Friday · 10AM – 3PM Only
+                  {t.home.lunchDays}
                 </p>
                 <LunchTimerBadge />
               </div>
               <h2 className="napoli-display text-3xl md:text-4xl mb-2" style={{ color: "oklch(0.99 0.015 80)" }}>
-                Lunch Specials
+                {t.home.lunchHeading}
               </h2>
               <div
                 className="inline-block px-4 py-2 rounded mb-4"
                 style={{ background: "var(--napoli-gold)", color: "var(--napoli-dark)" }}
               >
-                <span className="napoli-label text-sm">🥤 FREE Can of Soda with any Lunch Special!</span>
+                <span className="napoli-label text-sm">{t.home.lunchFreeSodaBanner}</span>
               </div>
               <p className="napoli-body text-sm leading-relaxed" style={{ color: "oklch(0.82 0.06 145)" }}>
-                24 lunch options to choose from — pasta, pizza, subs, salads & more. All starting at just $9.49.
+                {t.home.lunchPromoDesc}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3 shrink-0 w-full md:w-auto">
@@ -963,7 +970,7 @@ export default function Home() {
                 className="inline-flex items-center gap-2 px-7 py-3 rounded text-sm font-semibold border-2 napoli-label transition-colors"
                 style={{ borderColor: "oklch(0.75 0.08 145)", color: "oklch(0.99 0.015 80)" }}
               >
-                See All 24 Lunch Specials <ArrowRight size={15} />
+                {t.home.seeAllLunch} <ArrowRight size={15} />
               </button>
             </Link>
           </div>
@@ -983,10 +990,10 @@ export default function Home() {
       >
         <div className="container text-center">
           <h2 className="napoli-display text-3xl mb-3" style={{ color: "oklch(0.99 0.015 80)" }}>
-            Ready to Order?
+            {t.home.ctaHeading}
           </h2>
           <p className="napoli-body text-base mb-6" style={{ color: "oklch(0.88 0.015 80)" }}>
-            Call us or order online — delivery, pick-up, and dine-in available!
+            {t.home.ctaDesc}
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <a
@@ -994,7 +1001,7 @@ export default function Home() {
               className="flex items-center gap-2 px-8 py-3.5 rounded text-sm font-semibold napoli-label transition-colors"
               style={{ background: "var(--napoli-gold)", color: "var(--napoli-dark)" }}
             >
-              <Phone size={15} /> Call Us
+              <Phone size={15} /> {t.home.callUs}
             </a>
           </div>
         </div>

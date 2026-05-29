@@ -198,21 +198,37 @@ export default function NapoliNavbar() {
               );
             })}
 
-            {/* Language toggle */}
-            <button
-              onClick={() => setLang(lang === "en" ? "es" : "en")}
-              className="ml-1 px-2.5 py-1 rounded text-xs font-bold transition-all hover:opacity-80 active:scale-95"
-              style={{
-                background: lang === "es" ? "oklch(0.45 0.18 145)" : "oklch(0.93 0.012 80)",
-                color: lang === "es" ? "white" : "var(--napoli-dark)",
-                border: "1px solid oklch(0.82 0.015 80)",
-                fontFamily: "'Oswald', sans-serif",
-                letterSpacing: "0.08em",
-              }}
+            {/* Language switch pill */}
+            <div
+              className="ml-1 flex items-center rounded-full p-0.5 cursor-pointer select-none"
+              style={{ background: "oklch(0.90 0.012 80)", border: "1px solid oklch(0.78 0.015 80)" }}
               title={lang === "en" ? "Cambiar a Español" : "Switch to English"}
             >
-              {lang === "en" ? "ES" : "EN"}
-            </button>
+              <span
+                onClick={() => setLang("en")}
+                className="px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer"
+                style={{
+                  fontFamily: "'Oswald', sans-serif",
+                  letterSpacing: "0.08em",
+                  background: lang === "en" ? "var(--napoli-red)" : "transparent",
+                  color: lang === "en" ? "white" : "oklch(0.50 0.03 30)",
+                }}
+              >
+                EN
+              </span>
+              <span
+                onClick={() => setLang("es")}
+                className="px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer"
+                style={{
+                  fontFamily: "'Oswald', sans-serif",
+                  letterSpacing: "0.08em",
+                  background: lang === "es" ? "var(--napoli-red)" : "transparent",
+                  color: lang === "es" ? "white" : "oklch(0.50 0.03 30)",
+                }}
+              >
+                ES
+              </span>
+            </div>
 
             {/* Cart button */}
             <button
