@@ -1,30 +1,118 @@
 /**
  * AI Usage Logging Helper
  *
- * Wraps invokeLLM to automatically log token usage and estimated costs
- * to the aiUsageLogs table for admin cost monitoring.
+ * Wraps invokeLLM and image generation to automatically log token/image usage
+ * and estimated costs to the aiUsageLogs table for admin cost monitoring.
  *
- * Pricing (as of 2025, gpt-4o-mini):
- *   Input:  $0.150 / 1M tokens
- *   Output: $0.600 / 1M tokens
+ * Pricing sources (as of June 2025):
+ *   https://openai.com/api/pricing/
  */
 import { invokeLLM } from "./_core/llm";
 import { getDb } from "./db";
-import { aiUsageLogs } from "../drizzle/schema";
-import { gte, sum, count, sql } from "drizzle-orm";
+import { aiUsageLogs, storeSettings } from "../drizzle/schema";
+import { gte, sum, count, sql, eq } from "drizzle-orm";
+import { notifyOwner } from "./_core/notification";
 
 // ── Pricing table (USD per 1M tokens) ─────────────────────────────────────────
-const MODEL_PRICING: Record<string, { input: number; output: number }> = {
-  "gpt-4o-mini":        { input: 0.15,   output: 0.60  },
-  "gpt-4o":             { input: 5.00,   output: 15.00 },
-  "gpt-4-turbo":        { input: 10.00,  output: 30.00 },
-  "gpt-3.5-turbo":      { input: 0.50,   output: 1.50  },
-  default:              { input: 0.15,   output: 0.60  },
+// Text / chat models
+export const MODEL_PRICING: Record<string, { input: number; output: number; type: "text" }> = {
+  // GPT-4o family
+  "gpt-4o":                    { input: 2.50,   output: 10.00,  type: "text" },
+  "gpt-4o-2024-11-20":         { input: 2.50,   output: 10.00,  type: "text" },
+  "gpt-4o-2024-08-06":         { input: 2.50,   output: 10.00,  type: "text" },
+  "gpt-4o-2024-05-13":         { input: 5.00,   output: 15.00,  type: "text" },
+  // GPT-4o-mini family
+  "gpt-4o-mini":               { input: 0.15,   output: 0.60,   type: "text" },
+  "gpt-4o-mini-2024-07-18":    { input: 0.15,   output: 0.60,   type: "text" },
+  // GPT-4 Turbo
+  "gpt-4-turbo":               { input: 10.00,  output: 30.00,  type: "text" },
+  "gpt-4-turbo-2024-04-09":    { input: 10.00,  output: 30.00,  type: "text" },
+  "gpt-4-turbo-preview":       { input: 10.00,  output: 30.00,  type: "text" },
+  // GPT-4
+  "gpt-4":                     { input: 30.00,  output: 60.00,  type: "text" },
+  "gpt-4-32k":                 { input: 60.00,  output: 120.00, type: "text" },
+  // GPT-3.5
+  "gpt-3.5-turbo":             { input: 0.50,   output: 1.50,   type: "text" },
+  "gpt-3.5-turbo-0125":        { input: 0.50,   output: 1.50,   type: "text" },
+  // o1 / o3 reasoning models
+  "o1":                        { input: 15.00,  output: 60.00,  type: "text" },
+  "o1-mini":                   { input: 3.00,   output: 12.00,  type: "text" },
+  "o3-mini":                   { input: 1.10,   output: 4.40,   type: "text" },
+  // Fallback
+  default:                     { input: 0.15,   output: 0.60,   type: "text" },
 };
 
-function estimateCost(model: string, promptTokens: number, completionTokens: number): number {
+// Image generation pricing (USD per image)
+export const IMAGE_PRICING: Record<string, Record<string, number>> = {
+  "dall-e-3": {
+    "1024x1024":          0.040,
+    "1024x1792":          0.080,
+    "1792x1024":          0.080,
+    "1024x1024-hd":       0.080,
+    "1024x1792-hd":       0.120,
+    "1792x1024-hd":       0.120,
+    default:              0.040,
+  },
+  "dall-e-2": {
+    "256x256":            0.016,
+    "512x512":            0.018,
+    "1024x1024":          0.020,
+    default:              0.020,
+  },
+};
+
+// ── Cost estimation helpers ───────────────────────────────────────────────────
+
+export function estimateTextCost(model: string, promptTokens: number, completionTokens: number): number {
   const pricing = MODEL_PRICING[model] ?? MODEL_PRICING.default;
   return (promptTokens * pricing.input + completionTokens * pricing.output) / 1_000_000;
+}
+
+export function estimateImageCost(model: string, size: string, quality?: string): number {
+  const modelPricing = IMAGE_PRICING[model];
+  if (!modelPricing) return 0.040; // safe default
+  const key = quality === "hd" ? `${size}-hd` : size;
+  return modelPricing[key] ?? modelPricing.default ?? 0.040;
+}
+
+// ── Monthly cost alert ────────────────────────────────────────────────────────
+
+const ALERT_KEY = "ai_cost_alert_threshold";
+const DEFAULT_ALERT_THRESHOLD = 50.00; // USD
+let _alertSentThisMonth: string | null = null; // "YYYY-MM" to avoid repeat alerts
+
+async function checkAndSendCostAlert(db: Awaited<ReturnType<typeof getDb>>) {
+  if (!db) return;
+  try {
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    // Only alert once per calendar month
+    if (_alertSentThisMonth === monthKey) return;
+
+    // Get threshold from settings
+    const [row] = await db.select().from(storeSettings).where(eq(storeSettings.key, ALERT_KEY)).limit(1);
+    const threshold = row ? parseFloat(row.value) : DEFAULT_ALERT_THRESHOLD;
+
+    // Get current month cost
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const [result] = await db
+      .select({ totalCostUsd: sum(aiUsageLogs.estimatedCostUsd) })
+      .from(aiUsageLogs)
+      .where(gte(aiUsageLogs.createdAt, startOfMonth));
+
+    const currentCost = Number(result?.totalCostUsd ?? 0);
+
+    if (currentCost >= threshold) {
+      _alertSentThisMonth = monthKey;
+      await notifyOwner({
+        title: `⚠️ AI Cost Alert — $${currentCost.toFixed(4)} this month`,
+        content: `Your AI usage cost has reached $${currentCost.toFixed(4)} this month, exceeding the configured alert threshold of $${threshold.toFixed(2)}.\n\nCheck the AI Cost Monitor in the admin panel for details: /admin/ai-costs`,
+      });
+    }
+  } catch {
+    // Non-critical
+  }
 }
 
 // ── Tracked invokeLLM wrapper ─────────────────────────────────────────────────
@@ -35,33 +123,100 @@ export async function invokeLLMTracked(
 ): Promise<ReturnType<typeof invokeLLM> extends Promise<infer T> ? T : never> {
   const response = await invokeLLM(params);
 
-  // Fire-and-forget: log usage to DB
-  try {
-    const usage = (response as { usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } }).usage;
-    if (usage) {
-      const promptTokens = usage.prompt_tokens ?? 0;
-      const completionTokens = usage.completion_tokens ?? 0;
-      const totalTokens = usage.total_tokens ?? promptTokens + completionTokens;
-      const model = (response as { model?: string }).model ?? "gpt-4o-mini";
-      const estimatedCostUsd = estimateCost(model, promptTokens, completionTokens).toFixed(6);
+  // Fire-and-forget: log usage to DB + check alert
+  (async () => {
+    try {
+      const usage = (response as { usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } }).usage;
+      if (usage) {
+        const promptTokens = usage.prompt_tokens ?? 0;
+        const completionTokens = usage.completion_tokens ?? 0;
+        const totalTokens = usage.total_tokens ?? promptTokens + completionTokens;
+        const model = (response as { model?: string }).model ?? "gpt-4o-mini";
+        const estimatedCostUsd = estimateTextCost(model, promptTokens, completionTokens).toFixed(6);
 
-      const db = await getDb();
-      if (db) {
-        await db.insert(aiUsageLogs).values({
-          feature,
-          model,
-          promptTokens,
-          completionTokens,
-          totalTokens,
-          estimatedCostUsd,
-        });
+        const db = await getDb();
+        if (db) {
+          await db.insert(aiUsageLogs).values({
+            feature,
+            model,
+            promptTokens,
+            completionTokens,
+            totalTokens,
+            estimatedCostUsd,
+          });
+          await checkAndSendCostAlert(db);
+        }
       }
+    } catch {
+      // Non-critical — never block the AI response
     }
-  } catch {
-    // Non-critical — never block the AI response
-  }
+  })();
 
   return response as never;
+}
+
+/**
+ * Log an image generation call manually.
+ * Call this after every generateImage() invocation.
+ *
+ * @example
+ * const { url } = await generateImage({ prompt: "..." });
+ * await logImageGeneration("menu_item_photo", "dall-e-3", "1024x1024", 1);
+ */
+export async function logImageGeneration(
+  feature: string,
+  model: "dall-e-3" | "dall-e-2" | string,
+  size: string,
+  count: number = 1,
+  quality?: "standard" | "hd"
+): Promise<void> {
+  try {
+    const costPerImage = estimateImageCost(model, size, quality);
+    const totalCost = costPerImage * count;
+
+    const db = await getDb();
+    if (!db) return;
+
+    await db.insert(aiUsageLogs).values({
+      feature,
+      model,
+      promptTokens: 0,
+      completionTokens: 0,
+      // Store image count in totalTokens field as a proxy (1 image = 1 "token unit")
+      totalTokens: count,
+      estimatedCostUsd: totalCost.toFixed(6),
+    });
+
+    await checkAndSendCostAlert(db);
+  } catch {
+    // Non-critical
+  }
+}
+
+// ── Alert threshold CRUD ──────────────────────────────────────────────────────
+
+export async function getAlertThreshold(): Promise<number> {
+  try {
+    const db = await getDb();
+    if (!db) return DEFAULT_ALERT_THRESHOLD;
+    const [row] = await db.select().from(storeSettings).where(eq(storeSettings.key, ALERT_KEY)).limit(1);
+    return row ? parseFloat(row.value) : DEFAULT_ALERT_THRESHOLD;
+  } catch {
+    return DEFAULT_ALERT_THRESHOLD;
+  }
+}
+
+export async function setAlertThreshold(threshold: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(storeSettings).where(eq(storeSettings.key, ALERT_KEY)).limit(1);
+  if (existing.length > 0) {
+    await db.update(storeSettings).set({ value: threshold.toFixed(2) }).where(eq(storeSettings.key, ALERT_KEY));
+  } else {
+    await db.insert(storeSettings).values({ key: ALERT_KEY, value: threshold.toFixed(2) });
+  }
+  // Reset in-memory flag so alert can fire again if threshold was lowered
+  _alertSentThisMonth = null;
 }
 
 // ── Admin stats query ─────────────────────────────────────────────────────────
@@ -115,7 +270,7 @@ export async function getAiUsageStats() {
     })
     .from(aiUsageLogs)
     .groupBy(aiUsageLogs.feature)
-    .orderBy(sql`SUM(${aiUsageLogs.totalTokens}) DESC`);
+    .orderBy(sql`SUM(${aiUsageLogs.estimatedCostUsd}) DESC`);
 
   // Daily usage for the last 30 days (for chart)
   const dailyRaw = await db
@@ -129,6 +284,9 @@ export async function getAiUsageStats() {
     .where(gte(aiUsageLogs.createdAt, startOf30Days))
     .groupBy(sql`DATE(${aiUsageLogs.createdAt})`)
     .orderBy(sql`DATE(${aiUsageLogs.createdAt}) ASC`);
+
+  // Alert threshold
+  const alertThreshold = await getAlertThreshold();
 
   return {
     allTime: {
@@ -158,5 +316,6 @@ export async function getAiUsageStats() {
       tokens: Number(r.totalTokens ?? 0),
       costUsd: Number(r.totalCostUsd ?? 0),
     })),
+    alertThreshold,
   };
 }

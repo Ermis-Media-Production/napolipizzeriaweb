@@ -593,10 +593,16 @@ export default function CartDrawer() {
   /** Returns true if phone has at least 10 digits */
   const isPhoneValid = (phone: string) => digitsOnly(phone).length >= 10;
 
+  const isEmailValid = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
   const validateForm = () => {
     if (items.length === 0) return false;
     if (!customerName.trim()) {
       toast.error("Please enter your name. / Por favor ingresa tu nombre.");
+      return false;
+    }
+    if (!customerEmail.trim() || !isEmailValid(customerEmail)) {
+      toast.error("Please enter a valid email address to receive your receipt. / Por favor ingresa un correo electrónico válido para recibir tu recibo.");
       return false;
     }
     if (orderType === "delivery" && !deliveryAddress.trim()) {
@@ -635,7 +641,7 @@ export default function CartDrawer() {
       items: payload.items,
       orderType: payload.orderType,
       customerName: payload.customerName,
-      customerEmail: payload.customerEmail,
+      customerEmail: payload.customerEmail!,
       customerPhone: payload.customerPhone,
       couponCode: payload.couponCode,
       discountPercent: payload.discountPercent,
@@ -1018,14 +1024,40 @@ export default function CartDrawer() {
                   </p>
                 )}
               </div>
-              <input
-                type="email"
-                placeholder="Email (for order confirmation)"
-                value={customerEmail}
-                onChange={(e) => setCustomerEmail(e.target.value)}
-                className="w-full text-xs px-3 py-2 rounded border outline-none focus:ring-1"
-                style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
-              />
+              <div className="space-y-1">
+                <div className="relative">
+                  <input
+                    type="email"
+                    placeholder="Email * (required for receipt / requerido para recibo)"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    className="w-full text-xs px-3 py-2 rounded border outline-none focus:ring-1"
+                    style={{
+                      borderColor: customerEmail.trim() === ""
+                        ? "oklch(0.65 0.18 25)"
+                        : isEmailValid(customerEmail)
+                        ? "oklch(0.55 0.18 145)"
+                        : "oklch(0.55 0.18 25)",
+                      background: customerEmail.trim() === ""
+                        ? "oklch(0.99 0.02 25)"
+                        : isEmailValid(customerEmail)
+                        ? "oklch(0.97 0.03 145)"
+                        : "oklch(0.99 0.03 25)",
+                      fontFamily: "'Lato', sans-serif",
+                    }}
+                  />
+                </div>
+                {customerEmail.trim() !== "" && !isEmailValid(customerEmail) && (
+                  <p className="text-xs mt-0.5 px-0.5" style={{ color: "oklch(0.45 0.18 25)", fontFamily: "'Lato', sans-serif" }}>
+                    ⚠️ Please enter a valid email address · Ingresa un correo válido
+                  </p>
+                )}
+                {customerEmail.trim() !== "" && isEmailValid(customerEmail) && (
+                  <p className="text-xs mt-0.5 px-0.5" style={{ color: "oklch(0.40 0.15 145)", fontFamily: "'Lato', sans-serif" }}>
+                    ✓ Receipt will be sent here · Recibo será enviado aquí
+                  </p>
+                )}
+              </div>
 
               {/* Coupon code input */}
               <div className="space-y-1.5">

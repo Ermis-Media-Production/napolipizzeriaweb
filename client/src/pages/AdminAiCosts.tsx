@@ -1,7 +1,8 @@
 /**
  * Admin AI Costs Panel
- * Displays LLM token usage and estimated costs for monitoring AI expenses.
+ * Displays LLM token usage, estimated costs, and monthly alert threshold config.
  */
+import { useState } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import { trpc } from "@/lib/trpc";
 import {
@@ -13,6 +14,9 @@ import {
   Loader2,
   AlertCircle,
   BarChart3,
+  Bell,
+  CheckCircle2,
+  Image,
 } from "lucide-react";
 import {
   AreaChart,
@@ -24,8 +28,10 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  Legend,
 } from "recharts";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 function StatCard({
@@ -34,12 +40,14 @@ function StatCard({
   value,
   sub,
   color,
+  badge,
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
   sub?: string;
   color: string;
+  badge?: React.ReactNode;
 }) {
   return (
     <div className="rounded-xl border bg-card p-5 flex items-start gap-4 shadow-sm">
@@ -48,7 +56,10 @@ function StatCard({
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
-        <p className="text-2xl font-bold text-foreground mt-0.5">{value}</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <p className="text-2xl font-bold text-foreground">{value}</p>
+          {badge}
+        </div>
         {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
       </div>
     </div>
@@ -57,9 +68,12 @@ function StatCard({
 
 // ── Feature label map ─────────────────────────────────────────────────────────
 const FEATURE_LABELS: Record<string, string> = {
-  eva_chat: "Eva Chat",
-  eva_normalize: "Eva Normalize",
-  other: "Other",
+  eva_chat:          "Eva Chat",
+  eva_normalize:     "Eva Normalize",
+  menu_item_photo:   "Menu Item Photo",
+  menu_description:  "Menu Description",
+  image_generation:  "Image Generation",
+  other:             "Other",
 };
 
 function featureLabel(key: string): string {
@@ -74,15 +88,150 @@ function fmtTokens(n: number): string {
 }
 
 function fmtCost(n: number): string {
-  if (n < 0.01) return `$${n.toFixed(4)}`;
   return `$${n.toFixed(4)}`;
+}
+
+// ── Alert threshold panel ─────────────────────────────────────────────────────
+function AlertThresholdPanel({ currentThreshold }: { currentThreshold: number }) {
+  const [inputVal, setInputVal] = useState(currentThreshold.toFixed(2));
+  const [saved, setSaved] = useState(false);
+  const utils = trpc.useUtils();
+
+  const setThreshold = trpc.aiUsage.setAlertThreshold.useMutation({
+    onSuccess: (data) => {
+      setSaved(true);
+      setInputVal(data.threshold.toFixed(2));
+      utils.aiUsage.getStats.invalidate();
+      toast.success(`Alert threshold set to $${data.threshold.toFixed(2)}/month`);
+      setTimeout(() => setSaved(false), 3000);
+    },
+    onError: (err) => {
+      toast.error(`Failed to save threshold: ${err.message}`);
+    },
+  });
+
+  const handleSave = () => {
+    const val = parseFloat(inputVal);
+    if (isNaN(val) || val < 0.01) {
+      toast.error("Please enter a valid amount (minimum $0.01)");
+      return;
+    }
+    setThreshold.mutate({ threshold: val });
+  };
+
+  return (
+    <div className="rounded-xl border bg-card p-5 shadow-sm">
+      <div className="flex items-center gap-2 mb-3">
+        <Bell className="h-4 w-4 text-amber-500" />
+        <h2 className="text-sm font-semibold text-foreground">Monthly Cost Alert</h2>
+      </div>
+      <p className="text-xs text-muted-foreground mb-4">
+        You will receive a notification when your monthly AI cost exceeds this threshold.
+        The alert fires once per calendar month.
+      </p>
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+          <Input
+            type="number"
+            min="0.01"
+            step="1"
+            value={inputVal}
+            onChange={(e) => { setInputVal(e.target.value); setSaved(false); }}
+            className="pl-7 w-32 text-sm"
+            placeholder="50.00"
+          />
+        </div>
+        <span className="text-xs text-muted-foreground">USD / month</span>
+        <Button
+          size="sm"
+          onClick={handleSave}
+          disabled={setThreshold.isPending}
+          className="bg-amber-500 hover:bg-amber-600 text-white"
+        >
+          {setThreshold.isPending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : saved ? (
+            <><CheckCircle2 className="h-3.5 w-3.5 mr-1" />Saved</>
+          ) : (
+            "Save"
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ── Pricing reference table ───────────────────────────────────────────────────
+function PricingReference() {
+  const models = [
+    { model: "gpt-4o-mini",  input: "$0.15",  output: "$0.60",  note: "Default · Eva AI" },
+    { model: "gpt-4o",       input: "$2.50",  output: "$10.00", note: "High quality" },
+    { model: "gpt-4-turbo",  input: "$10.00", output: "$30.00", note: "Legacy" },
+    { model: "o1-mini",      input: "$3.00",  output: "$12.00", note: "Reasoning" },
+    { model: "o3-mini",      input: "$1.10",  output: "$4.40",  note: "Reasoning" },
+    { model: "dall-e-3",     input: "$0.040", output: "—",      note: "Per image (1024²)" },
+    { model: "dall-e-2",     input: "$0.020", output: "—",      note: "Per image (1024²)" },
+  ];
+
+  return (
+    <div className="rounded-xl border bg-muted/30 shadow-sm overflow-hidden">
+      <div className="flex items-center gap-2 px-5 py-4 border-b">
+        <Image className="h-4 w-4 text-muted-foreground" />
+        <h2 className="text-sm font-semibold text-foreground">Model Pricing Reference</h2>
+        <span className="ml-auto text-xs text-muted-foreground">per 1M tokens · June 2025</span>
+      </div>
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b bg-muted/40">
+            <th className="text-left px-5 py-2.5 font-semibold text-muted-foreground uppercase tracking-wide">Model</th>
+            <th className="text-right px-5 py-2.5 font-semibold text-muted-foreground uppercase tracking-wide">Input</th>
+            <th className="text-right px-5 py-2.5 font-semibold text-muted-foreground uppercase tracking-wide">Output</th>
+            <th className="text-right px-5 py-2.5 font-semibold text-muted-foreground uppercase tracking-wide">Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {models.map((m, i) => (
+            <tr key={m.model} className={`border-b last:border-0 ${i % 2 === 0 ? "" : "bg-muted/10"}`}>
+              <td className="px-5 py-2.5 font-mono text-foreground">{m.model}</td>
+              <td className="px-5 py-2.5 text-right text-foreground">{m.input}</td>
+              <td className="px-5 py-2.5 text-right text-foreground">{m.output}</td>
+              <td className="px-5 py-2.5 text-right text-muted-foreground">{m.note}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="px-5 py-3 text-xs text-muted-foreground border-t">
+        Costs are estimates based on token counts. Actual billing may vary. Image generation costs are per image, not per token.
+      </p>
+    </div>
+  );
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function AdminAiCosts() {
   const { data, isLoading, error } = trpc.aiUsage.getStats.useQuery(undefined, {
-    refetchInterval: 60_000, // refresh every minute
+    refetchInterval: 60_000,
   });
+
+  // Compute alert badge for "this month" card
+  const alertPct = data
+    ? Math.min(100, Math.round((data.thisMonth.costUsd / data.alertThreshold) * 100))
+    : 0;
+
+  const alertBadge = data ? (
+    <span
+      className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+        alertPct >= 100
+          ? "bg-red-100 text-red-700"
+          : alertPct >= 75
+          ? "bg-amber-100 text-amber-700"
+          : "bg-green-100 text-green-700"
+      }`}
+    >
+      {alertPct}% of ${data.alertThreshold.toFixed(0)} limit
+    </span>
+  ) : null;
 
   return (
     <AdminLayout>
@@ -94,7 +243,7 @@ export default function AdminAiCosts() {
             AI Cost Monitor
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Track Eva AI token usage and estimated costs. Pricing based on GPT-4o-mini rates.
+            Track Eva AI and image generation usage, estimated costs, and configure monthly alerts.
           </p>
         </div>
 
@@ -117,7 +266,7 @@ export default function AdminAiCosts() {
 
         {data && (
           <>
-            {/* Stat cards — 3 columns */}
+            {/* Stat cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <StatCard
                 icon={DollarSign}
@@ -125,6 +274,7 @@ export default function AdminAiCosts() {
                 value={fmtCost(data.thisMonth.costUsd)}
                 sub={`${fmtTokens(data.thisMonth.tokens)} tokens · ${data.thisMonth.calls} calls`}
                 color="bg-purple-600"
+                badge={alertBadge}
               />
               <StatCard
                 icon={Zap}
@@ -141,6 +291,9 @@ export default function AdminAiCosts() {
                 color="bg-green-600"
               />
             </div>
+
+            {/* Alert threshold config */}
+            <AlertThresholdPanel currentThreshold={data.alertThreshold} />
 
             {/* Daily cost chart (last 30 days) */}
             <div className="rounded-xl border bg-card p-5 shadow-sm">
@@ -291,11 +444,7 @@ export default function AdminAiCosts() {
             </div>
 
             {/* Pricing reference */}
-            <div className="rounded-xl border bg-muted/30 p-4 text-xs text-muted-foreground">
-              <p className="font-semibold text-foreground mb-1">Pricing Reference (GPT-4o-mini)</p>
-              <p>Input tokens: $0.150 / 1M tokens &nbsp;·&nbsp; Output tokens: $0.600 / 1M tokens</p>
-              <p className="mt-1">Costs are estimates based on token counts. Actual billing may vary slightly.</p>
-            </div>
+            <PricingReference />
           </>
         )}
       </div>

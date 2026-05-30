@@ -339,7 +339,7 @@ export const authorizeNetRouter = router({
         items: z.array(CartItemSchema).min(1),
         orderType: z.enum(["pickup", "delivery", "dine-in"]),
         customerName: z.string().min(1).max(100),
-        customerEmail: z.string().email().optional(),
+        customerEmail: z.string().email(),
         customerPhone: z.string().optional(),
         // Coupon / discount fields
         couponCode: z.string().optional(),

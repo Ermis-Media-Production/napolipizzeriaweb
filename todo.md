@@ -401,3 +401,21 @@
 - [x] Add /admin/ai-costs route in App.tsx
 - [x] Add "AI Costs" nav item with Bot icon to AdminLayout sidebar
 - [x] TypeScript: 0 errors
+
+## Required Email in Checkout + Customer Receipt
+- [x] Add required email field to CartDrawer customer info section (red border when empty, green when valid)
+- [x] Validate email format before allowing checkout (validateForm blocks if email missing or invalid)
+- [x] Pass customerEmail as required (not optional) through to Authorize.net chargeCard input schema
+- [ ] Pass customerEmail through to Stripe createPaymentIntent input schema
+- [x] Send customer receipt HTML email after successful Authorize.net payment (existing code already does this)
+- [ ] Send customer receipt HTML email after successful Stripe payment_intent.succeeded webhook
+
+## AI Tracking Expansion + Monthly Cost Alert
+- [x] Expand MODEL_PRICING table in aiUsage.ts with all current OpenAI models + image generation pricing
+- [x] Add logImageGeneration helper to track image generation calls (dall-e-3, dall-e-2)
+- [x] Add ai_cost_alert_threshold stored in storeSettings (default $50.00, no migration needed)
+- [x] Add checkAndSendCostAlert() function that fires notifyOwner when monthly cost exceeds threshold
+- [x] Call checkAndSendCostAlert() after every invokeLLMTracked call (fire-and-forget)
+- [x] Add AI Cost Alert threshold input to AdminAiCosts page (admin can set $X/month threshold)
+- [x] Add aiUsageRouter.getAlertThreshold and setAlertThreshold procedures
+- [x] Show alert status badge on AI Costs panel (% of monthly limit used)
