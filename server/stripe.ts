@@ -19,6 +19,7 @@ import { scheduledOrders, orderItems } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 import { pushOrderToClover } from "./cloverSync";
+import { buildAdminReceiptHtml, buildCustomerReceiptHtml, sendReceiptEmail } from "./receiptTemplates";
 
 // Initialize Stripe lazily so the server can start without keys in dev
 function getStripe() {
@@ -233,7 +234,7 @@ export const stripeRouter = router({
         items: z.array(CartItemSchema).min(1),
         customerName: z.string().optional(),
         customerPhone: z.string().optional(),
-        customerEmail: z.string().optional(),
+        customerEmail: z.string().email(),
         orderType: z.enum(["delivery", "pickup", "dine-in"]).default("pickup"),
         scheduledAt: z.number().optional(),
         isAsap: z.boolean().optional(),

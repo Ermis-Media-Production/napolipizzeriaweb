@@ -2,7 +2,6 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { stripeRouter } from "./stripe";
 import { uberDirectRouter } from "./uberdirect";
 import { couponRouter } from "./coupon";
 import { doordashRouter } from "./doordash";
@@ -31,7 +30,6 @@ export const appRouter = router({
       } as const;
     }),
   }),
-  stripe: stripeRouter,
   uber: uberDirectRouter,
   coupon: couponRouter,
   doordash: doordashRouter,

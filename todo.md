@@ -406,9 +406,8 @@
 - [x] Add required email field to CartDrawer customer info section (red border when empty, green when valid)
 - [x] Validate email format before allowing checkout (validateForm blocks if email missing or invalid)
 - [x] Pass customerEmail as required (not optional) through to Authorize.net chargeCard input schema
-- [ ] Pass customerEmail through to Stripe createPaymentIntent input schema
+- [x] Stripe removed — only Authorize.net is used
 - [x] Send customer receipt HTML email after successful Authorize.net payment (existing code already does this)
-- [ ] Send customer receipt HTML email after successful Stripe payment_intent.succeeded webhook
 
 ## AI Tracking Expansion + Monthly Cost Alert
 - [x] Expand MODEL_PRICING table in aiUsage.ts with all current OpenAI models + image generation pricing

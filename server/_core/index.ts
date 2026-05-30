@@ -8,7 +8,6 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { handleStripeWebhook } from "../stripe";
 import { handleAuthorizeNetWebhook } from "../authorizenetWebhook";
 import { handleCloverWebhook } from "../cloverCheckout";
 
@@ -34,17 +33,6 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
-
-  // Stripe webhook needs raw body — register BEFORE json middleware
-  app.post(
-    "/api/stripe/webhook",
-    express.raw({ type: "application/json" }),
-    (req, res) => {
-      // Attach raw body for signature verification
-      (req as express.Request & { rawBody?: Buffer }).rawBody = req.body as Buffer;
-      handleStripeWebhook(req, res);
-    }
-  );
 
   // Authorize.net webhook — also needs raw body for HMAC-SHA512 signature verification
   app.post(
