@@ -15,6 +15,7 @@ import { TRPCError } from "@trpc/server";
 import { pushOrderToClover } from "./cloverSync";
 import { sendSms } from "./_core/sms";
 import { ADMIN_PHONE } from "../shared/const";
+import { buildAdminReceiptHtml, buildCustomerReceiptHtml, sendReceiptEmail } from "./receiptTemplates";
 
 // authorizenet is a CommonJS package — use createRequire to load it in ESM context
 const _require = createRequire(import.meta.url);
@@ -459,38 +460,38 @@ export const authorizeNetRouter = router({
           );
         }
 
-        // Fire-and-forget: email receipt to restaurant owner
+        // Fire-and-forget: HTML email receipt to restaurant owner
         {
-          const forgeBaseUrl = (process.env.BUILT_IN_FORGE_API_URL || "").replace(/\/+$/, "");
-          const forgeKey = process.env.BUILT_IN_FORGE_API_KEY;
-          if (forgeBaseUrl && forgeKey) {
-            const itemLines = input.items
-              .map((i) => `  • ${i.quantity}x ${i.name}${i.description ? ` (${i.description})` : ""} — $${(i.price * i.quantity).toFixed(2)}`)
-              .join("\n");
-            const emailBody = [
-              `🍕 NEW ORDER — Napoli Pizzeria`,
-              ``,
-              `Customer:    ${input.customerName}`,
-              input.customerPhone ? `Phone:       ${input.customerPhone}` : null,
-              input.customerEmail ? `Email:       ${input.customerEmail}` : null,
-              `Order Type:  ${input.orderType}`,
-              input.discountPercent ? `Coupon:      ${input.couponCode} (${input.discountPercent}% off)` : null,
-              `Total:       $${amount.toFixed(2)}`,
-              `Transaction: ${result.transactionId}`,
-              `Auth Code:   ${result.authCode}`,
-              ``,
-              `Items:`,
-              itemLines,
-            ].filter(Boolean).join("\n");
-            fetch(`${forgeBaseUrl}/v1/email/send`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${forgeKey}` },
-              body: JSON.stringify({
-                to: "henys2325@gmail.com",
-                subject: `🍕 New Order — $${amount.toFixed(2)} (${input.orderType}) — ${input.customerName}`,
-                text: emailBody,
-              }),
-            }).catch((err) => console.error("[Email] Failed to send receipt:", err));
+          const receiptData = {
+            customerName: input.customerName,
+            customerPhone: input.customerPhone,
+            customerEmail: input.customerEmail,
+            orderType: input.orderType,
+            items: input.items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price, description: i.description })),
+            subtotal: rawAmount,
+            convenienceFee,
+            salesTax,
+            discount: rawAmount - discountedSubtotal,
+            couponCode: input.couponCode,
+            discountPercent: input.discountPercent,
+            grandTotal: amount,
+            transactionId: result.transactionId,
+            authCode: result.authCode,
+            date: new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }),
+          };
+          // Admin receipt
+          sendReceiptEmail({
+            to: "henys2325@gmail.com",
+            subject: `🔔 New Order — $${amount.toFixed(2)} (${input.orderType}) — ${input.customerName}`,
+            html: buildAdminReceiptHtml(receiptData),
+          }).catch((err) => console.error("[Email] Failed to send admin receipt:", err));
+          // Customer receipt (if email provided)
+          if (input.customerEmail) {
+            sendReceiptEmail({
+              to: input.customerEmail,
+              subject: `🍕 Your Napoli Pizzeria Order Confirmation — $${amount.toFixed(2)}`,
+              html: buildCustomerReceiptHtml(receiptData),
+            }).catch((err) => console.error("[Email] Failed to send customer receipt:", err));
           }
         }
 

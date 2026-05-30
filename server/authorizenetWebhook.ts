@@ -15,6 +15,7 @@ import type { Request, Response } from "express";
 import crypto from "crypto";
 import { notifyOwner } from "./_core/notification";
 import { markWebhookEventProcessed } from "./db";
+import { buildAdminReceiptHtml, sendReceiptEmail } from "./receiptTemplates";
 
 // ── Signature verification ─────────────────────────────────────────────────────
 
@@ -124,30 +125,25 @@ export async function handleAuthorizeNetWebhook(req: Request, res: Response): Pr
         ].join("\n"),
       }).catch((err) => console.error("[AuthNet Webhook] Notification error:", err));
 
-      // Fire-and-forget: email receipt to restaurant owner
+      // Fire-and-forget: HTML email receipt to restaurant owner (webhook confirmation)
       {
-        const forgeBaseUrl = (process.env.BUILT_IN_FORGE_API_URL || "").replace(/\/+$/, "");
-        const forgeKey = process.env.BUILT_IN_FORGE_API_KEY;
-        if (forgeBaseUrl && forgeKey) {
-          const emailBody = [
-            `✅ PAYMENT CONFIRMED — Napoli Pizzeria`,
-            ``,
-            `Transaction ID: ${transactionId}`,
-            `Auth Code:      ${authCode}`,
-            `Amount:         $${amount.toFixed(2)}`,
-            `Event:          ${eventType}`,
-            `Notification:   ${notificationId}`,
-          ].join("\n");
-          fetch(`${forgeBaseUrl}/v1/email/send`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${forgeKey}` },
-            body: JSON.stringify({
-              to: "henys2325@gmail.com",
-              subject: `✅ Payment Confirmed — $${amount.toFixed(2)} — TxnID ${transactionId}`,
-              text: emailBody,
-            }),
-          }).catch((err) => console.error("[Email] Webhook receipt failed:", err));
-        }
+        const receiptData = {
+          customerName: "Customer",
+          orderType: "pickup",
+          items: [],
+          subtotal: amount,
+          convenienceFee: 0,
+          salesTax: 0,
+          grandTotal: amount,
+          transactionId,
+          authCode,
+          date: new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }),
+        };
+        sendReceiptEmail({
+          to: "henys2325@gmail.com",
+          subject: `✅ Payment Confirmed — $${amount.toFixed(2)} — TxnID ${transactionId}`,
+          html: buildAdminReceiptHtml(receiptData),
+        }).catch((err) => console.error("[Email] Webhook receipt failed:", err));
       }
       break;
     }
