@@ -389,3 +389,15 @@
 - [x] Send order receipt email to henys2325@gmail.com on every successful Authorize.net payment (chargeCard)
 - [x] Send order receipt email to henys2325@gmail.com on every successful Authorize.net webhook (approved event)
 - [x] Hide Pay by Link (SMS) option from CartDrawer checkout UI
+
+## AI Cost Monitor Panel
+- [x] Add aiUsageLogs table to drizzle schema (feature, model, promptTokens, completionTokens, totalTokens, estimatedCostUsd)
+- [x] Run pnpm db:push to apply schema migration
+- [x] Create invokeLLMTracked wrapper in server/aiUsage.ts to log token usage and estimated cost after every LLM call
+- [x] Replace invokeLLM with invokeLLMTracked in evaChat.ts (eva_chat and eva_normalize features)
+- [x] Create aiUsageRouter with getStats procedure (admin-only) returning allTime/thisMonth/today/byFeature/daily stats
+- [x] Register aiUsageRouter in routers.ts
+- [x] Build AdminAiCosts.tsx page with stat cards, daily cost area chart, daily token bar chart, and per-feature breakdown table
+- [x] Add /admin/ai-costs route in App.tsx
+- [x] Add "AI Costs" nav item with Bot icon to AdminLayout sidebar
+- [x] TypeScript: 0 errors

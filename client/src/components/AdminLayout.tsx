@@ -28,6 +28,7 @@ import {
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
+  Bot,
   ChefHat,
   ClipboardList,
   LayoutDashboard,
@@ -47,6 +48,7 @@ const NAV_ITEMS = [
   { icon: UtensilsCrossed, label: "Menu Manager", path: "/admin/menu" },
   { icon: Sliders, label: "Modifiers", path: "/admin/modifiers" },
   { icon: Settings, label: "Settings", path: "/admin/settings" },
+  { icon: Bot, label: "AI Costs", path: "/admin/ai-costs" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "admin-sidebar-width";

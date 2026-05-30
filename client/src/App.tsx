@@ -19,6 +19,7 @@ import AdminSettings from "./pages/AdminSettings";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminMenuManager from "./pages/AdminMenuManager";
 import AdminModifierManager from "./pages/AdminModifierManager";
+import AdminAiCosts from "./pages/AdminAiCosts";
 import Catering from "./pages/Catering";
 import Reservations from "./pages/Reservations";
 import MyOrder from "./pages/MyOrder";
@@ -41,6 +42,7 @@ function Router() {
       <Route path="/admin/modifiers" component={AdminModifierManager} />
       <Route path="/admin/doordash-test" component={AdminDoorDashTest} />
       <Route path="/admin/settings" component={AdminSettings} />
+      <Route path="/admin/ai-costs" component={AdminAiCosts} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

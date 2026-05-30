@@ -17,6 +17,7 @@ import { evaChatRouter } from "./evaChat";
 import { authorizeNetRouter } from "./authorizenet";
 import { cloverCheckoutRouter } from "./cloverCheckout";
 import { cloverRouter } from "./clover";
+import { aiUsageRouter } from "./aiUsageRouter";
 
 export const appRouter = router({
   system: systemRouter,
@@ -45,6 +46,7 @@ export const appRouter = router({
   authnet: authorizeNetRouter,
   cloverCheckout: cloverCheckoutRouter,
   clover: cloverRouter,
+  aiUsage: aiUsageRouter,
 });
 
 export type AppRouter = typeof appRouter;

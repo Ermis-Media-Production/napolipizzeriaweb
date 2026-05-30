@@ -304,6 +304,30 @@ export type InsertReservation = typeof reservations.$inferInsert;
  * Each row represents a unique normalized question (similar questions are grouped).
  * The `count` field increments each time the same question is asked.
  */
+/**
+ * Tracks LLM (AI) usage for cost monitoring in the admin dashboard.
+ * One row per AI invocation — records tokens used and estimated cost.
+ */
+export const aiUsageLogs = mysqlTable("aiUsageLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Which feature triggered the AI call: 'eva_chat' | 'eva_normalize' | 'other' */
+  feature: varchar("feature", { length: 64 }).notNull(),
+  /** Model used (e.g. 'gpt-4o-mini') */
+  model: varchar("model", { length: 64 }).default("gpt-4o-mini").notNull(),
+  /** Prompt tokens consumed */
+  promptTokens: int("promptTokens").default(0).notNull(),
+  /** Completion tokens consumed */
+  completionTokens: int("completionTokens").default(0).notNull(),
+  /** Total tokens (prompt + completion) */
+  totalTokens: int("totalTokens").default(0).notNull(),
+  /** Estimated cost in USD (based on model pricing) */
+  estimatedCostUsd: decimal("estimatedCostUsd", { precision: 10, scale: 6 }).default("0").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AiUsageLog = typeof aiUsageLogs.$inferSelect;
+export type InsertAiUsageLog = typeof aiUsageLogs.$inferInsert;
+
 export const evaQuestions = mysqlTable("evaQuestions", {
   id: int("id").autoincrement().primaryKey(),
   /** The most recent raw question text from a customer */

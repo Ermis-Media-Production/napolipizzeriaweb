@@ -9,7 +9,7 @@
  */
 import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
-import { invokeLLM } from "./_core/llm";
+import { invokeLLMTracked } from "./aiUsage";
 import { getDb } from "./db";
 import { evaQuestions } from "../drizzle/schema";
 import { desc, sql } from "drizzle-orm";
@@ -78,12 +78,12 @@ Return ONLY the normalized text, nothing else.`;
 
 async function normalizeQuestion(question: string): Promise<string> {
   try {
-    const res = await invokeLLM({
+    const res = await invokeLLMTracked({
       messages: [
         { role: "system", content: NORMALIZE_PROMPT },
         { role: "user", content: question.slice(0, 300) },
       ],
-    });
+    }, "eva_normalize");
     const normalized = (res.choices?.[0]?.message?.content ?? question)
       .toString()
       .toLowerCase()
@@ -160,7 +160,7 @@ export const evaChatRouter = router({
         })),
       ];
 
-      const response = await invokeLLM({ messages: llmMessages });
+      const response = await invokeLLMTracked({ messages: llmMessages }, "eva_chat");
       const reply =
         response.choices?.[0]?.message?.content ??
         "I'm sorry, I couldn't process that. Please call us at 725-204-0379 for immediate assistance!";
