@@ -18,6 +18,7 @@ import { cloverCheckoutRouter } from "./cloverCheckout";
 import { cloverRouter } from "./clover";
 import { aiUsageRouter } from "./aiUsageRouter";
 import { itemCategoriesRouter } from "./itemCategories";
+import { cloverItemSyncRouter } from "./cloverItemSync";
 
 export const appRouter = router({
   system: systemRouter,
@@ -47,6 +48,7 @@ export const appRouter = router({
   clover: cloverRouter,
   aiUsage: aiUsageRouter,
   itemCategories: itemCategoriesRouter,
+  cloverItemSync: cloverItemSyncRouter,
 });
 
 export type AppRouter = typeof appRouter;

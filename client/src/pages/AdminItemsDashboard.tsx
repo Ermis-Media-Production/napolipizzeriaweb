@@ -10,6 +10,7 @@ import {
   Search, Plus, Pencil, Trash2, Upload, Loader2, ImageOff,
   ToggleLeft, ToggleRight, Tag, Layers, Printer, Percent,
   ChevronRight, ChevronDown, Check, X, Package, Settings2,
+  RefreshCw, CloudDownload, CheckSquare, Square, Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,6 +138,12 @@ function ItemListSection() {
   const [modifierItemId, setModifierItemId] = useState<number | null>(null);
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkCategoryOpen, setBulkCategoryOpen] = useState(false);
+  const [bulkLabelOpen, setBulkLabelOpen] = useState(false);
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ created: number; updated: number; skipped: number; total: number; syncedAt: string } | null>(null);
 
   const utils = trpc.useUtils();
   const { data: items = [], isLoading } = trpc.menuItems.list.useQuery({
@@ -176,6 +183,44 @@ function ItemListSection() {
     onSuccess: () => { toast.success("Modifiers updated"); setModifierDialogOpen(false); },
     onError: (e) => toast.error(e.message),
   });
+  const syncMutation = trpc.cloverItemSync.syncFromClover.useMutation({
+    onSuccess: (data) => {
+      setSyncResult(data);
+      utils.menuItems.list.invalidate();
+      toast.success(`Sync complete: ${data.created} new, ${data.updated} updated`);
+    },
+    onError: (e) => toast.error(`Sync failed: ${e.message}`),
+  });
+  const bulkUpdateMutation = trpc.menuItems.bulkUpdate.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Updated ${data.updated} items`);
+      utils.menuItems.list.invalidate();
+      setSelectedIds(new Set());
+      setBulkCategoryOpen(false);
+      setBulkLabelOpen(false);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const { data: syncInfo } = trpc.cloverItemSync.getLastSyncInfo.useQuery();
+
+  // Bulk selection helpers
+  const allFilteredIds = filteredItems.map((i) => i.id);
+  const allSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.has(id));
+  const someSelected = allFilteredIds.some((id) => selectedIds.has(id));
+
+  function toggleSelectAll() {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allFilteredIds));
+    }
+  }
+
+  function toggleSelectOne(id: number) {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedIds(next);
+  }
 
   function openCreate() {
     setEditingId(null);
@@ -240,15 +285,95 @@ function ItemListSection() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-xl font-semibold">Item List</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">{items.length} items total</p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-sm text-muted-foreground">{items.length} items total</p>
+            {syncInfo?.syncedItemCount ? (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {syncInfo.syncedItemCount} synced from Clover
+              </span>
+            ) : null}
+          </div>
         </div>
-        <Button onClick={openCreate} className="bg-red-700 hover:bg-red-800 text-white">
-          <Plus className="h-4 w-4 mr-2" /> Add Item
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setSyncDialogOpen(true)}
+            className="gap-2"
+          >
+            <CloudDownload className="h-4 w-4" />
+            Sync from Clover
+          </Button>
+          <Button onClick={openCreate} className="bg-red-700 hover:bg-red-800 text-white">
+            <Plus className="h-4 w-4 mr-2" /> Add Item
+          </Button>
+        </div>
       </div>
+
+      {/* Bulk action bar — appears when items are selected */}
+      {someSelected && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+            {selectedIds.size} item{selectedIds.size !== 1 ? "s" : ""} selected
+          </span>
+          <div className="flex items-center gap-2 ml-auto">
+            {/* Bulk category change */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Category:</span>
+              <Select
+                value=""
+                onValueChange={(v) => {
+                  if (v) bulkUpdateMutation.mutate({ ids: Array.from(selectedIds), category: v });
+                }}
+              >
+                <SelectTrigger className="h-8 w-36 text-xs">
+                  <SelectValue placeholder="Change..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((c) => (
+                    <SelectItem key={c.slug} value={c.slug}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Bulk printer label change */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Printer:</span>
+              <Select
+                value=""
+                onValueChange={(v) => {
+                  if (v) bulkUpdateMutation.mutate({ ids: Array.from(selectedIds), printLabel: v as PrintLabel });
+                }}
+              >
+                <SelectTrigger className="h-8 w-36 text-xs">
+                  <SelectValue placeholder="Change..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRINT_LABELS.map((l) => (
+                    <SelectItem key={l} value={l}>
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: PRINT_LABEL_INFO[l].color }} />
+                        {l}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              <X className="h-3 w-3 mr-1" /> Clear
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
@@ -279,6 +404,15 @@ function ItemListSection() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40">
+              <TableHead className="w-10 pl-3">
+                <button onClick={toggleSelectAll} className="flex items-center justify-center">
+                  {allSelected
+                    ? <CheckSquare className="h-4 w-4 text-blue-600" />
+                    : someSelected
+                    ? <CheckSquare className="h-4 w-4 text-blue-400 opacity-60" />
+                    : <Square className="h-4 w-4 text-muted-foreground" />}
+                </button>
+              </TableHead>
               <TableHead className="w-14">Photo</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Category</TableHead>
@@ -292,19 +426,35 @@ function ItemListSection() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-12">
+                <TableCell colSpan={9} className="text-center py-12">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                 </TableCell>
               </TableRow>
             ) : filteredItems.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                   {search ? "No items match your search" : "No items yet. Click \"Add Item\" to create one."}
                 </TableCell>
               </TableRow>
             ) : (
               filteredItems.map((item) => (
-                <TableRow key={item.id} className="hover:bg-muted/20">
+                <TableRow
+                  key={item.id}
+                  className={`hover:bg-muted/20 transition-colors ${
+                    selectedIds.has(item.id) ? "bg-blue-50/50 dark:bg-blue-950/20" : ""
+                  }`}
+                >
+                  {/* Checkbox */}
+                  <TableCell className="pl-3">
+                    <button
+                      onClick={() => toggleSelectOne(item.id)}
+                      className="flex items-center justify-center"
+                    >
+                      {selectedIds.has(item.id)
+                        ? <CheckSquare className="h-4 w-4 text-blue-600" />
+                        : <Square className="h-4 w-4 text-muted-foreground" />}
+                    </button>
+                  </TableCell>
                   {/* Photo */}
                   <TableCell>
                     <div className="relative w-10 h-10 rounded-md overflow-hidden border bg-muted/40 group cursor-pointer"
@@ -556,6 +706,80 @@ function ItemListSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Sync from Clover Dialog */}
+      <Dialog open={syncDialogOpen} onOpenChange={(o) => { setSyncDialogOpen(o); if (!o) setSyncResult(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CloudDownload className="h-5 w-5 text-green-600" />
+              Sync Items from Clover
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {syncResult ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-green-600">
+                  <Check className="h-5 w-5" />
+                  <span className="font-medium">Sync completed successfully</span>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">{syncResult.created}</div>
+                    <div className="text-xs text-muted-foreground mt-1">New items</div>
+                  </div>
+                  <div className="text-center p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">{syncResult.updated}</div>
+                    <div className="text-xs text-muted-foreground mt-1">Updated</div>
+                  </div>
+                  <div className="text-center p-3 bg-muted/40 rounded-lg">
+                    <div className="text-2xl font-bold">{syncResult.skipped}</div>
+                    <div className="text-xs text-muted-foreground mt-1">Hidden/skipped</div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {syncResult.total} total items found in Clover &bull; Synced at {new Date(syncResult.syncedAt).toLocaleString()}
+                </p>
+                <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded p-2">
+                  <strong>Note:</strong> Printer label assignments you set manually in this dashboard were preserved. Only new items received auto-assigned labels.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  This will pull all visible items from your Clover POS and import them into this dashboard.
+                </p>
+                <ul className="text-sm space-y-1.5 text-muted-foreground">
+                  <li className="flex items-start gap-2"><Check className="h-4 w-4 text-green-500 mt-0.5 shrink-0" /> New Clover items will be <strong>added</strong> to the local database</li>
+                  <li className="flex items-start gap-2"><RefreshCw className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" /> Existing synced items will have name, price &amp; category <strong>updated</strong></li>
+                  <li className="flex items-start gap-2"><Check className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" /> Your custom <strong>printer label</strong> assignments are <strong>preserved</strong></li>
+                  <li className="flex items-start gap-2"><X className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" /> Items only in local DB (not in Clover) are <strong>not deleted</strong></li>
+                </ul>
+                {syncInfo?.lastSyncAt && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Last synced: {new Date(syncInfo.lastSyncAt).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setSyncDialogOpen(false); setSyncResult(null); }}>Close</Button>
+            {!syncResult && (
+              <Button
+                onClick={() => syncMutation.mutate({ overridePrintLabels: false })}
+                disabled={syncMutation.isPending}
+                className="bg-green-700 hover:bg-green-800 text-white gap-2"
+              >
+                {syncMutation.isPending
+                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Syncing...</>
+                  : <><CloudDownload className="h-4 w-4" /> Start Sync</>}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

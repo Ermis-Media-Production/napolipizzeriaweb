@@ -442,3 +442,16 @@
 - [x] Add /admin/items route to App.tsx
 - [x] Add "Items" nav entry to AdminLayout sidebar
 - [x] TypeScript: 0 errors
+
+## Bulk Selection in Items Dashboard
+- [x] Add checkbox column to Item List table (select all / select individual rows)
+- [x] Show floating action bar when 1+ items selected (count badge, bulk change category, bulk change printer label, deselect all)
+- [x] Add bulk update tRPC procedure: menuItems.bulkUpdate (ids[], category?, printLabel?)
+- [x] TypeScript: 0 errors
+
+## Clover Item Sync
+- [x] Add syncFromClover tRPC admin procedure: fetch items from Clover API, upsert into menuItems table
+- [x] Sync maps Clover item name, price, category, modifiers to local fields; preserves existing printLabel overrides
+- [x] Add "Sync from Clover" button to AdminItemsDashboard Item List header with progress/result toast
+- [x] Show last sync timestamp in the UI
+- [x] TypeScript: 0 errors

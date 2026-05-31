@@ -192,6 +192,8 @@ export const menuItems = mysqlTable("menuItems", {
   imageUrl: text("imageUrl"),
   /** S3 storage key for deletion */
   imageKey: varchar("imageKey", { length: 256 }),
+  /** Clover item ID for sync tracking — null for manually created items */
+  cloverItemId: varchar("cloverItemId", { length: 64 }),
   /** Clover printer label: Food | Pizza | Pizzeria | Bar/Drinks */
   printLabel: mysqlEnum("printLabel", ["Food", "Pizza", "Pizzeria", "Bar/Drinks"]).default("Food").notNull(),
   /** Whether this item is currently available for ordering */

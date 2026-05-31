@@ -259,6 +259,35 @@ export const menuItemsRouter = router({
     }),
 
   /**
+   * Bulk update category and/or printLabel for multiple items at once. Admin only.
+   */
+  bulkUpdate: adminProcedure
+    .input(
+      z.object({
+        ids: z.array(z.number()).min(1),
+        category: z.string().min(1).max(64).optional(),
+        printLabel: z.enum(PRINT_LABELS).optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await requireDb();
+      if (!input.category && !input.printLabel) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Provide at least one field to update" });
+      }
+      const updateData: Record<string, unknown> = {};
+      if (input.category) updateData.category = input.category;
+      if (input.printLabel) updateData.printLabel = input.printLabel;
+
+      // Update each item individually (MySQL doesn't support WHERE id IN with Drizzle easily)
+      await Promise.all(
+        input.ids.map((id) =>
+          db.update(menuItems).set(updateData).where(eq(menuItems.id, id))
+        )
+      );
+      return { updated: input.ids.length };
+    }),
+
+  /**
    * Reorder items within a category. Admin only.
    * Accepts an array of { id, sortOrder } pairs.
    */
