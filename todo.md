@@ -420,9 +420,9 @@
 - [x] Show alert status badge on AI Costs panel (% of monthly limit used)
 
 ## Receipt Modifier Format Fix + Menu Admin Panel
-- [ ] Fix modifier formatting in receiptTemplates.ts — each modifier on its own line (not inline)
-- [ ] Fix modifier formatting in Clover order description (cloverSync.ts) — each modifier on its own line
-- [ ] Build menu admin panel: DB table for custom menu items (overrides/additions)
-- [ ] Add tRPC procedures: getMenuItems, addMenuItem, updateMenuItem, deleteMenuItem
-- [ ] Build AdminMenuItems page with table, add/edit modal, delete confirmation
-- [ ] Add route /admin/menu-items to App.tsx and nav link to AdminLayout
+- [x] Fix modifier formatting in receiptTemplates.ts — each modifier on its own line (not inline)
+- [x] Fix modifier formatting in Clover order description (cloverSync.ts) — each modifier on its own line (already implemented: replaces " · " with \n)
+- [x] Build menu admin panel: DB table for custom menu items (overrides/additions) — menuItems table already in schema
+- [x] Add tRPC procedures: getMenuItems, addMenuItem, updateMenuItem, deleteMenuItem — menuItemsRouter already has list/create/update/delete/uploadPhoto/toggleAvailability/reorder
+- [x] Build AdminMenuItems page with table, add/edit modal, delete confirmation — AdminMenuManager.tsx already built at /admin/menu
+- [x] Add route /admin/menu-items to App.tsx and nav link to AdminLayout — /admin/menu route and "Menu Manager" nav item already exist
