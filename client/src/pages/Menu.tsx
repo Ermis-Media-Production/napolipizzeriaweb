@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLunchTimer } from "@/hooks/useLunchTimer";
 import LunchTimerBadge from "@/components/LunchTimerBadge";
-import { ChevronDown, ChevronUp, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, X, ZoomIn } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateItem, translateCategory } from "@/lib/napoliTranslations";
@@ -531,6 +531,56 @@ function WholeLottaPastaRow() {
   );
 }
 
+function ImageZoomLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:opacity-80 active:scale-90"
+        style={{ background: "rgba(255,255,255,0.15)", color: "white" }}
+        aria-label="Close"
+      >
+        <X size={20} />
+      </button>
+      <div
+        className="relative max-w-[90vw] max-h-[85vh] rounded-xl overflow-hidden shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        style={{ animation: "zoomIn 200ms cubic-bezier(0.23,1,0.32,1)" }}
+      >
+        <img
+          src={src}
+          alt={alt}
+          className="block max-w-full max-h-[85vh] object-contain"
+          style={{ minWidth: 200, minHeight: 200 }}
+        />
+        <div
+          className="absolute bottom-0 left-0 right-0 px-4 py-2 text-center text-sm font-semibold"
+          style={{ background: "rgba(0,0,0,0.55)", color: "white", backdropFilter: "blur(2px)" }}
+        >
+          {alt}
+        </div>
+      </div>
+      <style>{`
+        @keyframes zoomIn {
+          from { opacity: 0; transform: scale(0.92); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 function AppetizersItemRow({
   name,
   desc,
@@ -547,14 +597,27 @@ function AppetizersItemRow({
   const { lang } = useLanguage();
   const translated = translateItem(name, desc, lang);
   const photo = getMenuPhoto(name);
+  const [zoomOpen, setZoomOpen] = useState(false);
   return (
+    <>
+    {zoomOpen && photo && (
+      <ImageZoomLightbox src={photo} alt={translated.name} onClose={() => setZoomOpen(false)} />
+    )}
     <div
       className="napoli-menu-item flex items-start gap-3 px-4 py-3 border-b last:border-b-0"
       style={{ borderColor: "oklch(0.93 0.012 80)", background: highlight ? "oklch(0.99 0.02 65 / 0.25)" : undefined }}
     >
       {photo && (
-        <div className="shrink-0 rounded overflow-hidden" style={{ width: 64, height: 64 }}>
-          <img src={photo} alt={name} className="w-full h-full object-cover" loading="lazy" />
+        <div
+          className="shrink-0 rounded overflow-hidden relative cursor-zoom-in group"
+          style={{ width: 64, height: 64 }}
+          onClick={() => setZoomOpen(true)}
+          title="Click to enlarge"
+        >
+          <img src={photo} alt={name} className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105" loading="lazy" />
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ background: "rgba(0,0,0,0.35)" }}>
+            <ZoomIn size={18} color="white" />
+          </div>
         </div>
       )}
       <div className="flex-1 min-w-0">
@@ -581,6 +644,7 @@ function AppetizersItemRow({
         </button>
       </div>
     </div>
+    </>
   );
 }
 
