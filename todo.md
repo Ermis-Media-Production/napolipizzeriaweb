@@ -426,3 +426,19 @@
 - [x] Add tRPC procedures: getMenuItems, addMenuItem, updateMenuItem, deleteMenuItem — menuItemsRouter already has list/create/update/delete/uploadPhoto/toggleAvailability/reorder
 - [x] Build AdminMenuItems page with table, add/edit modal, delete confirmation — AdminMenuManager.tsx already built at /admin/menu
 - [x] Add route /admin/menu-items to App.tsx and nav link to AdminLayout — /admin/menu route and "Menu Manager" nav item already exist
+
+## Clover-Style Items Dashboard (/admin/items)
+- [x] Add itemCategories table to schema (id, name, slug, color, sortOrder, createdAt)
+- [x] Run pnpm db:push to apply migration
+- [x] Add itemCategoriesRouter: list, create, update, delete (admin-only)
+- [x] Register itemCategoriesRouter in routers.ts
+- [x] Build AdminItemsDashboard.tsx with left sidebar nav (Item List, Categories, Modifier Groups, Printer Labels, Discounts)
+- [x] Item List tab: searchable table with photo thumbnail, name, price, category badge, printer label badge, modifier count, availability toggle, edit/delete actions
+- [x] Item detail drawer/modal: full edit form with photo upload, name, description, price, price2, category, printer label, modifier group assignment (multi-select checklist)
+- [x] Categories tab: list all categories with item count, add/edit/delete, color picker
+- [x] Modifier Groups tab: list groups with options count, add/edit/delete groups and options inline
+- [x] Printer Labels tab: visual display of the 4 labels (Food, Pizza, Pizzeria, Bar/Drinks) with item counts and routing info
+- [x] Discounts tab: list coupons with code, discount%, usage count, active toggle, add/delete
+- [x] Add /admin/items route to App.tsx
+- [x] Add "Items" nav entry to AdminLayout sidebar
+- [x] TypeScript: 0 errors

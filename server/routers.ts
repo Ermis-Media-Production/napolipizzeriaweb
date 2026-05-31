@@ -17,6 +17,7 @@ import { authorizeNetRouter } from "./authorizenet";
 import { cloverCheckoutRouter } from "./cloverCheckout";
 import { cloverRouter } from "./clover";
 import { aiUsageRouter } from "./aiUsageRouter";
+import { itemCategoriesRouter } from "./itemCategories";
 
 export const appRouter = router({
   system: systemRouter,
@@ -45,6 +46,7 @@ export const appRouter = router({
   cloverCheckout: cloverCheckoutRouter,
   clover: cloverRouter,
   aiUsage: aiUsageRouter,
+  itemCategories: itemCategoriesRouter,
 });
 
 export type AppRouter = typeof appRouter;

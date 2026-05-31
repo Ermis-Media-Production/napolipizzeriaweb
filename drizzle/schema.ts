@@ -342,3 +342,25 @@ export const evaQuestions = mysqlTable("evaQuestions", {
 });
 export type EvaQuestion = typeof evaQuestions.$inferSelect;
 export type InsertEvaQuestion = typeof evaQuestions.$inferInsert;
+
+/**
+ * Item categories for the Items Dashboard.
+ * Allows admin to create, rename, and color-code categories.
+ * The `slug` matches the category field in menuItems.
+ */
+export const itemCategories = mysqlTable("itemCategories", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Display name, e.g. "Pizza" */
+  name: varchar("name", { length: 128 }).notNull(),
+  /** URL-safe slug matching menuItems.category, e.g. "pizza" */
+  slug: varchar("slug", { length: 64 }).notNull().unique(),
+  /** Optional hex color for UI badges, e.g. "#e53e3e" */
+  color: varchar("color", { length: 16 }).default("#6b7280").notNull(),
+  /** Display sort order */
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ItemCategory = typeof itemCategories.$inferSelect;
+export type InsertItemCategory = typeof itemCategories.$inferInsert;

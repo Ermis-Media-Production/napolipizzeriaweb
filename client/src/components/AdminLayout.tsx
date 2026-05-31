@@ -33,6 +33,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   LogOut,
+  Package,
   PanelLeft,
   Settings,
   Sliders,
@@ -45,6 +46,7 @@ import { Button } from "./ui/button";
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin/dashboard" },
   { icon: ClipboardList, label: "Orders", path: "/admin/orders" },
+  { icon: Package, label: "Items", path: "/admin/items" },
   { icon: UtensilsCrossed, label: "Menu Manager", path: "/admin/menu" },
   { icon: Sliders, label: "Modifiers", path: "/admin/modifiers" },
   { icon: Settings, label: "Settings", path: "/admin/settings" },
