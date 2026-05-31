@@ -253,16 +253,31 @@ function BurgerRow({
   const photo = getBurgerPhoto(item.name);
   const halfPrice = parsePrice(item.half);
   const singlePrice = parsePrice(item.single);
+  const [zoomOpen, setZoomOpen] = useState(false);
 
   return (
+    <>
+    {zoomOpen && photo && (
+      <ImageZoomLightbox src={photo} alt={item.name} onClose={() => setZoomOpen(false)} />
+    )}
     <div
       className="napoli-menu-item flex items-center gap-3 px-4 py-3"
       style={{ borderBottom: "1px solid oklch(0.93 0.012 80)" }}
     >
       {/* Small square photo */}
-      <div className="shrink-0 rounded overflow-hidden" style={{ width: 68, height: 68 }}>
+      <div
+        className="shrink-0 rounded overflow-hidden relative group"
+        style={{ width: 68, height: 68, cursor: photo ? "zoom-in" : "default" }}
+        onClick={() => photo && setZoomOpen(true)}
+        title={photo ? "Click to enlarge" : undefined}
+      >
         {photo ? (
-          <img src={photo} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+          <>
+            <img src={photo} alt={item.name} className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105" loading="lazy" />
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ background: "rgba(0,0,0,0.35)" }}>
+              <ZoomIn size={18} color="white" />
+            </div>
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center" style={{ background: "oklch(0.95 0.012 80)" }}>
             <span style={{ fontSize: 28 }}>🍔</span>
@@ -300,6 +315,7 @@ function BurgerRow({
         Order
       </button>
     </div>
+    </>
   );
 }
 
@@ -424,6 +440,7 @@ function ItemRow({ name, desc, price, highlight, category }: { name: string; des
   const translated = translateItem(name, desc, lang);
   const numericPrice = parsePrice(price);
   const photo = getMenuPhoto(name);
+  const [zoomOpen, setZoomOpen] = useState(false);
 
   const handleAdd = () => {
     if (!numericPrice) return;
@@ -441,6 +458,10 @@ function ItemRow({ name, desc, price, highlight, category }: { name: string; des
   };
 
   return (
+    <>
+    {zoomOpen && photo && (
+      <ImageZoomLightbox src={photo} alt={translated.name} onClose={() => setZoomOpen(false)} />
+    )}
     <div
       className="napoli-menu-item flex items-start gap-3 px-4 py-3 border-b last:border-b-0"
       style={{
@@ -449,13 +470,21 @@ function ItemRow({ name, desc, price, highlight, category }: { name: string; des
       }}
     >
       {photo && (
-        <div className="shrink-0 rounded overflow-hidden" style={{ width: 64, height: 64 }}>
+        <div
+          className="shrink-0 rounded overflow-hidden relative cursor-zoom-in group"
+          style={{ width: 64, height: 64 }}
+          onClick={() => setZoomOpen(true)}
+          title="Click to enlarge"
+        >
           <img
             src={photo}
             alt={name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
             loading="lazy"
           />
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ background: "rgba(0,0,0,0.35)" }}>
+            <ZoomIn size={18} color="white" />
+          </div>
         </div>
       )}
       <div className="flex-1 min-w-0">
@@ -479,6 +508,7 @@ function ItemRow({ name, desc, price, highlight, category }: { name: string; des
         )}
       </div>
     </div>
+    </>
   );
 }
 
