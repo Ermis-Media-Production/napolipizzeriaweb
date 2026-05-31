@@ -47,11 +47,21 @@ export interface CloverOrderResult {
 // ── Printer label mapping ──────────────────────────────────────────────────────
 
 /**
- * Three printer labels:
- *   "Pizza"    → pizza station (Star TSP100, 192.168.192.11)
- *   "Food"     → hot food station (Star TSP100, 192.168.192.12)
- *   "Pizzeria" → desserts & beverages (TM-U220, 192.168.192.8)
+ * Clover printer IDs (from /v3/merchants/{id}/printers):
+ *   Pizza     → 65QB994H6Z44W  (Star TSP100, 192.168.192.11)
+ *   Food      → MCWCF8204E7QM  (Star TSP100, 192.168.192.12)
+ *   Pizzeria  → WBSHK4762NS76  (TM-U220, 192.168.192.8)
+ *
+ * Clover requires printerLabel to be set as { id: "<printerId>" } on each
+ * line item — using { name: "..." } is silently ignored by the API.
  */
+export const CLOVER_PRINTER_IDS = {
+  PIZZA: "65QB994H6Z44W",
+  FOOD: "MCWCF8204E7QM",
+  PIZZERIA: "WBSHK4762NS76",
+} as const;
+
+// Keep name constants for logging/display purposes
 export const CLOVER_PRINTER_LABELS = {
   PIZZA: "Pizza",
   FOOD: "Food",
@@ -329,11 +339,18 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
   // We format each modifier as a separate line for easy reading by kitchen staff.
   const lineItems = input.items.map((item) => {
     const printerLabel = getPrinterLabel(item.name);
+    // Map label name to Clover printer ID — Clover requires { id } not { name }
+    const printerIdMap: Record<PrinterLabel, string> = {
+      Pizza: CLOVER_PRINTER_IDS.PIZZA,
+      Food: CLOVER_PRINTER_IDS.FOOD,
+      Pizzeria: CLOVER_PRINTER_IDS.PIZZERIA,
+    };
+    const printerId = printerIdMap[printerLabel];
     const lineItem: Record<string, unknown> = {
       name: item.name,
       price: Math.round(item.price * 100), // cents
       unitQty: item.quantity,
-      printerLabel: { name: printerLabel },
+      printerLabel: { id: printerId },
     };
 
     if (item.description && item.description.trim()) {

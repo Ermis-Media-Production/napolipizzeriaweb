@@ -51,19 +51,21 @@ function getOrderType(type: string) {
 function renderItemsHtml(items: ReceiptItem[]): string {
   return items
     .map((item) => {
-      const modTags = item.description
+      // Split on " · " (frontend format), newlines, or semicolons — each modifier gets its own line
+      const modLines = item.description
         ? item.description
-            .split(/[,;]/)
+            .split(/ · |\n|;/)
             .map((m) => m.trim())
             .filter(Boolean)
-            .map((m) => `<span class="mod-tag">${m}</span>`)
-            .join("")
-        : "";
+        : [];
+      const modHtml = modLines
+        .map((m) => `<div class="mod-line">▸ ${m}</div>`)
+        .join("");
       return `
         <div class="item-row">
           <div class="item-left">
             <div class="item-name"><span class="item-qty">${item.quantity}×</span>${item.name}</div>
-            ${modTags ? `<div class="item-modifiers">${modTags}</div>` : ""}
+            ${modHtml ? `<div class="item-modifiers">${modHtml}</div>` : ""}
           </div>
           <div class="item-price">$${(item.price * item.quantity).toFixed(2)}</div>
         </div>`;
@@ -126,7 +128,7 @@ export function buildCustomerReceiptHtml(data: ReceiptData): string {
   .item-name{font-size:13px;font-weight:700;color:#2c1a0e;margin-bottom:3px;}
   .item-qty{display:inline-block;background:#1a3c1a;color:#d4a843;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-right:5px;}
   .item-modifiers{font-size:11px;color:#7a5c3a;margin-top:3px;}
-  .mod-tag{display:inline-block;background:#fdf6ec;border:1px solid #e8d5b0;border-radius:4px;padding:1px 5px;margin:1px 2px 0 0;font-size:10px;}
+  .mod-line{display:block;font-size:11px;color:#7a5c3a;padding:1px 0;line-height:1.5;}
   .item-price{font-size:13px;font-weight:700;color:#2c1a0e;white-space:nowrap;padding-left:12px;}
   .totals-table{width:100%;}
   .totals-table tr td{padding:4px 0;font-size:12px;}
@@ -229,8 +231,8 @@ export function buildAdminReceiptHtml(data: ReceiptData): string {
   .item-header{display:flex;align-items:center;gap:7px;margin-bottom:5px;}
   .item-qty{background:#d4a843;color:#1a0e00;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;min-width:26px;text-align:center;}
   .item-name{font-size:14px;font-weight:700;color:#f0f0f0;}
-  .item-modifiers{margin-left:33px;display:flex;flex-wrap:wrap;gap:3px;}
-  .mod-tag{display:inline-block;background:#2e2e2e;border:1px solid #444;border-radius:4px;padding:1px 7px;font-size:10px;color:#ccc;}
+  .item-modifiers{margin-left:33px;display:block;}
+  .mod-line{display:block;font-size:11px;color:#bbb;padding:1px 0;line-height:1.5;}
   .item-price{font-size:14px;font-weight:700;color:#f0f0f0;white-space:nowrap;padding-left:12px;}
   .totals-table{width:100%;}
   .totals-table tr td{padding:4px 0;font-size:12px;}
@@ -284,9 +286,15 @@ export function buildAdminReceiptHtml(data: ReceiptData): string {
   <div class="section">
     <div class="section-title">Items — ${data.items.length} items · ${totalUnits} units</div>
     ${data.items.map((item) => {
-      const modTags = item.description
-        ? item.description.split(/[,;]/).map((m) => m.trim()).filter(Boolean).map((m) => `<span class="mod-tag">${m}</span>`).join("")
-        : "";
+      const modLines = item.description
+        ? item.description
+            .split(/ · |\n|;/)
+            .map((m) => m.trim())
+            .filter(Boolean)
+        : [];
+      const modHtml = modLines
+        .map((m) => `<div class="mod-line">▸ ${m}</div>`)
+        .join("");
       return `
         <div class="item-row">
           <div class="item-left">
@@ -294,7 +302,7 @@ export function buildAdminReceiptHtml(data: ReceiptData): string {
               <span class="item-qty">${item.quantity}×</span>
               <span class="item-name">${item.name}</span>
             </div>
-            ${modTags ? `<div class="item-modifiers">${modTags}</div>` : ""}
+            ${modHtml ? `<div class="item-modifiers">${modHtml}</div>` : ""}
           </div>
           <div class="item-price">$${(item.price * item.quantity).toFixed(2)}</div>
         </div>`;

@@ -418,3 +418,11 @@
 - [x] Add AI Cost Alert threshold input to AdminAiCosts page (admin can set $X/month threshold)
 - [x] Add aiUsageRouter.getAlertThreshold and setAlertThreshold procedures
 - [x] Show alert status badge on AI Costs panel (% of monthly limit used)
+
+## Receipt Modifier Format Fix + Menu Admin Panel
+- [ ] Fix modifier formatting in receiptTemplates.ts — each modifier on its own line (not inline)
+- [ ] Fix modifier formatting in Clover order description (cloverSync.ts) — each modifier on its own line
+- [ ] Build menu admin panel: DB table for custom menu items (overrides/additions)
+- [ ] Add tRPC procedures: getMenuItems, addMenuItem, updateMenuItem, deleteMenuItem
+- [ ] Build AdminMenuItems page with table, add/edit modal, delete confirmation
+- [ ] Add route /admin/menu-items to App.tsx and nav link to AdminLayout
