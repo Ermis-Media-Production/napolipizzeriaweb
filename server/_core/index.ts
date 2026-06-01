@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { handleAuthorizeNetWebhook } from "../authorizenetWebhook";
 import { handleCloverWebhook } from "../cloverCheckout";
+import { handleScheduledCloverSync } from "../scheduledCloverSync";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -57,6 +58,14 @@ async function startServer() {
         console.error("[CloverWebhook] Error:", err);
         res.status(500).json({ error: "Webhook processing failed" });
       });
+  });
+
+  // Scheduled Clover item sync — called by Manus heartbeat cron daily at 2 AM Las Vegas time
+  app.post("/api/scheduled/clover-sync", (req, res) => {
+    handleScheduledCloverSync(req, res).catch((err) => {
+      console.error("[ScheduledCloverSync] Unhandled error:", err);
+      res.status(500).json({ error: String(err) });
+    });
   });
 
   registerStorageProxy(app);
