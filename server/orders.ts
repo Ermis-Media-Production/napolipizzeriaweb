@@ -12,11 +12,26 @@
 import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "./db";
-import { orderItems, scheduledOrders } from "../drizzle/schema";
+import { orderItems, scheduledOrders, storeSettings } from "../drizzle/schema";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { notifyOwner } from "./_core/notification";
 import { sendSms } from "./_core/sms";
 import { TRPCError } from "@trpc/server";
+
+/** Read a single store setting from DB; returns null if not found or DB unavailable. */
+async function getStoreSetting(key: string): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(storeSettings).where(eq(storeSettings.key, key)).limit(1);
+  return rows[0]?.value ?? null;
+}
+
+/** Returns true if the store is currently open, respecting the force_open override. */
+async function isStoreOpenAsync(): Promise<boolean> {
+  const forceOpen = await getStoreSetting("store_force_open");
+  if (forceOpen === "true") return true;
+  return isStoreOpen();
+}
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -158,11 +173,13 @@ export const ordersRouter = router({
   /**
    * Returns store status and next opening time.
    */
-  storeStatus: publicProcedure.query(() => {
-    const open = isStoreOpen();
+  storeStatus: publicProcedure.query(async () => {
+    const forceOpen = await getStoreSetting("store_force_open");
+    const open = forceOpen === "true" ? true : isStoreOpen();
     const storeNow = nowInStoreTimezone();
     return {
       isOpen: open,
+      forceOpen: forceOpen === "true",
       currentTimeMs: storeNow.getTime(),
       nextOpeningMs: open ? null : getNextOpeningTime(),
       openHour: STORE_OPEN_HOUR,
@@ -299,8 +316,9 @@ export const ordersRouter = router({
           });
         }
       } else {
-        // ASAP orders require the store to be currently open
-        if (!isStoreOpen()) {
+        // ASAP orders require the store to be currently open (respects force_open override)
+        const storeCurrentlyOpen = await isStoreOpenAsync();
+        if (!storeCurrentlyOpen) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: `We're currently closed. Our hours are 10:00 AM – 10:00 PM. Please schedule your order for when we open, or contact us about catering.`,

@@ -39,6 +39,70 @@ async function setSetting(key: string, value: string): Promise<void> {
 
 export const settingsRouter = router({
   /**
+   * Public: returns the current store hours override configuration.
+   * Used by CartDrawer and storeStatus to determine if ordering is allowed.
+   */
+  getStoreHours: publicProcedure.query(async () => {
+    const [forceOpenRaw, openHourRaw, closeHourRaw] = await Promise.all([
+      getSetting("store_force_open"),
+      getSetting("store_open_hour"),
+      getSetting("store_close_hour"),
+    ]);
+
+    const forceOpen = forceOpenRaw === "true";
+    const openHour = openHourRaw !== null ? parseInt(openHourRaw) : 10;
+    const closeHour = closeHourRaw !== null ? parseInt(closeHourRaw) : 22;
+
+    return {
+      forceOpen,
+      openHour: isNaN(openHour) ? 10 : openHour,
+      closeHour: isNaN(closeHour) ? 22 : closeHour,
+    };
+  }),
+
+  /**
+   * Admin-only: override store hours or force-open the store.
+   * forceOpen=true bypasses the hour check entirely (useful for testing).
+   */
+  updateStoreHours: protectedProcedure
+    .input(
+      z.object({
+        forceOpen: z.boolean().optional(),
+        openHour: z.number().min(0).max(23).optional(),
+        closeHour: z.number().min(1).max(24).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only admins can update store hours.",
+        });
+      }
+
+      if (input.forceOpen !== undefined) {
+        await setSetting("store_force_open", String(input.forceOpen));
+      }
+      if (input.openHour !== undefined) {
+        await setSetting("store_open_hour", String(input.openHour));
+      }
+      if (input.closeHour !== undefined) {
+        await setSetting("store_close_hour", String(input.closeHour));
+      }
+
+      const [forceOpenRaw, openHourRaw, closeHourRaw] = await Promise.all([
+        getSetting("store_force_open"),
+        getSetting("store_open_hour"),
+        getSetting("store_close_hour"),
+      ]);
+      return {
+        forceOpen: forceOpenRaw === "true",
+        openHour: parseInt(openHourRaw ?? "10"),
+        closeHour: parseInt(closeHourRaw ?? "22"),
+      };
+    }),
+
+  /**
    * Public: returns the current Convenience Fee configuration.
    * Used by CartDrawer and checkout flows to compute the fee in real-time.
    */

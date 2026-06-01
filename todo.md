@@ -464,3 +464,12 @@
 - [x] Items grouped by category, each with photo, name, description, price, and Add to Cart button
 - [x] Items with price=0 show "See options" (modifier-driven items)
 - [x] TypeScript: 0 errors
+
+## Daily Clover Sync Cron Job
+- [x] Create /api/scheduled/clover-sync Express handler (scheduledCloverSync.ts)
+- [x] Register handler in server/_core/index.ts before tRPC middleware
+- [x] Create Manus heartbeat cron: nightly-clover-item-sync
+  - Cron: 0 0 9 * * * (daily 09:00 UTC = 2:00 AM Las Vegas PDT)
+  - task_uid: AeYan3k9hwNi3oTRVL9Hpa
+  - Next run: 2026-06-02T09:00:00Z
+- [x] TypeScript: 0 errors
