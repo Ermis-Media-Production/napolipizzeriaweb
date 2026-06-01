@@ -223,6 +223,8 @@ export const modifierGroups = mysqlTable("modifierGroups", {
   maxSelect: int("maxSelect").default(1).notNull(),
   /** Display sort order */
   sortOrder: int("sortOrder").default(0).notNull(),
+  /** Clover modifier group ID for sync tracking */
+  cloverGroupId: varchar("cloverGroupId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -246,6 +248,8 @@ export const modifierOptions = mysqlTable("modifierOptions", {
   isDefault: boolean("isDefault").default(false).notNull(),
   /** Display sort order within group */
   sortOrder: int("sortOrder").default(0).notNull(),
+  /** Clover modifier option ID for sync tracking */
+  cloverOptionId: varchar("cloverOptionId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

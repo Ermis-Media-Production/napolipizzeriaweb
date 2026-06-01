@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLunchTimer } from "@/hooks/useLunchTimer";
 import LunchTimerBadge from "@/components/LunchTimerBadge";
 import { ChevronDown, ChevronUp, Plus, X, ZoomIn } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 import { useCart } from "@/contexts/CartContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translateItem, translateCategory } from "@/lib/napoliTranslations";
@@ -850,6 +851,114 @@ function KidsMenuGrid({
         </div>
       ))}
     </div>
+  );
+}
+
+// ── Clover-Synced DB Items Section ──────────────────────────────────────────
+
+const CATEGORY_META: Record<string, { label: string; emoji: string }> = {
+  pizza: { label: "Clover Pizzeria Items", emoji: "🍕" },
+  burger: { label: "Clover Burger Items", emoji: "🍔" },
+  pasta: { label: "Clover Pasta Items", emoji: "🍝" },
+  wings: { label: "Clover Wings Items", emoji: "🍗" },
+  salad: { label: "Clover Salad Items", emoji: "🥗" },
+  soup: { label: "Clover Soup Items", emoji: "🍲" },
+  sandwich: { label: "Clover Sandwich Items", emoji: "🥖" },
+  wrap: { label: "Clover Wrap Items", emoji: "🌯" },
+  appetizer: { label: "Clover Appetizer Items", emoji: "🧅" },
+  kids: { label: "Clover Kids Items", emoji: "🧒" },
+  beverage: { label: "Clover Beverage Items", emoji: "🥤" },
+  dessert: { label: "Clover Dessert Items", emoji: "🍰" },
+  special: { label: "Clover Special Items", emoji: "⭐" },
+  catering: { label: "Clover Catering Items", emoji: "🍽️" },
+};
+
+function CloverSyncedItems({ addItem }: { addItem: (item: { id: string; name: string; price: number; quantity: number; category: string }) => void }) {
+  const { data: items, isLoading } = trpc.menuItems.list.useQuery(
+    { includeUnavailable: false },
+    { staleTime: 5 * 60 * 1000 }
+  );
+
+  if (isLoading || !items || items.length === 0) return null;
+
+  // Group by category
+  const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
+    const cat = item.category || "special";
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(item);
+    return acc;
+  }, {});
+
+  return (
+    <>
+      {Object.entries(grouped).map(([cat, catItems]) => {
+        const meta = CATEGORY_META[cat] ?? { label: cat.charAt(0).toUpperCase() + cat.slice(1), emoji: "🍽️" };
+        return (
+          <React.Fragment key={cat}>
+            <div
+              id={`clover-${cat}`}
+              className="flex items-center gap-3 py-3 px-5 rounded-t-md scroll-mt-24 mt-2"
+              style={{ background: "var(--napoli-red)" }}
+            >
+              <span className="text-xl">{meta.emoji}</span>
+              <h2 className="napoli-label text-base text-white tracking-widest">{meta.label}</h2>
+              <span className="ml-auto text-xs text-white/60 napoli-body">Synced from Clover</span>
+            </div>
+            <div
+              className="rounded-b-md border border-t-0 bg-white mb-6"
+              style={{ borderColor: "oklch(0.88 0.015 80)" }}
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
+                {catItems.map((item) => {
+                  const price = parseFloat(item.price);
+                  return (
+                    <div
+                      key={item.id}
+                      className="napoli-menu-item flex items-center gap-3 px-4 py-3 border-b border-r"
+                      style={{ borderColor: "oklch(0.93 0.012 80)" }}
+                    >
+                      {item.imageUrl ? (
+                        <div className="shrink-0 rounded overflow-hidden" style={{ width: 56, height: 56 }}>
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                        </div>
+                      ) : (
+                        <span className="text-2xl shrink-0">{meta.emoji}</span>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="napoli-body text-sm font-bold leading-tight" style={{ color: "var(--napoli-dark)" }}>{item.name}</p>
+                        {item.description && (
+                          <p className="text-xs napoli-body mt-0.5 line-clamp-2" style={{ color: "oklch(0.52 0.03 30)" }}>{item.description}</p>
+                        )}
+                        {price === 0 && (
+                          <p className="text-xs napoli-body mt-0.5 italic" style={{ color: "oklch(0.52 0.03 30)" }}>See options</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {price > 0 && (
+                          <span className="napoli-price text-sm font-bold" style={{ color: "var(--napoli-red)" }}>${price.toFixed(2)}</span>
+                        )}
+                        {price > 0 && (
+                          <button
+                            onClick={() => {
+                              addItem({ id: `clover-${item.id}-${Date.now()}`, name: item.name, price, quantity: 1, category: cat });
+                              toast.success(`${item.name} added to cart!`);
+                            }}
+                            className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90"
+                            style={{ background: "var(--napoli-red)", color: "white" }}
+                          >
+                            <Plus size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </React.Fragment>
+        );
+      })}
+    </>
   );
 }
 
@@ -1924,6 +2033,9 @@ export default function Menu() {
             })}
           </div>
         </div>
+
+        {/* ── CLOVER-SYNCED DB ITEMS ─────────────────────────── */}
+        <CloverSyncedItems addItem={addItem} />
 
         {/* ── ANYTIME SPECIALS ───────────────────────────────── */}
         <SectionHeader id="specials" title="Anytime Specials" emoji="⭐" photo="/manus-storage/napoli-specials-header_30ef5751.jpg" />

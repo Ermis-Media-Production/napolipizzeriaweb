@@ -455,3 +455,12 @@
 - [x] Add "Sync from Clover" button to AdminItemsDashboard Item List header with progress/result toast
 - [x] Show last sync timestamp in the UI
 - [x] TypeScript: 0 errors
+
+## Clover Sync → Public Menu Wiring
+- [x] Upgrade cloverItemSync.ts to also sync modifier groups and options (cloverGroupId, cloverOptionId columns added)
+- [x] Add cloverGroupId to modifierGroups table, cloverOptionId to modifierOptions table
+- [x] Run pnpm db:push for new columns
+- [x] Add CloverSyncedItems component to Menu.tsx that reads from trpc.menuItems.list
+- [x] Items grouped by category, each with photo, name, description, price, and Add to Cart button
+- [x] Items with price=0 show "See options" (modifier-driven items)
+- [x] TypeScript: 0 errors
