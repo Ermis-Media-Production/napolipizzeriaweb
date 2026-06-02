@@ -24,6 +24,8 @@ export interface CalzoneTrigger {
   freeToppings: number;
   /** Base description shown in step 1 */
   baseDesc: string;
+  /** Clover catalog item ID for printer routing */
+  cloverItemId?: string;
 }
 
 interface Props {
@@ -122,6 +124,7 @@ function CalzoneCustomizerInner({ trigger, onClose }: { trigger: CalzoneTrigger;
       quantity: 1,
       category: trigger.itemType.toLowerCase().replace(/ /g, "-"),
       description: parts.join(" · "),
+      cloverItemId: trigger.cloverItemId,
     });
 
     toast.success(`${itemName} added to cart`, {

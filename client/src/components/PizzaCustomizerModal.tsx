@@ -32,6 +32,8 @@ export interface PizzaSelection {
   flatExtraToppingPrice?: number;
   /** If true, Half & Half option is available on the toppings step */
   allowHalfAndHalf?: boolean;
+  /** Clover catalog item ID for printer routing */
+  cloverItemId?: string;
 }
 
 interface Props {
@@ -325,6 +327,7 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
       category: "pizza",
       description: descParts.join(" · "),
       modifications,
+      cloverItemId: selection.cloverItemId,
     });
 
     toast.success(`${pizzaName} Pizza (${effectiveSize}) added to cart!`);

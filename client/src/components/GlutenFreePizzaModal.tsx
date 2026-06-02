@@ -23,9 +23,10 @@ const TOPPINGS = [
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  cloverItemId?: string;
 }
 
-export default function GlutenFreePizzaModal({ isOpen, onClose }: Props) {
+export default function GlutenFreePizzaModal({ isOpen, onClose, cloverItemId }: Props) {
   const { addItem } = useCart();
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1);
@@ -52,6 +53,7 @@ export default function GlutenFreePizzaModal({ isOpen, onClose }: Props) {
       quantity,
       category: "pizza",
       description: toppingDesc,
+      cloverItemId,
     });
 
     toast.success(`Gluten Free Pizza added to cart!`, {

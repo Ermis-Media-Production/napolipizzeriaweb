@@ -30,6 +30,7 @@ export interface LunchItem {
   num: number;
   name: string;
   price: string;
+  cloverItemId?: string;
 }
 
 interface LunchConfig {
@@ -114,6 +115,7 @@ export default function LunchCustomizerModal({ item, onClose }: Props) {
       quantity: 1,
       category: "lunch",
       description: parts.join(" · "),
+      cloverItemId: item.cloverItemId,
     });
     toast.success(`#${item.num} ${item.name} added to cart`, {
       action: { label: "View Cart", onClick: openCart },

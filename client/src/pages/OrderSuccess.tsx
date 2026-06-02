@@ -1,21 +1,28 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { CheckCircle, Phone, MapPin, Clock, ArrowRight, Shield } from "lucide-react";
+import { CheckCircle, Phone, MapPin, Clock, ArrowRight, Shield, ShoppingBag } from "lucide-react";
 import NapoliNavbar from "@/components/NapoliNavbar";
 import NapoliFooter from "@/components/NapoliFooter";
 import { useCart } from "@/contexts/CartContext";
 import { RESTAURANT_INFO } from "@/lib/napoliData";
 
+interface OrderItem {
+  name: string;
+  quantity: number;
+  price: number;
+  description?: string;
+}
+
 export default function OrderSuccess() {
   const { clearCart } = useCart();
 
-  // Authorize.net params from URL
   const [transactionId, setTransactionId] = useState<string | null>(null);
   const [authCode, setAuthCode] = useState<string | null>(null);
   const [amount, setAmount] = useState<string | null>(null);
   const [orderType, setOrderType] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState<string | null>(null);
   const [itemCount, setItemCount] = useState<string | null>(null);
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -25,11 +32,30 @@ export default function OrderSuccess() {
     setOrderType(params.get("order_type"));
     setCustomerName(params.get("customer") ? decodeURIComponent(params.get("customer")!) : null);
     setItemCount(params.get("items"));
+
+    const summaryRaw = params.get("order_summary");
+    if (summaryRaw) {
+      try {
+        const parsed = JSON.parse(decodeURIComponent(summaryRaw));
+        if (Array.isArray(parsed)) setOrderItems(parsed);
+      } catch {
+        // ignore parse errors
+      }
+    }
+
     clearCart();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const hasData = !!transactionId;
+  const hasItems = orderItems.length > 0;
+
+  const labelStyle = {
+    color: "oklch(0.55 0.03 30)",
+    fontFamily: "'Oswald', sans-serif",
+  } as React.CSSProperties;
+
+  const valueStyle = { color: "oklch(0.22 0.04 30)" } as React.CSSProperties;
 
   return (
     <div className="min-h-screen flex flex-col bg-napoli-cream">
@@ -68,8 +94,8 @@ export default function OrderSuccess() {
             )}
           </div>
 
-          {/* Order details */}
           <div className="px-8 py-6 space-y-4">
+            {/* Order summary — transaction details */}
             {hasData && (
               <div
                 className="rounded-lg p-4 border"
@@ -78,57 +104,101 @@ export default function OrderSuccess() {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   {customerName && (
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
-                        Name
-                      </p>
-                      <p style={{ color: "oklch(0.22 0.04 30)" }}>{customerName}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide" style={labelStyle}>Name</p>
+                      <p style={valueStyle}>{customerName}</p>
                     </div>
                   )}
                   {transactionId && (
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
-                        Transaction ID
-                      </p>
-                      <p className="text-xs truncate font-mono" style={{ color: "oklch(0.42 0.03 30)" }}>
-                        {transactionId}
-                      </p>
+                      <p className="text-xs font-semibold uppercase tracking-wide" style={labelStyle}>Transaction ID</p>
+                      <p className="text-xs truncate font-mono" style={{ color: "oklch(0.42 0.03 30)" }}>{transactionId}</p>
                     </div>
                   )}
                   {orderType && (
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
-                        Order Type
-                      </p>
-                      <p className="capitalize" style={{ color: "oklch(0.22 0.04 30)" }}>{orderType}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide" style={labelStyle}>Order Type</p>
+                      <p className="capitalize" style={valueStyle}>{orderType}</p>
                     </div>
                   )}
                   {amount && (
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
-                        Total Paid
-                      </p>
-                      <p className="font-bold" style={{ color: "var(--napoli-red)" }}>
-                        ${Number(amount).toFixed(2)}
-                      </p>
+                      <p className="text-xs font-semibold uppercase tracking-wide" style={labelStyle}>Total Paid</p>
+                      <p className="font-bold" style={{ color: "var(--napoli-red)" }}>${Number(amount).toFixed(2)}</p>
                     </div>
                   )}
-                  {itemCount && (
+                  {itemCount && !hasItems && (
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
-                        Items
-                      </p>
-                      <p style={{ color: "oklch(0.22 0.04 30)" }}>{itemCount} item{Number(itemCount) !== 1 ? "s" : ""}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide" style={labelStyle}>Items</p>
+                      <p style={valueStyle}>{itemCount} item{Number(itemCount) !== 1 ? "s" : ""}</p>
                     </div>
                   )}
                   {authCode && (
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>
-                        Auth Code
-                      </p>
+                      <p className="text-xs font-semibold uppercase tracking-wide" style={labelStyle}>Auth Code</p>
                       <p className="text-xs font-mono" style={{ color: "oklch(0.42 0.03 30)" }}>{authCode}</p>
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Order items breakdown */}
+            {hasItems && (
+              <div
+                className="rounded-lg border overflow-hidden"
+                style={{ borderColor: "oklch(0.88 0.015 80)" }}
+              >
+                <div
+                  className="flex items-center gap-2 px-4 py-2.5 border-b"
+                  style={{ background: "oklch(0.95 0.012 80)", borderColor: "oklch(0.88 0.015 80)" }}
+                >
+                  <ShoppingBag size={14} style={{ color: "var(--napoli-red)" }} />
+                  <span className="text-xs font-semibold uppercase tracking-wide" style={labelStyle}>
+                    Your Order
+                  </span>
+                </div>
+                <div className="divide-y" style={{ borderColor: "oklch(0.92 0.012 80)" }}>
+                  {orderItems.map((item, idx) => (
+                    <div key={idx} className="px-4 py-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline gap-1.5">
+                            <span
+                              className="text-xs font-bold rounded px-1.5 py-0.5"
+                              style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+                            >
+                              {item.quantity}×
+                            </span>
+                            <span className="text-sm font-semibold" style={valueStyle}>
+                              {item.name}
+                            </span>
+                          </div>
+                          {item.description && (
+                            <p className="text-xs mt-1 leading-relaxed" style={{ color: "oklch(0.55 0.03 30)" }}>
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                        <span className="text-sm font-semibold shrink-0" style={{ color: "oklch(0.30 0.04 30)" }}>
+                          ${(item.price * item.quantity).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {amount && (
+                  <div
+                    className="flex items-center justify-between px-4 py-3 border-t"
+                    style={{ background: "oklch(0.97 0.012 80)", borderColor: "oklch(0.88 0.015 80)" }}
+                  >
+                    <span className="text-sm font-bold" style={{ color: "oklch(0.30 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
+                      TOTAL PAID
+                    </span>
+                    <span className="text-base font-bold" style={{ color: "var(--napoli-red)" }}>
+                      ${Number(amount).toFixed(2)}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 

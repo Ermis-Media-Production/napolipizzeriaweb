@@ -329,16 +329,17 @@ function ToppingChip({
 interface Props {
   specialNum: number | null;
   onClose: () => void;
+  cloverItemId?: string;
 }
 
-export default function SpecialCustomizerModal({ specialNum, onClose }: Props) {
+export default function SpecialCustomizerModal({ specialNum, onClose, cloverItemId }: Props) {
   if (specialNum === null) return null;
   const cfg = SPECIAL_CONFIGS.find((s) => s.num === specialNum);
   if (!cfg) return null;
-  return <SpecialCustomizerInner cfg={cfg} onClose={onClose} />;
+  return <SpecialCustomizerInner cfg={cfg} onClose={onClose} cloverItemId={cloverItemId} />;
 }
 
-function SpecialCustomizerInner({ cfg, onClose }: { cfg: SpecialConfig; onClose: () => void }) {
+function SpecialCustomizerInner({ cfg, onClose, cloverItemId }: { cfg: SpecialConfig; onClose: () => void; cloverItemId?: string }) {
   const { addItem, openCart } = useCart();
 
   // Pizza states (one per pizza in the combo)
@@ -537,6 +538,7 @@ function SpecialCustomizerInner({ cfg, onClose }: { cfg: SpecialConfig; onClose:
       quantity: 1,
       category: "specials",
       description: parts.join(" | "),
+      cloverItemId,
     });
 
     toast.success(`#${cfg.num} added to cart!`, {

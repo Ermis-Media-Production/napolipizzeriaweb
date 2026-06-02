@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 export interface SaladsModalTrigger {
   itemName: string;
+  cloverItemId?: string;
 }
 
 // ── Dressings ────────────────────────────────────────────────────────────────
@@ -322,7 +323,7 @@ function SizeSelector({ sizes, selected, onSelect }: { sizes: { label: string; p
 }
 
 // ── Inner modal ───────────────────────────────────────────────────────────────
-function SaladsModalInner({ config, onClose }: { config: ItemConfig; onClose: () => void }) {
+function SaladsModalInner({ config, onClose, cloverItemId }: { config: ItemConfig; onClose: () => void; cloverItemId?: string }) {
   const { addItem, openCart } = useCart();
   const [dressing, setDressing] = useState("");
   const [checkedAddOns, setCheckedAddOns] = useState<Set<string>>(new Set());
@@ -355,6 +356,7 @@ function SaladsModalInner({ config, onClose }: { config: ItemConfig; onClose: ()
       quantity: qty,
       category: "salads",
       description: addOnDesc || undefined,
+      cloverItemId,
     });
 
     toast.success(`${config.name}${sizeLabel} added to cart`, {
@@ -463,7 +465,7 @@ export default function SaladsCustomizerModal({ trigger, onClose }: { trigger: S
   if (!trigger) return null;
   const config = getConfig(trigger.itemName);
   if (!config) return null;
-  return <SaladsModalInner config={config} onClose={onClose} />;
+  return <SaladsModalInner config={config} onClose={onClose} cloverItemId={trigger.cloverItemId} />;
 }
 
 export const SALAD_MODAL_ITEMS = SALAD_CONFIGS.map((c) => c.name);

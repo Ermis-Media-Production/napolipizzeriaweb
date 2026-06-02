@@ -357,7 +357,7 @@ function AnytimeSpecialRow({
   );
 }
 
-function LunchSpecialRow({ item, isLeft, isLunchOpen }: { item: { num: number; name: string; price: string }; isLeft: boolean; isLunchOpen: boolean }) {
+function LunchSpecialRow({ item, isLeft, isLunchOpen, cloverItemId }: { item: { num: number; name: string; price: string }; isLeft: boolean; isLunchOpen: boolean; cloverItemId?: string }) {
   const { addItem, openCart } = useCart();
   const { lang } = useLanguage();
   const translated = translateItem(item.name, undefined, lang);
@@ -382,6 +382,7 @@ function LunchSpecialRow({ item, isLeft, isLunchOpen }: { item: { num: number; n
       quantity: 1,
       category: "lunch",
       description: "Includes free can of soda",
+      cloverItemId,
     });
     toast.success(`#${item.num} ${item.name} added to cart`, {
       action: { label: "View Cart", onClick: openCart },
@@ -427,7 +428,7 @@ function LunchSpecialRow({ item, isLeft, isLunchOpen }: { item: { num: number; n
       </div>
       {showCustomizer && (
         <LunchCustomizerModal
-          item={item}
+          item={{ ...item, cloverItemId }}
           onClose={() => setShowCustomizer(false)}
         />
       )}
@@ -985,7 +986,23 @@ export default function Menu() {
   const [saladsModalTrigger, setSaladsModalTrigger] = useState<SaladsModalTrigger | null>(null);
   const [pastaModalTrigger, setPastaModalTrigger] = useState<PastaModalTrigger | null>(null);
   const [glutenFreeModalOpen, setGlutenFreeModalOpen] = useState(false);
-  const [specialNum, setSpecialNum] = useState<number | null>(null);
+    const [specialNum, setSpecialNum] = useState<number | null>(null);
+
+  // Build a name→cloverItemId map from the DB for printer routing in all modals
+  const { data: dbMenuItems } = trpc.menuItems.list.useQuery(
+    { includeUnavailable: true },
+    { staleTime: 10 * 60 * 1000 }
+  );
+  const cloverIdByName = React.useMemo(() => {
+    const map = new Map<string, string>();
+    if (dbMenuItems) {
+      for (const item of dbMenuItems) {
+        if (item.cloverItemId) map.set(item.name.toLowerCase(), item.cloverItemId);
+      }
+    }
+    return map;
+  }, [dbMenuItems]);
+  const getCloverItemId = (name: string) => cloverIdByName.get(name.toLowerCase());
 
   // Auto-scroll the sticky nav bar to center the active category button
   const scrollNavToActive = (id: string) => {
@@ -1118,7 +1135,7 @@ export default function Menu() {
                     desc={item.desc}
                     price={(item as any).price ?? ((item as any).prices?.[0]?.price)}
                     highlight={(item as any).highlight}
-                    onOpen={() => setAppetizersModalTrigger({ itemName: item.name })}
+                    onOpen={() => setAppetizersModalTrigger({ itemName: item.name, cloverItemId: getCloverItemId(item.name) })}
                   />
                 ) : (
                   <ItemRow name={item.name} desc={item.desc} price={(item as any).price} highlight={(item as any).highlight} category="appetizers" />
@@ -1183,7 +1200,7 @@ export default function Menu() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {LUNCH_SPECIALS.items.map((item, i) => (
-              <LunchSpecialRow key={item.num} item={item} isLeft={i % 2 === 0} isLunchOpen={lunchTimer.isOpen} />
+              <LunchSpecialRow key={item.num} item={item} isLeft={i % 2 === 0} isLunchOpen={lunchTimer.isOpen} cloverItemId={getCloverItemId(`#${item.num} ${item.name}`)} />
             ))}
           </div>
         </MenuCard>
@@ -1223,7 +1240,7 @@ export default function Menu() {
             <button
               onClick={() => {
                 setPizzaModalKey(k => k + 1);
-                setPizzaSelection({ pizzaName: "Plain Cheese", isSpecialty: false, freeToppings: 0, allowHalfAndHalf: true });
+                setPizzaSelection({ pizzaName: "Plain Cheese", isSpecialty: false, freeToppings: 0, allowHalfAndHalf: true, cloverItemId: getCloverItemId("Plain Cheese") });
               }}
               className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
               style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
@@ -1266,7 +1283,7 @@ export default function Menu() {
             <button
               onClick={() => {
                 setPizzaModalKey(k => k + 1);
-                setPizzaSelection({ pizzaName: "4 Topping Combo", isSpecialty: false, freeToppings: 4, allowHalfAndHalf: true });
+                setPizzaSelection({ pizzaName: "4 Topping Combo", isSpecialty: false, freeToppings: 4, allowHalfAndHalf: true, cloverItemId: getCloverItemId("4 Topping Combo") });
               }}
               className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
               style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
@@ -1301,6 +1318,7 @@ export default function Menu() {
                 isSpecialty: false,
                 freeToppings: 0,
                 allowHalfAndHalf: false,
+                cloverItemId: getCloverItemId("Gluten Free Pizza 14\""),
               });
             }}
               className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
@@ -1330,6 +1348,7 @@ export default function Menu() {
                   flatExtraToppingPrice: SICILIAN_PIZZA.extraToppingPrice,
                   freeToppings: SICILIAN_PIZZA.freeToppings,
                   baseDesc: SICILIAN_PIZZA.desc,
+                  cloverItemId: getCloverItemId("Sicilian"),
                 });
               }}
               className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
@@ -1361,6 +1380,7 @@ export default function Menu() {
                   flatExtraToppingPrice: CHICAGO_DEEP_DISH.extraToppingPrice,
                   freeToppings: CHICAGO_DEEP_DISH.freeToppings,
                   baseDesc: CHICAGO_DEEP_DISH.desc,
+                  cloverItemId: getCloverItemId("Stuffed Chicago Deep Dish"),
                 });
               }}
               className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
@@ -1440,7 +1460,7 @@ export default function Menu() {
                     </div>
                   </div>
                   <button
-                    onClick={() => { setPizzaModalKey(k => k + 1); setPizzaSelection({ pizzaName: pizza.name, isSpecialty: true }); }}
+                    onClick={() => { setPizzaModalKey(k => k + 1); setPizzaSelection({ pizzaName: pizza.name, isSpecialty: true, cloverItemId: getCloverItemId(pizza.name) }); }}
                     className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all active:scale-95"
                     style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
                   >
@@ -1490,6 +1510,7 @@ export default function Menu() {
                               prices: (calzone as any).prices,
                               freeToppings: 2,
                               baseDesc: calzone.desc ?? "",
+                              cloverItemId: getCloverItemId("Calzone"),
                             });
                           }}
                           className="flex items-center gap-1.5 px-4 py-2 rounded text-xs font-semibold transition-all active:scale-95"
@@ -1533,6 +1554,7 @@ export default function Menu() {
                               prices: (stromboli as any).prices,
                               freeToppings: 4,
                               baseDesc: stromboli.desc ?? "",
+                              cloverItemId: getCloverItemId("Stromboli"),
                             });
                           }}
                           className="flex items-center gap-1.5 px-4 py-2 rounded text-xs font-semibold transition-all active:scale-95"
@@ -1695,6 +1717,7 @@ export default function Menu() {
           key={specialNum}
           specialNum={specialNum}
           onClose={() => setSpecialNum(null)}
+          cloverItemId={specialNum != null ? getCloverItemId((ANYTIME_SPECIALS as { num: number; name: string; price: string }[]).find(s => s.num === specialNum)?.name ?? "") : undefined}
         />
 
         {/* ── PASTA ──────────────────────────────────────────── */}
@@ -1709,7 +1732,7 @@ export default function Menu() {
             <div>
               <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Classic Pasta</p>
               {PASTA.classic.map((item) => PASTA_MODAL_ITEMS.includes(item.name) ? (
-                <AppetizersItemRow key={`classic-${item.name}`} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
+                <AppetizersItemRow key={`classic-${item.name}`} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name, cloverItemId: getCloverItemId(item.name) })} />
               ) : (
                 <ItemRow key={`classic-${item.name}`} name={item.name} price={item.price} />
               ))}
@@ -1717,7 +1740,7 @@ export default function Menu() {
             <div>
               <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Ravioli</p>
               {PASTA.ravioli.map((item) => PASTA_MODAL_ITEMS.includes(item.name) ? (
-                <AppetizersItemRow key={`ravioli-${item.name}`} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
+                <AppetizersItemRow key={`ravioli-${item.name}`} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name, cloverItemId: getCloverItemId(item.name) })} />
               ) : (
                 <ItemRow key={`ravioli-${item.name}`} name={item.name} price={item.price} />
               ))}
@@ -1725,12 +1748,12 @@ export default function Menu() {
             <div>
               <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Tortellini & Parmigiana</p>
               {PASTA.tortellini.map((item) => PASTA_MODAL_ITEMS.includes(item.name) ? (
-                <AppetizersItemRow key={`tortellini-${item.name}`} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
+                <AppetizersItemRow key={`tortellini-${item.name}`} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name, cloverItemId: getCloverItemId(item.name) })} />
               ) : (
                 <ItemRow key={`tortellini-${item.name}`} name={item.name} price={item.price} />
               ))}
               {PASTA.parmigiana.map((item) => PASTA_MODAL_ITEMS.includes(item.name) ? (
-                <AppetizersItemRow key={`parmigiana-${item.name}`} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
+                <AppetizersItemRow key={`parmigiana-${item.name}`} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name, cloverItemId: getCloverItemId(item.name) })} />
               ) : (
                 <ItemRow key={`parmigiana-${item.name}`} name={item.name} price={item.price} />
               ))}
@@ -1883,7 +1906,7 @@ export default function Menu() {
                 item={item}
                 onOpenModal={(burgerName, size) => {
                   setBurgerModalKey(k => k + 1);
-                  setBurgerTrigger({ open: true, preselectedBurger: burgerName, preselectedSize: size });
+                  setBurgerTrigger({ open: true, preselectedBurger: burgerName, preselectedSize: size, cloverItemId: getCloverItemId(burgerName) });
                 }}
               />
             ))}
@@ -1905,7 +1928,7 @@ export default function Menu() {
                     desc={item.desc}
                     price={(item as any).price ?? ((item as any).prices?.[0]?.price)}
                     highlight={(item as any).highlight}
-                    onOpen={() => setSaladsModalTrigger({ itemName: item.name })}
+                    onOpen={() => setSaladsModalTrigger({ itemName: item.name, cloverItemId: getCloverItemId(item.name) })}
                   />
                 ) : (
                   <ItemRow name={item.name} desc={item.desc} price={(item as any).price} highlight={(item as any).highlight} category="salads" />

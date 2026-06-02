@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 export interface PastaModalTrigger {
   itemName: string;
+  cloverItemId?: string;
 }
 
 interface AddOn {
@@ -325,7 +326,7 @@ function AddOnRow({ addOn, checked, onToggle }: { addOn: AddOn; checked: boolean
 }
 
 // ── Inner modal ───────────────────────────────────────────────────────────────
-function PastaModalInner({ config, onClose }: { config: ItemConfig; onClose: () => void }) {
+function PastaModalInner({ config, onClose, cloverItemId }: { config: ItemConfig; onClose: () => void; cloverItemId?: string }) {
   const { addItem, openCart } = useCart();
   const [checkedAddOns, setCheckedAddOns] = useState<Set<string>>(new Set());
   const [qty, setQty] = useState(1);
@@ -350,6 +351,7 @@ function PastaModalInner({ config, onClose }: { config: ItemConfig; onClose: () 
       quantity: qty,
       category: "pasta",
       description: addOnDesc || undefined,
+      cloverItemId,
     });
 
     toast.success(`${config.name} added to cart`, {
@@ -448,7 +450,7 @@ export default function PastaCustomizerModal({ trigger, onClose }: { trigger: Pa
   if (!trigger) return null;
   const config = getConfig(trigger.itemName);
   if (!config) return null;
-  return <PastaModalInner config={config} onClose={onClose} />;
+  return <PastaModalInner config={config} onClose={onClose} cloverItemId={trigger.cloverItemId} />;
 }
 
 export const PASTA_MODAL_ITEMS = PASTA_CONFIGS.map((c) => c.name);

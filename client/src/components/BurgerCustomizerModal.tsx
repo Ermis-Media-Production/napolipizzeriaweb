@@ -28,6 +28,7 @@ export interface BurgerTrigger {
   open: true;
   preselectedBurger?: string;
   preselectedSize?: "half" | "single";
+  cloverItemId?: string;
 }
 
 interface Props {
@@ -44,6 +45,7 @@ export default function BurgerCustomizerModal({ trigger, onClose }: Props) {
       onClose={onClose}
       preselectedBurger={trigger.preselectedBurger}
       preselectedSize={trigger.preselectedSize}
+      cloverItemId={trigger.cloverItemId}
     />
   );
 }
@@ -52,10 +54,12 @@ function BurgerCustomizerInner({
   onClose,
   preselectedBurger,
   preselectedSize,
+  cloverItemId,
 }: {
   onClose: () => void;
   preselectedBurger?: string;
   preselectedSize?: "half" | "single";
+  cloverItemId?: string;
 }) {
   const { addItem, openCart } = useCart();
 
@@ -132,6 +136,7 @@ function BurgerCustomizerInner({
       quantity: 1,
       category: "burgers",
       description: parts.join(" · "),
+      cloverItemId,
     });
 
     toast.success(`${burgerName} added to cart`, {

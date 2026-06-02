@@ -12,6 +12,7 @@ import { toast } from "sonner";
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface AppetizersModalTrigger {
   itemName: string;
+  cloverItemId?: string;
 }
 
 interface AddOn {
@@ -305,9 +306,11 @@ function QuantitySelector({
 function AppetizersModalInner({
   config,
   onClose,
+  cloverItemId,
 }: {
   config: ItemConfig;
   onClose: () => void;
+  cloverItemId?: string;
 }) {
   const { addItem, openCart } = useCart();
   const [checkedAddOns, setCheckedAddOns] = useState<Set<string>>(new Set());
@@ -347,6 +350,7 @@ function AppetizersModalInner({
       quantity: qty,
       category: "appetizers",
       description: addOnDesc || undefined,
+      cloverItemId,
     });
 
     toast.success(`${config.name}${sizeLabel} added to cart`, {
@@ -487,7 +491,7 @@ export default function AppetizersCustomizerModal({
   if (!trigger) return null;
   const config = getConfig(trigger.itemName);
   if (!config) return null;
-  return <AppetizersModalInner config={config} onClose={onClose} />;
+  return <AppetizersModalInner config={config} onClose={onClose} cloverItemId={trigger.cloverItemId} />;
 }
 
 /** Convenience export: list of all item names that have a config */
