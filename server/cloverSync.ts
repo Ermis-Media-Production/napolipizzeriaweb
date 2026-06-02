@@ -51,6 +51,7 @@ export interface CloverOrderInput {
   totalCents: number;  // total in cents
   scheduledAt?: number; // UTC ms — for scheduled orders
   orderRef?: string;   // internal order reference
+  specialInstructions?: string; // customer notes shown on the Clover ticket
 }
 
 export interface CloverOrderResult {
@@ -331,6 +332,7 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
   if (input.customerPhone) noteLines.push(`Phone: ${input.customerPhone}`);
   if (input.orderRef) noteLines.push(`Ref: ${input.orderRef}`);
   if (input.externalId) noteLines.push(`Payment: ${input.externalId}`);
+  if (input.specialInstructions) noteLines.push(`Note: ${input.specialInstructions}`);
   if (input.scheduledAt) {
     const scheduledStr = new Date(input.scheduledAt).toLocaleString("en-US", {
       timeZone: "America/Los_Angeles",

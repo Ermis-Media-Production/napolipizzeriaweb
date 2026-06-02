@@ -279,6 +279,7 @@ export default function CartDrawer() {
   const [deliveryState, setDeliveryState] = useState("NV");
   const [deliveryZip, setDeliveryZip] = useState("89032");
   const [deliveryNotes, setDeliveryNotes] = useState("");
+  const [orderNotes, setOrderNotes] = useState("");
 
   // Geo-validation state
   const [geoError, setGeoError] = useState<string | null>(null);
@@ -461,6 +462,7 @@ export default function CartDrawer() {
       discountPercent: payload.discountPercent,
       convenienceFeeCents: payload.convenienceFeeCents,
       salesTaxCents: payload.salesTaxCents,
+      specialInstructions: payload.specialInstructions,
       origin: window.location.origin,
     });
   };
@@ -498,10 +500,11 @@ export default function CartDrawer() {
         dropoffState: orderType === "delivery" ? deliveryState : undefined,
         dropoffZip: orderType === "delivery" ? deliveryZip : undefined,
         dropoffNotes: orderType === "delivery" && deliveryNotes ? deliveryNotes : undefined,
+        specialInstructions: orderNotes.trim() || undefined,
       },
       grandTotalVal,
     };
-  }, [items, customerName, customerLastName, customerPhone, customerEmail, orderType, schedule, appliedCoupon, liveFeeRate, uberFee, uberQuoteId, deliveryAddress, deliveryCity, deliveryState, deliveryZip, deliveryNotes, totalPrice]);
+  }, [items, customerName, customerLastName, customerPhone, customerEmail, orderType, schedule, appliedCoupon, liveFeeRate, uberFee, uberQuoteId, deliveryAddress, deliveryCity, deliveryState, deliveryZip, deliveryNotes, orderNotes, totalPrice]);
 
   /** Geocode address and check 20-mile radius */
   const validateDeliveryRadius = useCallback(async (address: string, city: string, state: string, zip: string): Promise<boolean> => {
@@ -672,13 +675,13 @@ export default function CartDrawer() {
       customerName: payload.customerName,
       customerEmail: payload.customerEmail!,
       customerPhone: payload.customerPhone,
-      couponCode: payload.couponCode,
+            couponCode: payload.couponCode,
       discountPercent: payload.discountPercent,
       convenienceFeeCents: payload.convenienceFeeCents,
       salesTaxCents: payload.salesTaxCents,
+      specialInstructions: payload.specialInstructions,
     });
   };
-
   const isLoading = feeConfigLoading;
 
   return (
@@ -1086,6 +1089,21 @@ export default function CartDrawer() {
                     ✓ Receipt will be sent here · Recibo será enviado aquí
                   </p>
                 )}
+              </div>
+
+              {/* Order notes */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold" style={{ color: "oklch(0.42 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
+                  ORDER NOTES (OPTIONAL)
+                </label>
+                <textarea
+                  placeholder="Special requests, allergies, extra napkins... / Solicitudes especiales, alergias..."
+                  value={orderNotes}
+                  onChange={(e) => setOrderNotes(e.target.value)}
+                  rows={2}
+                  className="w-full text-xs px-3 py-2 rounded border outline-none focus:ring-1 resize-none"
+                  style={{ borderColor: "oklch(0.82 0.015 80)", fontFamily: "'Lato', sans-serif" }}
+                />
               </div>
 
               {/* Coupon code input */}

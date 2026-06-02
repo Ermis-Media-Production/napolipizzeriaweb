@@ -353,6 +353,7 @@ export const authorizeNetRouter = router({
         // Convenience fee (3%) and Nevada sales tax (8.375%) in cents
         convenienceFeeCents: z.number().int().min(0).optional(),
         salesTaxCents: z.number().int().min(0).optional(),
+        specialInstructions: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -433,6 +434,7 @@ export const authorizeNetRouter = router({
           customerPhone: input.customerPhone,
           externalId: result.transactionId,
           totalCents: Math.round(amount * 100), // discounted total
+          specialInstructions: input.specialInstructions,
         }).catch((err) =>
           console.error("[Clover] Failed to push Authorize.net order:", err)
         );
@@ -536,6 +538,7 @@ export const authorizeNetRouter = router({
         discountPercent: z.number().int().min(1).max(100).optional(),
         convenienceFeeCents: z.number().int().min(0).optional(),
         salesTaxCents: z.number().int().min(0).optional(),
+        specialInstructions: z.string().optional(),
         origin: z.string().url(), // e.g. https://napolipizzerianorthlasvegas.com
       })
     )
