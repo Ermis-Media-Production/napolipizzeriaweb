@@ -7,6 +7,8 @@ export interface CartItem {
   quantity: number;
   category: string;
   description?: string;
+  /** Clover catalog item ID — enables kitchen printer routing via item.id in bulk_line_items */
+  cloverItemId?: string;
 }
 
 export type OrderType = "pickup" | "delivery" | "dine-in" | "scheduled";

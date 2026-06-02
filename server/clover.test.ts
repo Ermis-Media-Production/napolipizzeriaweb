@@ -124,10 +124,12 @@ describe("clover.createOrder", () => {
     expect(result.totalCents).toBe(4397);
   });
 
-  it("makes two POST requests: one for order, one for line items", async () => {
+  it("makes four POST requests: order, line items, print_event, tender", async () => {
     mockPost
-      .mockResolvedValueOnce(ORDER_CREATE_RESPONSE)
-      .mockResolvedValueOnce(BULK_LINE_ITEMS_RESPONSE);
+      .mockResolvedValueOnce(ORDER_CREATE_RESPONSE)   // POST /orders
+      .mockResolvedValueOnce(BULK_LINE_ITEMS_RESPONSE) // POST /bulk_line_items
+      .mockResolvedValueOnce({ data: {} })             // POST /print_event
+      .mockResolvedValueOnce({ data: {} });            // POST /payments (tender)
 
     const caller = cloverRouter.createCaller(createCtx());
     await caller.createOrder({
@@ -137,16 +139,29 @@ describe("clover.createOrder", () => {
       totalCents: 4397,
     });
 
-    expect(mockPost).toHaveBeenCalledTimes(2);
+    expect(mockPost).toHaveBeenCalledTimes(4);
 
-    // First call: create order
-    const firstCallUrl = String(mockPost.mock.calls[0][0]);
-    expect(firstCallUrl).toContain("/orders");
-    expect(firstCallUrl).not.toContain("/bulk_line_items");
+    // Call 1: create order shell
+    const call1Url = String(mockPost.mock.calls[0][0]);
+    expect(call1Url).toContain("/orders");
+    expect(call1Url).not.toContain("/bulk_line_items");
 
-    // Second call: bulk line items
-    const secondCallUrl = String(mockPost.mock.calls[1][0]);
-    expect(secondCallUrl).toContain("/bulk_line_items");
+    // Call 2: bulk line items
+    const call2Url = String(mockPost.mock.calls[1][0]);
+    expect(call2Url).toContain("/bulk_line_items");
+
+    // Call 3: print_event with deviceRef
+    const call3Url = String(mockPost.mock.calls[2][0]);
+    expect(call3Url).toContain("/print_event");
+    const call3Body = mockPost.mock.calls[2][1] as Record<string, unknown>;
+    expect(call3Body).toHaveProperty("deviceRef");
+    expect((call3Body.deviceRef as Record<string, string>).id).toBe("09615CDB78014261A70D3BF94816F51A");
+
+    // Call 4: tender payment
+    const call4Url = String(mockPost.mock.calls[3][0]);
+    expect(call4Url).toContain("/payments");
+    const call4Body = mockPost.mock.calls[3][1] as Record<string, unknown>;
+    expect((call4Body.tender as Record<string, string>).id).toBe("T416DFP49C7BJ");
   });
 
   it("includes customer info in the order note", async () => {
