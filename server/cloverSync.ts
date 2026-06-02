@@ -88,9 +88,9 @@ export const CLOVER_ORDER_TYPE_IDS = {
 
 /**
  * Clover Device ID for the Station Duo (2nd Gen) — same device configured
- * in WordPress as the Auto-Print device. Kept for reference and manual reprint use cases.
- * Note: print_event no longer sends deviceRef — Clover auto-routes to the
- * active device with Order Printers configured.
+ * in WordPress as the Auto-Print device.
+ * Required for print_event — without deviceRef, Clover creates the event but
+ * no device picks it up from a server-side call (no firing device context).
  */
 export const CLOVER_PRINT_DEVICE_ID = "09615CDB78014261A70D3BF94816F51A";
 
@@ -309,10 +309,11 @@ export async function verifyPrintStatus(
 /**
  * Push a confirmed order to Clover POS.
  *
+ * - Uses atomic_order endpoint (single API call — eliminates race conditions)
  * - Assigns the fixed "online" employee (DW4J35FH3R9B0)
  * - Sets the order type based on input.orderType (fixed IDs, no API lookup)
  * - Routes each line item to the correct kitchen printer via printerLabel ID
- * - Fires print_event (no deviceRef — Clover auto-routes to active device with Order Printers)
+ * - Fires print_event with deviceRef BEFORE applying tender
  * - Applies the "Online" tender (T416DFP49C7BJ) to match WordPress behavior
  */
 export async function pushOrderToClover(input: CloverOrderInput): Promise<CloverOrderResult> {
@@ -346,37 +347,13 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     noteLines.push(`Scheduled: ${scheduledStr}`);
   }
 
-  // Step 1: Create the order shell
-  // Build a descriptive title that shows up in Clover reports:
-  // "Online Pick-Up — John Smith" or "Online Delivery — NPZ-20260528-0042"
   const reportTitle = input.customerName
     ? `${orderTypeLabel} — ${input.customerName}`
     : input.orderRef
     ? `${orderTypeLabel} — ${input.orderRef}`
     : `${orderTypeLabel} — Napoli Pizzeria`;
 
-  const orderRes = await axios.post(
-    cloverUrl("/orders"),
-    {
-      state: "open",
-      currency: "USD",
-      total: input.totalCents,
-      title: reportTitle,
-      note: noteLines.length ? noteLines.join(" | ") : undefined,
-      manualTransaction: false,
-      testMode: false,
-      employee: { id: CLOVER_ONLINE_EMPLOYEE_ID },
-      orderType: { id: CLOVER_ORDER_TYPE_IDS[input.orderType] },
-    },
-    { headers: cloverHeaders() }
-  );
-
-  const orderId: string = orderRes.data.id;
-
-  // Step 2: Add all line items with printer label assignments
-  // The description field carries modifier/customization details (toppings, crust, sauce, etc.)
-  // We format each modifier as a separate line for easy reading by kitchen staff.
-  // For items with quantity > 1, we expand them into N individual line items.
+  // For items with quantity > 1, expand into N individual line items.
   // Using unitQty for standard items causes Clover to display "0.001 @ $X/unit"
   // because unitQty uses a fixed-point scale of 1000 (only for PER_UNIT items).
   const expandedItems = input.items.flatMap((item) =>
@@ -394,8 +371,6 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     const lineItem: Record<string, unknown> = {
       name: item.name,
       price: Math.round(item.price * 100), // cents
-      // unitQty is ONLY for PER_UNIT priced items (e.g. weight-based).
-      // For standard items, quantity is handled by creating N line items.
       printerLabel: { id: printerId },
     };
 
@@ -414,101 +389,62 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
       note = note.replace(/(Half & Half)/gi, "*** $1 ***");
       lineItem.note = note;
     }
+
+    // Include modifications inline in the atomic order payload
+    if (item.modifications?.length) {
+      lineItem.modifications = item.modifications
+        .filter((mod) => mod.cloverModifierId)
+        .map((mod) => ({
+          modifier: { id: mod.cloverModifierId, name: mod.name },
+          name: mod.name,
+          amount: mod.amount ?? 0,
+        }));
+    }
+
     return lineItem;
   });
 
-  const bulkResponse = await axios.post(
-    cloverUrl(`/orders/${orderId}/bulk_line_items`),
-    { items: lineItems },
+  // Step 1: Create order via atomic_order (single call — no race conditions).
+  // The atomic endpoint processes line items and modifications synchronously
+  // before returning, so print_event fires against a fully-rendered ticket.
+  const atomicRes = await axios.post(
+    cloverUrl("/atomic_order/orders"),
+    {
+      orderCart: {
+        lineItems,
+        note: noteLines.length ? noteLines.join(" | ") : undefined,
+        title: reportTitle,
+        orderType: { id: CLOVER_ORDER_TYPE_IDS[input.orderType] },
+        employee: { id: CLOVER_ONLINE_EMPLOYEE_ID },
+      },
+    },
     { headers: cloverHeaders() }
   );
 
-  // Step 3: Apply structured modifications to each line item.
-  // For items with modifications (pizza crust, cut, toppings), we POST to
-  // /orders/{id}/line_items/{lineItemId}/modifications for each modifier that
-  // has a cloverModifierId. Modifiers without an ID fall back to the note field.
-  const createdLineItems: Array<{ id: string }> = bulkResponse.data?.items ?? [];
-  const modificationPromises: Promise<unknown>[] = [];
+  const orderId: string = atomicRes.data.id;
+  console.log(`[Clover] Atomic order created: ${orderId}`);
 
-  expandedItems.forEach((item, idx) => {
-    const lineItemId = createdLineItems[idx]?.id;
-    if (!lineItemId || !item.modifications?.length) return;
-
-    const fallbackNotes: string[] = [];
-
-    item.modifications.forEach((mod) => {
-      if (mod.cloverModifierId) {
-        modificationPromises.push(
-          axios
-            .post(
-              cloverUrl(`/orders/${orderId}/line_items/${lineItemId}/modifications`),
-              {
-                // Per Clover docs: name must be inside modifier object, not at root.
-                // Root-level name is silently ignored by the API.
-                modifier: { id: mod.cloverModifierId, name: mod.name },
-                amount: mod.amount ?? 0,
-              },
-              { headers: cloverHeaders() }
-            )
-            .catch((err) => {
-              // Non-fatal — fall back to note
-              const msg = err instanceof Error ? err.message : String(err);
-              console.warn(`[Clover] Failed to apply modification "${mod.name}" to line item ${lineItemId}:`, msg);
-              fallbackNotes.push(mod.name);
-            })
-        );
-      } else {
-        // No Clover modifier ID — will be included in note fallback
-        fallbackNotes.push(mod.name);
-      }
-    });
-
-    // If there are fallback notes (no cloverModifierId or failed), patch the line item note
-    if (fallbackNotes.length > 0) {
-      const existingNote = (lineItems[idx] as Record<string, unknown>).note as string | undefined;
-      const combinedNote = [existingNote, ...fallbackNotes].filter(Boolean).join("\n");
-      modificationPromises.push(
-        axios
-          .post(
-            cloverUrl(`/orders/${orderId}/line_items/${lineItemId}`),
-            { note: combinedNote },
-            { headers: cloverHeaders() }
-          )
-          .catch((err) => {
-            const msg = err instanceof Error ? err.message : String(err);
-            console.warn(`[Clover] Failed to patch note for line item ${lineItemId}:`, msg);
-          })
-      );
-    }
-  });
-
-  if (modificationPromises.length > 0) {
-    await Promise.allSettled(modificationPromises);
-    console.log(`[Clover] Applied modifications for order ${orderId}`);
-  }
-
-  // Step 4: Wait 2s for Clover to finish processing the order asynchronously.
-  // Clover processes orders with modifications asynchronously — firing print_event
-  // immediately can race against Clover's internal write: the device receives the
-  // job before the ticket is fully renderable and silently drops it.
-  // (Same guardrail used by the WordPress EMP Clover plugin — confirmed in production.)
+  // Step 2: Wait 2s — Clover processes atomic orders asynchronously internally.
+  // Firing print_event immediately can race against Clover's write; the device
+  // receives the job before the ticket is fully renderable and silently drops it.
+  // (Same guardrail used by the WordPress CloverPlugin — confirmed in production.)
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
-  // Step 4: Fire the print event BEFORE applying the tender.
-  // Clover treats a paid/closed order differently: print_event on a paid order
-  // generates a payment receipt (shows only the first item) instead of a full
-  // kitchen order ticket. Printing while the order is still open guarantees
-  // all line items appear on the printed ticket. (Guardrail R1 — WordPress plugin)
+  // Step 3: Fire print_event with deviceRef BEFORE applying the tender.
+  // Without deviceRef, Clover creates the event but no device picks it up
+  // from a server-side call (no firing device context).
+  // Printing while the order is still open guarantees all line items appear
+  // on the kitchen ticket (not a payment receipt). (Guardrail R1)
   try {
     await axios.post(
       cloverUrl(`/print_event`),
       {
         orderRef: { id: orderId },
+        deviceRef: { id: CLOVER_PRINT_DEVICE_ID },
       },
-      // User-Agent is required by the print_event endpoint per Clover docs.
       { headers: cloverHeaders({ "User-Agent": "NapoliPizzeria/1.0" }) }
     );
-    console.log(`[Clover] Print event fired for order ${orderId} (no deviceRef — Clover auto-routes to active device with Order Printers)`);
+    console.log(`[Clover] Print event fired for order ${orderId} → device ${CLOVER_PRINT_DEVICE_ID}`);
 
     // Fire-and-forget verification: check printed status on line items after 6s.
     // Clover sets printed=true on each line item once the printer confirms receipt.
@@ -520,7 +456,7 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     console.warn(`[Clover] Failed to fire print event for order ${orderId}:`, msg);
   }
 
-  // Step 5: Apply the "Online" tender AFTER printing.
+  // Step 4: Apply the "Online" tender AFTER printing.
   // Applying the tender closes/pays the order — Clover then treats any subsequent
   // print_event as a payment receipt instead of a kitchen ticket.
   try {
