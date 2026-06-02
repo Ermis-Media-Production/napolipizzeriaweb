@@ -1,4 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+/**
+ * stripe.test.ts
+ *
+ * NOTE: Stripe was removed from this project. The stripe router is no longer
+ * registered in appRouter (routers.ts). These tests are kept as documentation
+ * of the expected behavior and are skipped until Stripe is re-integrated.
+ *
+ * To re-enable: add the stripeRouter back to appRouter in routers.ts and
+ * remove the .skip modifier from each test.
+ */
+import { describe, it, expect, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
 // Mock Stripe before importing the router
@@ -50,9 +60,11 @@ function makeCtx(): TrpcContext {
   };
 }
 
+// Skipped: stripe router was removed from appRouter. Re-enable when Stripe is re-integrated.
 describe("stripe.createCheckoutSession", () => {
-  it("returns a checkout URL and session ID", async () => {
+  it.skip("returns a checkout URL and session ID", async () => {
     const caller = appRouter.createCaller(makeCtx());
+    // @ts-expect-error stripe router not registered
     const result = await caller.stripe.createCheckoutSession({
       items: [{ id: "pizza-1", name: "Pepperoni Pizza 16\"", price: 12.99, quantity: 2, category: "pizza" }],
       successUrl: "https://example.com/order-success?session_id={CHECKOUT_SESSION_ID}",
@@ -61,13 +73,13 @@ describe("stripe.createCheckoutSession", () => {
       customerName: "Jane Smith",
       customerPhone: "7025551234",
     });
-
     expect(result.url).toBe("https://checkout.stripe.com/pay/test_session");
     expect(result.sessionId).toBe("cs_test_123");
   });
 
-  it("throws when items array is empty", async () => {
+  it.skip("throws when items array is empty", async () => {
     const caller = appRouter.createCaller(makeCtx());
+    // @ts-expect-error stripe router not registered
     await expect(
       caller.stripe.createCheckoutSession({
         items: [],
@@ -80,10 +92,10 @@ describe("stripe.createCheckoutSession", () => {
 });
 
 describe("stripe.getSession", () => {
-  it("returns session details with payment status", async () => {
+  it.skip("returns session details with payment status", async () => {
     const caller = appRouter.createCaller(makeCtx());
+    // @ts-expect-error stripe router not registered
     const result = await caller.stripe.getSession({ sessionId: "cs_test_123" });
-
     expect(result.status).toBe("paid");
     expect(result.customerName).toBe("John Doe");
     expect(result.amountTotal).toBe(24.99);
