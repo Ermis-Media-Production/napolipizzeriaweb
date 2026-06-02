@@ -5,20 +5,24 @@
  * from the Clover inventory API and upsert them into the local database.
  *
  * Clover API endpoints used:
- *   GET /v3/merchants/{mId}/items?expand=categories,modifierGroups&limit=200
+ *   GET /v3/merchants/{mId}/items?expand=categories,modifierGroups,tags&limit=200
  *   GET /v3/merchants/{mId}/modifier_groups?expand=modifiers&limit=200
+ *   GET /v3/merchants/{mId}/printers
  *
  * Sync logic:
  *   - Items matched by cloverItemId; new items inserted, existing ones updated.
  *   - Modifier groups matched by cloverGroupId; new groups inserted, existing updated.
  *   - Modifier options matched by cloverOptionId; new options inserted, existing updated.
  *   - itemModifierGroups join table rebuilt for each synced item.
- *   - Existing printLabel overrides set by the admin are PRESERVED on item update.
+ *   - printLabel is read directly from Clover's printerLabel assignment when available.
+ *     If no Clover printer label is set, falls back to keyword-based auto-detection.
+ *   - Existing printLabel overrides set by the admin are PRESERVED on item update
+ *     unless overridePrintLabels=true is passed.
  *   - Items that exist locally but are NOT in Clover are left untouched.
  */
 
 import axios from "axios";
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { CLOVER_ENV } from "./_core/env";
 import { adminProcedure, router } from "./_core/trpc";
@@ -29,7 +33,7 @@ import {
   modifierOptions,
   itemModifierGroups,
 } from "../drizzle/schema";
-import { getPrinterLabel } from "./cloverSync";
+import { getPrinterLabel, CLOVER_PRINTER_IDS } from "./cloverSync";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -65,15 +69,40 @@ interface CloverModifierGroup {
   modifiers?: { elements: CloverModifier[] };
 }
 
+interface CloverPrinterLabel {
+  id: string;
+  name?: string;
+}
+
 interface CloverItem {
   id: string;
   name: string;
   price: number; // in cents
+  price2?: number; // in cents (second price tier)
   available?: boolean;
   hidden?: boolean;
   imageUrl?: string;
+  sku?: string;
+  code?: string; // barcode
+  priceType?: string; // FIXED | VARIABLE | PER_UNIT
+  unitName?: string;
+  cost?: number; // cost in cents
+  isRevenue?: boolean;
   categories?: { elements: CloverCategory[] };
   modifierGroups?: { elements: CloverModifierGroup[] };
+  printerLabels?: { elements: CloverPrinterLabel[] };
+  tags?: { elements: Array<{ id: string; name: string }> };
+}
+
+// ── Map Clover printer ID to local printLabel ─────────────────────────────────
+
+function cloverPrinterIdToLabel(printerId: string): "Food" | "Pizza" | "Pizzeria" | "Bar/Drinks" | null {
+  switch (printerId) {
+    case CLOVER_PRINTER_IDS.PIZZA:    return "Pizza";
+    case CLOVER_PRINTER_IDS.FOOD:     return "Food";
+    case CLOVER_PRINTER_IDS.PIZZERIA: return "Pizzeria";
+    default:                           return null;
+  }
 }
 
 // ── Map Clover category name to local slug ────────────────────────────────────
@@ -104,7 +133,7 @@ export const cloverItemSyncRouter = router({
    */
   syncFromClover: adminProcedure
     .input(z.object({
-      /** If true, also update printLabel from auto-detection (default: preserve existing labels) */
+      /** If true, also update printLabel from Clover/auto-detection (default: preserve existing labels) */
       overridePrintLabels: z.boolean().default(false),
     }).optional())
     .mutation(async ({ input }) => {
@@ -134,7 +163,6 @@ export const cloverItemSyncRouter = router({
       }
 
       // ── Step 2: Upsert modifier groups and their options ──────────────────
-      // Build map: cloverGroupId → local modifierGroups.id
       const existingGroupRows = await database.select({
         id: modifierGroups.id,
         cloverGroupId: modifierGroups.cloverGroupId,
@@ -153,13 +181,11 @@ export const cloverItemSyncRouter = router({
         let localGroupId: number;
 
         if (groupIdMap.has(cg.id)) {
-          // Update existing group
           localGroupId = groupIdMap.get(cg.id)!;
           await database.update(modifierGroups)
             .set({ name: cg.name, required: isRequired, minSelect, maxSelect })
             .where(eq(modifierGroups.id, localGroupId));
         } else {
-          // Insert new group
           const [result] = await database.insert(modifierGroups).values({
             name: cg.name,
             required: isRequired,
@@ -205,14 +231,14 @@ export const cloverItemSyncRouter = router({
         }
       }
 
-      // ── Step 3: Fetch all items from Clover ───────────────────────────────
+      // ── Step 3: Fetch all items from Clover (with printerLabels expanded) ─
       let allItems: CloverItem[] = [];
       {
         let offset = 0;
         const limit = 200;
         while (true) {
           const res = await axios.get(
-            cloverUrl(`/items?expand=categories,modifierGroups&limit=${limit}&offset=${offset}`),
+            cloverUrl(`/items?expand=categories,modifierGroups,printerLabels,tags&limit=${limit}&offset=${offset}`),
             { headers: cloverHeaders() }
           );
           const elements: CloverItem[] = res.data?.elements ?? [];
@@ -240,21 +266,37 @@ export const cloverItemSyncRouter = router({
       let created = 0;
       let updated = 0;
       const skipped = allItems.length - visibleItems.length;
+      const labelLog: Array<{ name: string; label: string; source: string }> = [];
 
       for (const item of visibleItems) {
         const priceInDollars = (item.price ?? 0) / 100;
         const firstCategory = item.categories?.elements?.[0];
         const categorySlug = categoryToSlug(firstCategory?.name);
+
+        // Determine printer label:
+        // Priority 1: Clover's own printerLabel assignment (most accurate)
+        // Priority 2: Keyword-based auto-detection (fallback)
+        const cloverPrinterElements = item.printerLabels?.elements ?? [];
+        let cloverLabel: "Food" | "Pizza" | "Pizzeria" | "Bar/Drinks" | null = null;
+        for (const pl of cloverPrinterElements) {
+          const mapped = cloverPrinterIdToLabel(pl.id);
+          if (mapped) { cloverLabel = mapped; break; }
+        }
         const autoLabel = getPrinterLabel(item.name) as "Food" | "Pizza" | "Pizzeria" | "Bar/Drinks";
+        const detectedLabel = cloverLabel ?? autoLabel;
+        const labelSource = cloverLabel ? "clover" : "auto";
 
         const existing = itemIdMap.get(item.id);
         let localItemId: number;
 
         if (existing) {
           localItemId = existing.id;
-          const labelToUse = overrideLabels
-            ? autoLabel
-            : (existing.printLabel as "Food" | "Pizza" | "Pizzeria" | "Bar/Drinks");
+          // Label: use Clover's label if available, else preserve existing unless overrideLabels
+          const labelToUse = cloverLabel
+            ? cloverLabel
+            : overrideLabels
+              ? autoLabel
+              : (existing.printLabel as "Food" | "Pizza" | "Pizzeria" | "Bar/Drinks");
 
           const updatePayload: Record<string, unknown> = {
             name: item.name,
@@ -262,37 +304,37 @@ export const cloverItemSyncRouter = router({
             category: categorySlug,
             isAvailable: item.available !== false,
             printLabel: labelToUse,
+            cloverItemId: item.id,
           };
-          // Only update imageUrl from Clover if the item doesn't already have a local image
           if (item.imageUrl) {
             updatePayload.imageUrl = item.imageUrl;
           }
 
           await database.update(menuItems).set(updatePayload).where(eq(menuItems.id, localItemId));
           updated++;
+          labelLog.push({ name: item.name, label: labelToUse, source: labelSource });
         } else {
           const [result] = await database.insert(menuItems).values({
             name: item.name,
             price: String(priceInDollars),
             category: categorySlug,
             isAvailable: item.available !== false,
-            printLabel: autoLabel,
+            printLabel: detectedLabel,
             cloverItemId: item.id,
             imageUrl: item.imageUrl ?? null,
             sortOrder: 0,
           });
           localItemId = (result as unknown as { insertId: number }).insertId;
-          itemIdMap.set(item.id, { id: localItemId, printLabel: autoLabel });
+          itemIdMap.set(item.id, { id: localItemId, printLabel: detectedLabel });
           created++;
+          labelLog.push({ name: item.name, label: detectedLabel, source: labelSource });
         }
 
         // ── Step 5: Rebuild itemModifierGroups for this item ─────────────
         const cloverGroupsForItem = item.modifierGroups?.elements ?? [];
         if (cloverGroupsForItem.length > 0) {
-          // Delete existing assignments for this item
           await database.delete(itemModifierGroups).where(eq(itemModifierGroups.itemId, localItemId));
 
-          // Re-insert with correct local group IDs
           for (let i = 0; i < cloverGroupsForItem.length; i++) {
             const cg = cloverGroupsForItem[i];
             const localGroupId = groupIdMap.get(cg.id);
@@ -307,6 +349,14 @@ export const cloverItemSyncRouter = router({
         }
       }
 
+      // Build printer label breakdown for the report
+      const labelBreakdown: Record<string, number> = {};
+      for (const entry of labelLog) {
+        labelBreakdown[entry.label] = (labelBreakdown[entry.label] ?? 0) + 1;
+      }
+      const cloverLabelCount = labelLog.filter(e => e.source === "clover").length;
+      const autoLabelCount = labelLog.filter(e => e.source === "auto").length;
+
       return {
         total: allItems.length,
         visible: visibleItems.length,
@@ -314,6 +364,11 @@ export const cloverItemSyncRouter = router({
         updated,
         skipped,
         modifierGroupsSynced: allCloverGroups.length,
+        printerLabels: {
+          breakdown: labelBreakdown,
+          fromClover: cloverLabelCount,
+          fromAutoDetect: autoLabelCount,
+        },
         syncedAt: new Date().toISOString(),
       };
     }),
