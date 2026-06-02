@@ -494,11 +494,10 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
       cloverUrl(`/print_event`),
       {
         orderRef: { id: orderId },
-        deviceRef: { id: CLOVER_PRINT_DEVICE_ID },
       },
       { headers: cloverHeaders() }
     );
-    console.log(`[Clover] Print event fired for order ${orderId} → device ${CLOVER_PRINT_DEVICE_ID}`);
+    console.log(`[Clover] Print event fired for order ${orderId} (no deviceRef — Clover auto-routes to active device with Order Printers)`);
 
     // Fire-and-forget verification: check printed status on line items after 6s.
     // Clover sets printed=true on each line item once the printer confirms receipt.

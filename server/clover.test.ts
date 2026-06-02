@@ -150,12 +150,12 @@ describe("clover.createOrder", () => {
     const call2Url = String(mockPost.mock.calls[1][0]);
     expect(call2Url).toContain("/bulk_line_items");
 
-    // Call 3: print_event with deviceRef
+    // Call 3: print_event — no deviceRef (Clover auto-routes to active device with Order Printers)
     const call3Url = String(mockPost.mock.calls[2][0]);
     expect(call3Url).toContain("/print_event");
     const call3Body = mockPost.mock.calls[2][1] as Record<string, unknown>;
-    expect(call3Body).toHaveProperty("deviceRef");
-    expect((call3Body.deviceRef as Record<string, string>).id).toBe("09615CDB78014261A70D3BF94816F51A");
+    expect(call3Body).toHaveProperty("orderRef");
+    expect(call3Body).not.toHaveProperty("deviceRef");
 
     // Call 4: tender payment
     const call4Url = String(mockPost.mock.calls[3][0]);
