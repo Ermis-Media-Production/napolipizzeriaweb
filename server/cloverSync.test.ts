@@ -9,8 +9,47 @@
  *   Pizzeria  → postres y bebidas (desserts, sodas, wine, beer, etc.)
  *   Food      → todo lo demás (wings, burgers, pasta, salads, sides, etc.)
  */
-import { describe, expect, it } from "vitest";
-import { getPrinterLabel } from "./cloverSync";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { getPrinterLabel, verifyPrintStatus } from "./cloverSync";
+
+// ── Mocks para verifyPrintStatus ──────────────────────────────────────────────
+
+vi.mock("./_core/env", () => ({
+  ENV: {
+    ownerOpenId: "owner-123",
+    jwtSecret: "test-secret",
+    oauthServerUrl: "https://oauth.test",
+    builtInForgeApiUrl: "https://forge.test",
+    builtInForgeApiKey: "forge-key",
+    forgeApiUrl: "https://forge.test",
+    forgeApiKey: "forge-key",
+  },
+  CLOVER_ENV: {
+    apiToken: "test-clover-token",
+    merchantId: "test-merchant-id",
+    baseUrl: "https://api.clover.com",
+  },
+}));
+
+vi.mock("axios", () => ({
+  default: {
+    post: vi.fn(),
+    get: vi.fn(),
+  },
+}));
+
+vi.mock("./_core/notification", () => ({
+  notifyOwner: vi.fn().mockResolvedValue(true),
+}));
+
+import axios from "axios";
+import { notifyOwner } from "./_core/notification";
+const mockGet = vi.mocked(axios.get);
+const mockNotify = vi.mocked(notifyOwner);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 // ── Impresora Pizza ───────────────────────────────────────────────────────────
 describe("getPrinterLabel → Pizza printer", () => {
@@ -275,5 +314,113 @@ describe("getPrinterLabel → prioridad de reglas", () => {
 
   it("Beverage keyword en nombre parcial sigue ruteando a Pizzeria", () => {
     expect(getPrinterLabel("Premium Beverage Selection")).toBe("Pizzeria");
+  });
+});
+
+// ── verifyPrintStatus ─────────────────────────────────────────────────────────
+describe("verifyPrintStatus", () => {
+  it("no notifica al owner cuando todos los items tienen printed=true", async () => {
+    mockGet.mockResolvedValueOnce({
+      data: {
+        elements: [
+          { id: "li-1", name: "Pepperoni Pizza", printed: true },
+          { id: "li-2", name: "Buffalo Wings", printed: true },
+        ],
+      },
+    });
+
+    await verifyPrintStatus("order-abc", "John Smith");
+
+    expect(mockNotify).not.toHaveBeenCalled();
+  });
+
+  it("notifica al owner cuando ningún item fue confirmado (printed=false)", async () => {
+    mockGet.mockResolvedValueOnce({
+      data: {
+        elements: [
+          { id: "li-1", name: "Pepperoni Pizza", printed: false },
+          { id: "li-2", name: "Buffalo Wings", printed: false },
+        ],
+      },
+    });
+
+    await verifyPrintStatus("order-xyz", "Maria Rossi");
+
+    expect(mockNotify).toHaveBeenCalledOnce();
+    const call = mockNotify.mock.calls[0][0];
+    expect(call.title).toContain("order-xyz");
+    expect(call.content).toContain("Pepperoni Pizza");
+    expect(call.content).toContain("Buffalo Wings");
+    expect(call.content).toContain("Maria Rossi");
+    expect(call.content).toContain("0/2");
+  });
+
+  it("notifica al owner cuando solo algunos items no fueron confirmados", async () => {
+    mockGet.mockResolvedValueOnce({
+      data: {
+        elements: [
+          { id: "li-1", name: "Pepperoni Pizza", printed: true },
+          { id: "li-2", name: "Tiramisu", printed: false },
+          { id: "li-3", name: "House Wine", printed: false },
+        ],
+      },
+    });
+
+    await verifyPrintStatus("order-partial");
+
+    expect(mockNotify).toHaveBeenCalledOnce();
+    const call = mockNotify.mock.calls[0][0];
+    expect(call.content).toContain("1/3");
+    expect(call.content).toContain("Tiramisu");
+    expect(call.content).toContain("House Wine");
+    // El item impreso no debe aparecer en la lista de no impresos
+    expect(call.content).not.toContain("Pepperoni Pizza");
+  });
+
+  it("incluye el link al dashboard de Clover en la notificación", async () => {
+    mockGet.mockResolvedValueOnce({
+      data: {
+        elements: [{ id: "li-1", name: "Calzone", printed: false }],
+      },
+    });
+
+    await verifyPrintStatus("order-link-test");
+
+    const call = mockNotify.mock.calls[0][0];
+    expect(call.content).toContain("clover.com");
+    expect(call.content).toContain("order-link-test");
+  });
+
+  it("no notifica si la lista de items está vacía", async () => {
+    mockGet.mockResolvedValueOnce({
+      data: { elements: [] },
+    });
+
+    await verifyPrintStatus("order-empty");
+
+    expect(mockNotify).not.toHaveBeenCalled();
+  });
+
+  it("no lanza excepción si la llamada a la API falla", async () => {
+    mockGet.mockRejectedValueOnce(new Error("Network error"));
+
+    // No debe lanzar — es fire-and-forget
+    await expect(verifyPrintStatus("order-fail")).resolves.toBeUndefined();
+    expect(mockNotify).not.toHaveBeenCalled();
+  });
+
+  it("funciona sin customerName (parámetro opcional)", async () => {
+    mockGet.mockResolvedValueOnce({
+      data: {
+        elements: [{ id: "li-1", name: "Garlic Bread", printed: false }],
+      },
+    });
+
+    await verifyPrintStatus("order-no-name");
+
+    expect(mockNotify).toHaveBeenCalledOnce();
+    // No debe incluir línea de Customer si no se pasó nombre
+    const call = mockNotify.mock.calls[0][0];
+    expect(call.content).not.toContain("Customer:");
   });
 });
