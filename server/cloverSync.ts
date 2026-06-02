@@ -86,11 +86,10 @@ export const CLOVER_ORDER_TYPE_IDS = {
 } as const;
 
 /**
- * Clover Device ID that receives print jobs.
- * This is the Station Duo (2nd Gen) configured in WordPress as the Auto-Print device.
- * Including deviceRef in the print_event ensures the ticket is routed to the
- * correct station, which then dispatches to the kitchen printers.
- * Verified: 09615CDB78014261A70D3BF94816F51A (API format without dashes)
+ * Clover Device ID for the Station Duo (2nd Gen) — same device configured
+ * in WordPress as the Auto-Print device. Kept for reference and manual reprint use cases.
+ * Note: print_event no longer sends deviceRef — Clover auto-routes to the
+ * active device with Order Printers configured.
  */
 export const CLOVER_PRINT_DEVICE_ID = "09615CDB78014261A70D3BF94816F51A";
 
@@ -311,8 +310,7 @@ export async function verifyPrintStatus(
  * - Assigns the fixed "online" employee (DW4J35FH3R9B0)
  * - Sets the order type based on input.orderType (fixed IDs, no API lookup)
  * - Routes each line item to the correct kitchen printer via printerLabel ID
- * - Fires print_event with deviceRef pointing to the Station Duo configured
- *   in WordPress, ensuring the ticket reaches the kitchen printers
+ * - Fires print_event (no deviceRef — Clover auto-routes to active device with Order Printers)
  * - Applies the "Online" tender (T416DFP49C7BJ) to match WordPress behavior
  */
 export async function pushOrderToClover(input: CloverOrderInput): Promise<CloverOrderResult> {
