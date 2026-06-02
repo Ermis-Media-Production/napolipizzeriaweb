@@ -873,7 +873,7 @@ const CATEGORY_META: Record<string, { label: string; emoji: string }> = {
   catering: { label: "Clover Catering Items", emoji: "🍽️" },
 };
 
-function CloverSyncedItems({ addItem }: { addItem: (item: { id: string; name: string; price: number; quantity: number; category: string }) => void }) {
+function CloverSyncedItems({ addItem }: { addItem: (item: { id: string; name: string; price: number; quantity: number; category: string; cloverItemId?: string }) => void }) {
   const { data: items, isLoading } = trpc.menuItems.list.useQuery(
     { includeUnavailable: false },
     { staleTime: 5 * 60 * 1000 }
@@ -940,7 +940,7 @@ function CloverSyncedItems({ addItem }: { addItem: (item: { id: string; name: st
                         {price > 0 && (
                           <button
                             onClick={() => {
-                              addItem({ id: `clover-${item.id}-${Date.now()}`, name: item.name, price, quantity: 1, category: cat });
+                              addItem({ id: `clover-${item.id}-${Date.now()}`, name: item.name, price, quantity: 1, category: cat, cloverItemId: item.cloverItemId ?? undefined });
                               toast.success(`${item.name} added to cart!`);
                             }}
                             className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90"

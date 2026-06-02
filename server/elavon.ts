@@ -64,6 +64,7 @@ const CartItemSchema = z.object({
   quantity: z.number().int().positive(),
   category: z.string().optional(),
   description: z.string().optional(),
+  cloverItemId: z.string().optional(), // Clover catalog item ID — enables kitchen printer routing
 });
 
 // ─── tRPC router ──────────────────────────────────────────────────────────────
@@ -232,7 +233,7 @@ export const elavonRouter = router({
             ? `${input.dropoffAddress}, ${input.dropoffCity ?? ""}, ${input.dropoffState ?? ""} ${input.dropoffZip ?? ""}`.trim()
             : null;
 
-          const items = input.items as Array<{ id: string; name: string; price: number; quantity: number; category?: string; description?: string }>;
+          const items = input.items as Array<{ id: string; name: string; price: number; quantity: number; category?: string; description?: string; cloverItemId?: string }>;
           const pizzaCount = countPizzas(items);
 
           const [insertResult] = await db.insert(scheduledOrders).values({
@@ -287,6 +288,7 @@ export const elavonRouter = router({
               quantity: item.quantity ?? 1,
               lineTotal: String(item.price * (item.quantity ?? 1)),
               isPizza,
+              cloverItemId: item.cloverItemId ?? null,
               status: "active",
               refundedAmount: "0",
             });

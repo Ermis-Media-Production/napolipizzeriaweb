@@ -199,6 +199,7 @@ describe("authorizenet.chargeCard input validation", () => {
           items: [{ id: "a", name: "Pizza", price: 14.99, quantity: 1 }],
           orderType: "pickup",
           customerName: "Test User",
+          customerEmail: "test@example.com",
         })
       ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     } finally {
