@@ -23,7 +23,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { CLOVER_ENV } from "./_core/env";
 import { pushOrderToClover } from "./cloverSync";
 import { getDb } from "./db";
-import { scheduledOrders, orderItems, storeSettings } from "../drizzle/schema";
+import { scheduledOrders, orderItems } from "../drizzle/schema";
 import { notifyOwner } from "./_core/notification";
 import { sendOrderConfirmationSms } from "./_core/sms";
 
@@ -59,12 +59,7 @@ function isStoreOpen(): boolean {
   return h >= STORE_OPEN_HOUR && h < STORE_CLOSE_HOUR;
 }
 
-async function isStoreOpenWithOverride(): Promise<boolean> {
-  const db = await getDb();
-  if (db) {
-    const rows = await db.select().from(storeSettings).where(eq(storeSettings.key, "store_force_open")).limit(1);
-    if (rows[0]?.value === "true") return true;
-  }
+function isStoreOpenWithOverride(): boolean {
   return isStoreOpen();
 }
 
@@ -170,7 +165,7 @@ export const cloverCheckoutRouter = router({
           });
         }
       } else {
-        const open = await isStoreOpenWithOverride();
+        const open = isStoreOpenWithOverride();
         if (!open) {
           throw new TRPCError({
             code: "BAD_REQUEST",

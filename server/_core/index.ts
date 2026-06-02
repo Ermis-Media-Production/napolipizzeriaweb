@@ -11,7 +11,6 @@ import { serveStatic, setupVite } from "./vite";
 import { handleAuthorizeNetWebhook } from "../authorizenetWebhook";
 import { handleCloverWebhook } from "../cloverCheckout";
 import { handleScheduledCloverSync } from "../scheduledCloverSync";
-import { handleForceOpenReset } from "../scheduledForceOpenReset";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -69,13 +68,6 @@ async function startServer() {
     });
   });
 
-  // Midnight Force Open reset — resets store_force_open to false at 00:00 Las Vegas time (07:00 UTC)
-  app.post("/api/scheduled/force-open-reset", (req, res) => {
-    handleForceOpenReset(req, res).catch((err) => {
-      console.error("[ForceOpenReset] Unhandled error:", err);
-      res.status(500).json({ error: String(err) });
-    });
-  });
 
   registerStorageProxy(app);
   registerOAuthRoutes(app);

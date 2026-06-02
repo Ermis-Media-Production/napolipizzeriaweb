@@ -10,46 +10,10 @@
 import AdminLayout from "@/components/AdminLayout";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
-import { Settings, Save, RefreshCw, ToggleLeft, ToggleRight, Percent, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { Settings, Save, RefreshCw, ToggleLeft, ToggleRight, Percent, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AdminSettings() {
-
-  // ── Store Hours ──────────────────────────────────────────────────────────────
-  const { data: storeHours, isLoading: hoursLoading, refetch: refetchHours } = trpc.settings.getStoreHours.useQuery();
-  const [forceOpen, setForceOpen] = useState(false);
-  const [hoursDirty, setHoursDirty] = useState(false);
-  const [hoursSaved, setHoursSaved] = useState(false);
-
-  useEffect(() => {
-    if (storeHours) {
-      setForceOpen(storeHours.forceOpen);
-      setHoursDirty(false);
-    }
-  }, [storeHours]);
-
-  const updateHours = trpc.settings.updateStoreHours.useMutation({
-    onSuccess: (data) => {
-      setForceOpen(data.forceOpen);
-      setHoursDirty(false);
-      setHoursSaved(true);
-      toast.success(data.forceOpen ? "Store is now FORCE OPEN — orders accepted 24/7." : "Store returned to normal hours (10 AM – 10 PM).");
-      refetchHours();
-      setTimeout(() => setHoursSaved(false), 4000);
-    },
-    onError: (err) => toast.error("Failed to update store hours: " + err.message),
-  });
-
-  const handleForceOpenToggle = () => {
-    const next = !forceOpen;
-    setForceOpen(next);
-    setHoursDirty(true);
-    setHoursSaved(false);
-  };
-
-  const handleHoursSave = () => {
-    updateHours.mutate({ forceOpen });
-  };
 
   // Fetch current settings
   const { data: feeConfig, isLoading, refetch } = trpc.settings.getConvenienceFee.useQuery();
@@ -278,110 +242,6 @@ export default function AdminSettings() {
                     <span className="text-xs flex items-center gap-1" style={{ color: "oklch(0.38 0.12 145)", fontFamily: "'Lato', sans-serif" }}>
                       <CheckCircle2 size={12} />
                       Changes applied to all new orders
-                    </span>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* ── Store Hours Card ── */}
-        <div
-          className="rounded-lg border overflow-hidden"
-          style={{ background: "white", borderColor: forceOpen ? "oklch(0.70 0.15 145)" : "oklch(0.88 0.015 80)" }}
-        >
-          <div
-            className="px-5 py-4 border-b flex items-center gap-3"
-            style={{
-              borderColor: forceOpen ? "oklch(0.70 0.15 145)" : "oklch(0.88 0.015 80)",
-              background: forceOpen ? "oklch(0.96 0.06 145)" : "oklch(0.98 0.008 80)",
-            }}
-          >
-            <Clock size={16} style={{ color: forceOpen ? "oklch(0.38 0.12 145)" : "var(--napoli-red, #c0392b)" }} />
-            <div>
-              <h2 className="text-sm font-bold" style={{ color: "oklch(0.25 0.04 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
-                STORE HOURS &amp; ORDERING
-              </h2>
-              <p className="text-xs mt-0.5" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
-                Normal hours: 10:00 AM – 10:00 PM (Las Vegas time). Use Force Open to accept orders outside these hours.
-              </p>
-            </div>
-          </div>
-
-          <div className="px-5 py-5 space-y-5">
-            {hoursLoading ? (
-              <div className="flex items-center gap-2 py-4">
-                <RefreshCw size={16} className="animate-spin" style={{ color: "var(--napoli-red, #c0392b)" }} />
-                <span className="text-sm" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>Loading…</span>
-              </div>
-            ) : (
-              <>
-                {/* Force Open toggle */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold" style={{ color: "oklch(0.30 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
-                      Force Open (Override Hours)
-                    </p>
-                    <p className="text-xs mt-0.5" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
-                      When ON, the store accepts orders at any time regardless of the normal 10 AM–10 PM schedule.
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleForceOpenToggle}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg border transition-all active:scale-95"
-                    style={{
-                      background: forceOpen ? "oklch(0.96 0.06 145)" : "oklch(0.96 0.02 30)",
-                      borderColor: forceOpen ? "oklch(0.70 0.15 145)" : "oklch(0.80 0.04 30)",
-                      color: forceOpen ? "oklch(0.30 0.12 145)" : "oklch(0.50 0.04 30)",
-                    }}
-                  >
-                    {forceOpen ? (
-                      <><ToggleRight size={20} /><span className="text-xs font-bold" style={{ fontFamily: "'Oswald', sans-serif" }}>OPEN</span></>
-                    ) : (
-                      <><ToggleLeft size={20} /><span className="text-xs font-bold" style={{ fontFamily: "'Oswald', sans-serif" }}>NORMAL</span></>
-                    )}
-                  </button>
-                </div>
-
-                {/* Status banner */}
-                {forceOpen && (
-                  <div
-                    className="flex items-center gap-2 p-3 rounded-lg border"
-                    style={{ background: "oklch(0.96 0.06 145)", borderColor: "oklch(0.70 0.15 145)" }}
-                  >
-                    <CheckCircle2 size={14} style={{ color: "oklch(0.38 0.12 145)" }} />
-                    <p className="text-xs font-semibold" style={{ color: "oklch(0.30 0.12 145)", fontFamily: "'Lato', sans-serif" }}>
-                      Force Open is ACTIVE — the store is accepting orders right now regardless of the time.
-                    </p>
-                  </div>
-                )}
-
-                {/* Save button */}
-                <div className="flex items-center gap-3 pt-1">
-                  <button
-                    onClick={handleHoursSave}
-                    disabled={!hoursDirty || updateHours.isPending}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded font-bold text-sm transition-all active:scale-[0.98]"
-                    style={{
-                      background: !hoursDirty || updateHours.isPending ? "oklch(0.80 0.015 80)" : "var(--napoli-red, #c0392b)",
-                      color: "white",
-                      fontFamily: "'Oswald', sans-serif",
-                      letterSpacing: "0.04em",
-                      cursor: !hoursDirty || updateHours.isPending ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    {updateHours.isPending ? (
-                      <><RefreshCw size={14} className="animate-spin" /> Saving…</>
-                    ) : hoursSaved ? (
-                      <><CheckCircle2 size={14} /> Saved!</>
-                    ) : (
-                      <><Save size={14} /> Save Changes</>
-                    )}
-                  </button>
-                  {hoursDirty && !updateHours.isPending && (
-                    <span className="text-xs flex items-center gap-1" style={{ color: "oklch(0.55 0.10 60)", fontFamily: "'Lato', sans-serif" }}>
-                      <AlertCircle size={12} /> Unsaved changes
                     </span>
                   )}
                 </div>

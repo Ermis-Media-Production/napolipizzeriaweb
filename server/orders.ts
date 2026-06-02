@@ -26,10 +26,8 @@ async function getStoreSetting(key: string): Promise<string | null> {
   return rows[0]?.value ?? null;
 }
 
-/** Returns true if the store is currently open, respecting the force_open override. */
-async function isStoreOpenAsync(): Promise<boolean> {
-  const forceOpen = await getStoreSetting("store_force_open");
-  if (forceOpen === "true") return true;
+/** Returns true if the store is currently open based on normal store hours. */
+function isStoreOpenAsync(): boolean {
   return isStoreOpen();
 }
 
@@ -175,12 +173,10 @@ export const ordersRouter = router({
    * Returns store status and next opening time.
    */
   storeStatus: publicProcedure.query(async () => {
-    const forceOpen = await getStoreSetting("store_force_open");
-    const open = forceOpen === "true" ? true : isStoreOpen();
+    const open = isStoreOpen();
     const storeNow = nowInStoreTimezone();
     return {
       isOpen: open,
-      forceOpen: forceOpen === "true",
       currentTimeMs: storeNow.getTime(),
       nextOpeningMs: open ? null : getNextOpeningTime(),
       openHour: STORE_OPEN_HOUR,
@@ -317,8 +313,8 @@ export const ordersRouter = router({
           });
         }
       } else {
-        // ASAP orders require the store to be currently open (respects force_open override)
-        const storeCurrentlyOpen = await isStoreOpenAsync();
+        // ASAP orders require the store to be currently open
+        const storeCurrentlyOpen = isStoreOpenAsync();
         if (!storeCurrentlyOpen) {
           throw new TRPCError({
             code: "BAD_REQUEST",
