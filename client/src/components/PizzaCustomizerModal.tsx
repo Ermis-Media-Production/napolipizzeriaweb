@@ -17,6 +17,11 @@ import {
   PIZZA_30_TOPPINGS,
   PIZZA_TOPPING_PRICES,
 } from "@/lib/napoliData";
+import {
+  CLOVER_CRUST_IDS,
+  CLOVER_CUT_IDS,
+  CLOVER_TOPPING_IDS,
+} from "@/lib/cloverModifierMap";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 export interface PizzaSelection {
@@ -253,6 +258,53 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
     ];
     if (notes.trim()) descParts.push(`Note: ${notes.trim()}`);
 
+    // Build structured Clover modifications (Opción B)
+    // Each entry with cloverModifierId maps to a POST /modifications call in cloverSync.
+    // Entries without cloverModifierId fall back to the note field.
+    const modifications: Array<{ name: string; amount: number; cloverModifierId?: string }> = [];
+
+    // Crust
+    modifications.push({
+      name: `Crust: ${crustLabel}`,
+      amount: 0,
+      cloverModifierId: CLOVER_CRUST_IDS[selectedCrust] || undefined,
+    });
+
+    // Cut
+    modifications.push({
+      name: `Cut: ${cutLabel}`,
+      amount: 0,
+      cloverModifierId: CLOVER_CUT_IDS[selectedCut] || undefined,
+    });
+
+    // Toppings
+    if (halfAndHalf) {
+      [...firstHalf, ...secondHalf].forEach((t) => {
+        modifications.push({
+          name: t,
+          amount: 0,
+          cloverModifierId: CLOVER_TOPPING_IDS[t.toLowerCase()] || undefined,
+        });
+      });
+      modifications.push({
+        name: `Half & Half — 1st: ${firstHalf.join(", ") || "Plain"} | 2nd: ${secondHalf.join(", ") || "Plain"}`,
+        amount: 0,
+      });
+    } else {
+      selectedToppings.forEach((t) => {
+        modifications.push({
+          name: t,
+          amount: 0,
+          cloverModifierId: CLOVER_TOPPING_IDS[t.toLowerCase()] || undefined,
+        });
+      });
+    }
+
+    // Special note
+    if (notes.trim()) {
+      modifications.push({ name: `Note: ${notes.trim()}`, amount: 0 });
+    }
+
     addItem({
       id: `pizza-${pizzaName}-${effectiveSize}-${selectedCrust}-${selectedCut}-${Date.now()}`,
       name: `${pizzaName} Pizza (${effectiveSize})`,
@@ -260,6 +312,7 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
       quantity: 1,
       category: "pizza",
       description: descParts.join(" · "),
+      modifications,
     });
 
     toast.success(`${pizzaName} Pizza (${effectiveSize}) added to cart!`);

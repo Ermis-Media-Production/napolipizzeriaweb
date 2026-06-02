@@ -310,6 +310,11 @@ const CartItemSchema = z.object({
   category: z.string().optional(),
   description: z.string().optional(), // modifier/customization details
   cloverItemId: z.string().optional(), // Clover catalog item ID — enables kitchen printer routing
+  modifications: z.array(z.object({
+    name: z.string(),
+    amount: z.number().default(0),
+    cloverModifierId: z.string().optional(),
+  })).optional(),
 });
 
 // ── Router ────────────────────────────────────────────────────────────────────

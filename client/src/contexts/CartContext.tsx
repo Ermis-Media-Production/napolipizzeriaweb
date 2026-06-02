@@ -9,6 +9,16 @@ export interface CartItem {
   description?: string;
   /** Clover catalog item ID — enables kitchen printer routing via item.id in bulk_line_items */
   cloverItemId?: string;
+  /**
+   * Structured Clover modifications for this item.
+   * Each entry maps to a POST /orders/{id}/line_items/{lineItemId}/modifications call.
+   * Items without a cloverModifierId fall back to the note field.
+   */
+  modifications?: Array<{
+    name: string;
+    amount: number;
+    cloverModifierId?: string;
+  }>;
 }
 
 export type OrderType = "pickup" | "delivery" | "dine-in" | "scheduled";

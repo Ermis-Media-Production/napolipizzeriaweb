@@ -143,6 +143,11 @@ const CartItemInputSchema = z.object({
   quantity: z.number().default(1),
   category: z.string().optional(),
   cloverItemId: z.string().optional(), // Clover catalog item ID — enables kitchen printer routing
+  modifications: z.array(z.object({
+    name: z.string(),
+    amount: z.number().default(0),
+    cloverModifierId: z.string().optional(),
+  })).optional(),
 });
 
 type CartItemInput = z.infer<typeof CartItemInputSchema>;

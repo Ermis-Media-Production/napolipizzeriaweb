@@ -32,7 +32,18 @@ import { CLOVER_ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
 
 export interface CloverOrderInput {
-  items: Array<{ name: string; price: number; quantity: number; description?: string; cloverItemId?: string }>;
+  items: Array<{
+    name: string;
+    price: number;
+    quantity: number;
+    description?: string;
+    cloverItemId?: string;
+    modifications?: Array<{
+      name: string;
+      amount: number;
+      cloverModifierId?: string;
+    }>;
+  }>;
   orderType: "delivery" | "pickup" | "dine-in";
   customerName?: string;
   customerPhone?: string;
@@ -397,13 +408,76 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     return lineItem;
   });
 
-  await axios.post(
+  const bulkResponse = await axios.post(
     cloverUrl(`/orders/${orderId}/bulk_line_items`),
     { items: lineItems },
     { headers: cloverHeaders() }
   );
 
-  // Step 3: Wait 2s for Clover to finish processing the order asynchronously.
+  // Step 3: Apply structured modifications to each line item.
+  // For items with modifications (pizza crust, cut, toppings), we POST to
+  // /orders/{id}/line_items/{lineItemId}/modifications for each modifier that
+  // has a cloverModifierId. Modifiers without an ID fall back to the note field.
+  const createdLineItems: Array<{ id: string }> = bulkResponse.data?.items ?? [];
+  const modificationPromises: Promise<unknown>[] = [];
+
+  input.items.forEach((item, idx) => {
+    const lineItemId = createdLineItems[idx]?.id;
+    if (!lineItemId || !item.modifications?.length) return;
+
+    const fallbackNotes: string[] = [];
+
+    item.modifications.forEach((mod) => {
+      if (mod.cloverModifierId) {
+        modificationPromises.push(
+          axios
+            .post(
+              cloverUrl(`/orders/${orderId}/line_items/${lineItemId}/modifications`),
+              {
+                name: mod.name,
+                amount: mod.amount ?? 0,
+                modifier: { id: mod.cloverModifierId },
+              },
+              { headers: cloverHeaders() }
+            )
+            .catch((err) => {
+              // Non-fatal — fall back to note
+              const msg = err instanceof Error ? err.message : String(err);
+              console.warn(`[Clover] Failed to apply modification "${mod.name}" to line item ${lineItemId}:`, msg);
+              fallbackNotes.push(mod.name);
+            })
+        );
+      } else {
+        // No Clover modifier ID — will be included in note fallback
+        fallbackNotes.push(mod.name);
+      }
+    });
+
+    // If there are fallback notes (no cloverModifierId or failed), patch the line item note
+    if (fallbackNotes.length > 0) {
+      const existingNote = (lineItems[idx] as Record<string, unknown>).note as string | undefined;
+      const combinedNote = [existingNote, ...fallbackNotes].filter(Boolean).join("\n");
+      modificationPromises.push(
+        axios
+          .post(
+            cloverUrl(`/orders/${orderId}/line_items/${lineItemId}`),
+            { note: combinedNote },
+            { headers: cloverHeaders() }
+          )
+          .catch((err) => {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.warn(`[Clover] Failed to patch note for line item ${lineItemId}:`, msg);
+          })
+      );
+    }
+  });
+
+  if (modificationPromises.length > 0) {
+    await Promise.allSettled(modificationPromises);
+    console.log(`[Clover] Applied modifications for order ${orderId}`);
+  }
+
+  // Step 4: Wait 2s for Clover to finish processing the order asynchronously.
   // Clover processes orders with modifications asynchronously — firing print_event
   // immediately can race against Clover's internal write: the device receives the
   // job before the ticket is fully renderable and silently drops it.
