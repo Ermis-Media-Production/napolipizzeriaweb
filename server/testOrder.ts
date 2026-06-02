@@ -31,9 +31,11 @@ export const testOrderRouter = router({
         orderType: z.enum(["pickup", "delivery", "dine-in"]).default("pickup"),
         customerName: z.string().default("Test Customer"),
         customerPhone: z.string().default("+17025550000"),
+        specialInstructions: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
+      // totalCents: price is in dollars, convert to cents here for the tender amount
       const totalCents = input.items.reduce(
         (sum, item) => sum + Math.round(item.price * 100) * item.quantity,
         0
@@ -42,7 +44,7 @@ export const testOrderRouter = router({
       const result = await pushOrderToClover({
         items: input.items.map((item) => ({
           name: item.name,
-          price: Math.round(item.price * 100),
+          price: item.price, // dollars — cloverSync converts to cents internally
           quantity: item.quantity,
           description: item.description,
           cloverItemId: item.cloverItemId,
@@ -54,6 +56,7 @@ export const testOrderRouter = router({
         externalId: `TEST-${Date.now()}`,
         totalCents,
         orderRef: `TEST-${Date.now()}`,
+        specialInstructions: input.specialInstructions,
       });
 
       return {

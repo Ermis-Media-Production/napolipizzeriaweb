@@ -420,6 +420,7 @@ export default function CartDrawer() {
       orderType: payload.orderType,
       customerName: payload.customerName,
       customerPhone: payload.customerPhone ?? "+17025550000",
+      specialInstructions: payload.specialInstructions,
     });
   };
 
