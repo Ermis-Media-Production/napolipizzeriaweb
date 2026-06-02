@@ -10,7 +10,14 @@
  *   Food      → todo lo demás (wings, burgers, pasta, salads, sides, etc.)
  */
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { getPrinterLabel, verifyPrintStatus } from "./cloverSync";
+import {
+  getPrinterLabel,
+  verifyPrintStatus,
+  CLOVER_ONLINE_EMPLOYEE_ID,
+  CLOVER_ONLINE_TENDER_ID,
+  CLOVER_ORDER_TYPE_IDS,
+  CLOVER_PRINT_DEVICE_ID,
+} from "./cloverSync";
 
 // ── Mocks para verifyPrintStatus ──────────────────────────────────────────────
 
@@ -422,5 +429,32 @@ describe("verifyPrintStatus", () => {
     // No debe incluir línea de Customer si no se pasó nombre
     const call = mockNotify.mock.calls[0][0];
     expect(call.content).not.toContain("Customer:");
+  });
+});
+
+// ── Merchant IDs fijos ────────────────────────────────────────────────────────
+describe("Merchant IDs fijos", () => {
+  it("CLOVER_ONLINE_EMPLOYEE_ID es el ID correcto del employee online", () => {
+    expect(CLOVER_ONLINE_EMPLOYEE_ID).toBe("DW4J35FH3R9B0");
+  });
+
+  it("CLOVER_ONLINE_TENDER_ID es el ID correcto del tender Online", () => {
+    expect(CLOVER_ONLINE_TENDER_ID).toBe("T416DFP49C7BJ");
+  });
+
+  it("CLOVER_PRINT_DEVICE_ID es el ID correcto del Station Duo", () => {
+    expect(CLOVER_PRINT_DEVICE_ID).toBe("09615CDB78014261A70D3BF94816F51A");
+  });
+
+  it("CLOVER_ORDER_TYPE_IDS.pickup es el ID correcto de Pick up", () => {
+    expect(CLOVER_ORDER_TYPE_IDS.pickup).toBe("CYNNEQA3ABD8Y");
+  });
+
+  it("CLOVER_ORDER_TYPE_IDS.delivery es el ID correcto de Delivery", () => {
+    expect(CLOVER_ORDER_TYPE_IDS.delivery).toBe("KKKWXJB30FE6R");
+  });
+
+  it("CLOVER_ORDER_TYPE_IDS['dine-in'] es el ID correcto de Dine In", () => {
+    expect(CLOVER_ORDER_TYPE_IDS["dine-in"]).toBe("ATSAYYBGKK8B0");
   });
 });

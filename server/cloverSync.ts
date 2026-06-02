@@ -17,11 +17,14 @@
  *   Pizzeria  (TM-U220, 192.168.192.8)
  *     → Desserts and beverages (sodas, water, milkshakes, beer, wine, etc.)
  *
- * Employee / Tender:
- *   - All web orders are assigned to the employee named "Online"
- *     (looked up by name; created automatically if not found).
- *   - The order tender is set to "Table" (looked up by name in the merchant's
- *     tender list).
+ * Merchant configuration (verified via Clover API + WordPress EMP plugin):
+ *   - Employee "online"  → DW4J35FH3R9B0
+ *   - Tender "Online"    → T416DFP49C7BJ
+ *   - Order type Pick up → CYNNEQA3ABD8Y  (default)
+ *   - Order type Delivery → KKKWXJB30FE6R
+ *   - Order type Dine In → ATSAYYBGKK8B0
+ *   - Print Device ID    → 09615cdb-7801-4261-a70d-3bf94816f51a
+ *     (Station Duo 2nd Gen — same device configured in WordPress for Auto-Print)
  */
 
 import axios from "axios";
@@ -44,10 +47,46 @@ export interface CloverOrderResult {
   dashboardUrl: string;
 }
 
+// ── Merchant-specific IDs (verified via API — do not change without re-verifying) ──
+
+/**
+ * Fixed employee ID for the "online" employee.
+ * Verified: DW4J35FH3R9B0 → name: "online"
+ * Using a fixed ID avoids an extra API call per order and eliminates
+ * the risk of accidental employee creation.
+ */
+export const CLOVER_ONLINE_EMPLOYEE_ID = "DW4J35FH3R9B0";
+
+/**
+ * Fixed tender ID for the "Online" payment tender.
+ * Verified: T416DFP49C7BJ → label: "Online"
+ * This matches the tender configured in the WordPress EMP Clover plugin.
+ */
+export const CLOVER_ONLINE_TENDER_ID = "T416DFP49C7BJ";
+
+/**
+ * Order type IDs mapped to our internal orderType values.
+ * Verified via GET /v3/merchants/{mId}/order_types
+ */
+export const CLOVER_ORDER_TYPE_IDS = {
+  pickup:   "CYNNEQA3ABD8Y", // "Pick up"   — default order type
+  delivery: "KKKWXJB30FE6R", // "Delivery"
+  "dine-in": "ATSAYYBGKK8B0", // "Dine In"
+} as const;
+
+/**
+ * Clover Device ID that receives print jobs.
+ * This is the Station Duo (2nd Gen) configured in WordPress as the Auto-Print device.
+ * Including deviceRef in the print_event ensures the ticket is routed to the
+ * correct station, which then dispatches to the kitchen printers.
+ * Verified: 09615CDB78014261A70D3BF94816F51A (API format without dashes)
+ */
+export const CLOVER_PRINT_DEVICE_ID = "09615CDB78014261A70D3BF94816F51A";
+
 // ── Printer label mapping ──────────────────────────────────────────────────────
 
 /**
- * Clover printer IDs (from /v3/merchants/{id}/printers):
+ * Clover printer IDs (from GET /v3/merchants/{mId}/printers):
  *   Pizza     → 65QB994H6Z44W  (Star TSP100, 192.168.192.11)
  *   Food      → MCWCF8204E7QM  (Star TSP100, 192.168.192.12)
  *   Pizzeria  → WBSHK4762NS76  (TM-U220, 192.168.192.8)
@@ -56,15 +95,15 @@ export interface CloverOrderResult {
  * line item — using { name: "..." } is silently ignored by the API.
  */
 export const CLOVER_PRINTER_IDS = {
-  PIZZA: "65QB994H6Z44W",
-  FOOD: "MCWCF8204E7QM",
+  PIZZA:    "65QB994H6Z44W",
+  FOOD:     "MCWCF8204E7QM",
   PIZZERIA: "WBSHK4762NS76",
 } as const;
 
 // Keep name constants for logging/display purposes
 export const CLOVER_PRINTER_LABELS = {
-  PIZZA: "Pizza",
-  FOOD: "Food",
+  PIZZA:    "Pizza",
+  FOOD:     "Food",
   PIZZERIA: "Pizzeria",
 } as const;
 
@@ -134,10 +173,10 @@ const BEVERAGE_KEYWORDS = [
  * Determine which Clover printer label an item should be routed to.
  *
  * Rules (evaluated in order):
- *   1. PIZZA_KEYWORDS match  → "Pizza"    (Star TSP100, pizza station)
+ *   1. PIZZA_KEYWORDS match   → "Pizza"    (Star TSP100, pizza station)
  *   2. DESSERT_KEYWORDS match → "Pizzeria" (TM-U220, desserts/beverages)
  *   3. BEVERAGE_KEYWORDS match → "Pizzeria" (TM-U220, desserts/beverages)
- *   4. Everything else        → "Food"     (Star TSP100, hot food station)
+ *   4. Everything else         → "Food"    (Star TSP100, hot food station)
  */
 export function getPrinterLabel(itemName: string): PrinterLabel {
   const lower = itemName.toLowerCase();
@@ -171,92 +210,7 @@ function cloverUrl(path: string) {
   return `${CLOVER_ENV.baseUrl}/v3/merchants/${CLOVER_ENV.merchantId}${path}`;
 }
 
-// ── Employee lookup / creation ─────────────────────────────────────────────────
-
-/**
- * Find the Clover employee ID for the "Online" employee.
- * If not found, create it automatically.
- * Returns the employee ID string, or null on failure.
- */
-async function getOnlineEmployeeId(): Promise<string | null> {
-  try {
-    const res = await axios.get(
-      cloverUrl("/employees?limit=200"),
-      { headers: cloverHeaders() }
-    );
-
-    const employees: Array<{ id: string; name: string }> =
-      res.data?.elements ?? [];
-
-    const online = employees.find(
-      (e) => e.name?.toLowerCase() === "online"
-    );
-
-    if (online) {
-      return online.id;
-    }
-
-    // Not found — create it
-    console.log("[Clover] 'Online' employee not found, creating...");
-    const createRes = await axios.post(
-      cloverUrl("/employees"),
-      {
-        name: "Online",
-        nickname: "Online",
-        role: "EMPLOYEE",
-        isOwner: false,
-      },
-      { headers: cloverHeaders() }
-    );
-
-    const newId: string = createRes.data?.id;
-    console.log(`[Clover] Created 'Online' employee with ID: ${newId}`);
-    return newId ?? null;
-  } catch (err) {
-    console.error("[Clover] Failed to get/create Online employee:", err);
-    return null;
-  }
-}
-
-// ── Tender lookup ──────────────────────────────────────────────────────────────
-
-/**
- * Find the Clover tender ID for the "Table" tender.
- * Returns the tender ID string, or null if not found.
- */
-async function getTableTenderId(): Promise<string | null> {
-  try {
-    const res = await axios.get(
-      cloverUrl("/tenders?limit=100"),
-      { headers: cloverHeaders() }
-    );
-
-    const tenders: Array<{ id: string; label: string; labelKey?: string }> =
-      res.data?.elements ?? [];
-
-    // Try exact match first, then partial match
-    const TABLE_PATTERNS = ["table", "tab", "dine in", "dine-in", "dinein"];
-    const table =
-      tenders.find((t) => t.label?.toLowerCase() === "table") ??
-      tenders.find((t) => TABLE_PATTERNS.some((p) => t.label?.toLowerCase() === p)) ??
-      tenders.find((t) => TABLE_PATTERNS.some((p) => t.label?.toLowerCase().includes(p))) ??
-      tenders.find((t) => TABLE_PATTERNS.some((p) => t.labelKey?.toLowerCase().includes(p)));
-
-    if (table) {
-      console.log(`[Clover] Found 'Table' tender: ${table.id} ("${table.label}")`);
-      return table.id;
-    }
-
-    console.warn("[Clover] No 'Table' tender found. Available tenders:", tenders.map((t) => `"${t.label}" (${t.labelKey ?? "no key"})`).join(", "));
-    console.warn("[Clover] Orders will be created without a tender assignment. Check Clover Dashboard → Setup → Tenders.");
-    return null;
-  } catch (err) {
-    console.error("[Clover] Failed to fetch tenders:", err);
-    return null;
-  }
-}
-
-// ── Print status verification ────────────────────────────────────────────────
+// ── Print status verification ──────────────────────────────────────────────────
 
 /**
  * Verify that all line items in a Clover order have been confirmed as printed
@@ -342,11 +296,13 @@ export async function verifyPrintStatus(
 
 /**
  * Push a confirmed order to Clover POS.
- * - Assigns the "Online" employee to the order
- * - Sets the tender to "Table"
- * - Routes each line item to the correct kitchen printer via label:
- *     Pizza items  → "Pizza" printer (Star TSP100)
- *     All others   → "Food" printer (Star TSP100)
+ *
+ * - Assigns the fixed "online" employee (DW4J35FH3R9B0)
+ * - Sets the order type based on input.orderType (fixed IDs, no API lookup)
+ * - Routes each line item to the correct kitchen printer via printerLabel ID
+ * - Fires print_event with deviceRef pointing to the Station Duo configured
+ *   in WordPress, ensuring the ticket reaches the kitchen printers
+ * - Applies the "Online" tender (T416DFP49C7BJ) to match WordPress behavior
  */
 export async function pushOrderToClover(input: CloverOrderInput): Promise<CloverOrderResult> {
   if (!CLOVER_ENV.apiToken || !CLOVER_ENV.merchantId) {
@@ -378,13 +334,7 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     noteLines.push(`Scheduled: ${scheduledStr}`);
   }
 
-  // Fetch employee and tender IDs in parallel (non-blocking — failures are handled gracefully)
-  const [onlineEmployeeId, tableTenderId] = await Promise.all([
-    getOnlineEmployeeId(),
-    getTableTenderId(),
-  ]);
-
-  // Step 1: Create the order shell, assigning the "Online" employee
+  // Step 1: Create the order shell
   // Build a descriptive title that shows up in Clover reports:
   // "Online Pick-Up — John Smith" or "Online Delivery — NPZ-20260528-0042"
   const reportTitle = input.customerName
@@ -393,38 +343,32 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     ? `${orderTypeLabel} — ${input.orderRef}`
     : `${orderTypeLabel} — Napoli Pizzeria`;
 
-  const orderPayload: Record<string, unknown> = {
-    state: "open",
-    currency: "USD",
-    total: input.totalCents,
-    title: reportTitle,
-    note: noteLines.length ? noteLines.join(" | ") : undefined,
-    manualTransaction: false,
-    testMode: false,
-  };
-
-  if (onlineEmployeeId) {
-    orderPayload.employee = { id: onlineEmployeeId };
-  }
-
   const orderRes = await axios.post(
     cloverUrl("/orders"),
-    orderPayload,
+    {
+      state: "open",
+      currency: "USD",
+      total: input.totalCents,
+      title: reportTitle,
+      note: noteLines.length ? noteLines.join(" | ") : undefined,
+      manualTransaction: false,
+      testMode: false,
+      employee: { id: CLOVER_ONLINE_EMPLOYEE_ID },
+      orderType: { id: CLOVER_ORDER_TYPE_IDS[input.orderType] },
+    },
     { headers: cloverHeaders() }
   );
 
   const orderId: string = orderRes.data.id;
 
   // Step 2: Add all line items with printer label assignments
-  // Pizza items → "Pizza" printer | Everything else → "Food" printer
   // The description field carries modifier/customization details (toppings, crust, sauce, etc.)
   // We format each modifier as a separate line for easy reading by kitchen staff.
   const lineItems = input.items.map((item) => {
     const printerLabel = getPrinterLabel(item.name);
-    // Map label name to Clover printer ID — Clover requires { id } not { name }
     const printerIdMap: Record<PrinterLabel, string> = {
-      Pizza: CLOVER_PRINTER_IDS.PIZZA,
-      Food: CLOVER_PRINTER_IDS.FOOD,
+      Pizza:    CLOVER_PRINTER_IDS.PIZZA,
+      Food:     CLOVER_PRINTER_IDS.FOOD,
       Pizzeria: CLOVER_PRINTER_IDS.PIZZERIA,
     };
     const printerId = printerIdMap[printerLabel];
@@ -436,23 +380,11 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     };
 
     if (item.description && item.description.trim()) {
-      // Normalize description into clean kitchen-ticket lines:
-      //   " · " separators (frontend format) → newlines
-      //   "\n" already present → keep as-is
-      // Result: each modifier on its own line, easy to read at the pizza station.
       const raw = item.description.trim();
-
-      // Build a structured note:
-      // 1. Replace " · " with newline
-      // 2. Ensure Half & Half sections are clearly labeled
-      // 3. Add a separator line before the note for visual clarity on the ticket
       let note = raw
         .replace(/ · /g, "\n")  // frontend separator
         .replace(/\|/g, "\n");  // pipe separators used in some modals
-
-      // Ensure "Half & Half" header is prominent
       note = note.replace(/(Half & Half)/gi, "*** $1 ***");
-
       lineItem.note = note;
     }
     return lineItem;
@@ -464,15 +396,20 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     { headers: cloverHeaders() }
   );
 
-  // Step 3: Fire the print event so Clover routes items to kitchen printers
-  // This is what sets printed=true on line items and triggers physical printing.
+  // Step 3: Fire the print event targeting the Station Duo device.
+  // Including deviceRef ensures Clover routes the ticket to the correct
+  // station (the one with kitchen printers attached), matching the behavior
+  // of the WordPress EMP plugin Auto-Print configuration.
   try {
     await axios.post(
       cloverUrl(`/print_event`),
-      { orderRef: { id: orderId } },
+      {
+        orderRef: { id: orderId },
+        deviceRef: { id: CLOVER_PRINT_DEVICE_ID },
+      },
       { headers: cloverHeaders() }
     );
-    console.log(`[Clover] Print event fired for order ${orderId}`);
+    console.log(`[Clover] Print event fired for order ${orderId} → device ${CLOVER_PRINT_DEVICE_ID}`);
 
     // Fire-and-forget verification: check printed status on line items after 6s.
     // Clover sets printed=true on each line item once the printer confirms receipt.
@@ -484,26 +421,24 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     console.warn(`[Clover] Failed to fire print event for order ${orderId}:`, msg);
   }
 
-  // Step 4: Add a "Table" tender payment to the order so it appears under Table
-  if (tableTenderId) {
-    try {
-      await axios.post(
-        cloverUrl(`/orders/${orderId}/payments`),
-        {
-          tender: { id: tableTenderId },
-          amount: input.totalCents,
-          tipAmount: 0,
-          offline: false,
-          employee: onlineEmployeeId ? { id: onlineEmployeeId } : undefined,
-          externalPaymentId: input.externalId ?? input.orderRef ?? orderId,
-        },
-        { headers: cloverHeaders() }
-      );
-      console.log(`[Clover] Applied 'Table' tender to order ${orderId}`);
-    } catch (err) {
-      // Non-fatal — order is still created, just without the tender assignment
-      console.warn(`[Clover] Failed to apply Table tender to order ${orderId}:`, err);
-    }
+  // Step 4: Apply the "Online" tender so the order matches WordPress payment records
+  try {
+    await axios.post(
+      cloverUrl(`/orders/${orderId}/payments`),
+      {
+        tender: { id: CLOVER_ONLINE_TENDER_ID },
+        amount: input.totalCents,
+        tipAmount: 0,
+        offline: false,
+        employee: { id: CLOVER_ONLINE_EMPLOYEE_ID },
+        externalPaymentId: input.externalId ?? input.orderRef ?? orderId,
+      },
+      { headers: cloverHeaders() }
+    );
+    console.log(`[Clover] Applied 'Online' tender to order ${orderId}`);
+  } catch (err) {
+    // Non-fatal — order is still created, just without the tender assignment
+    console.warn(`[Clover] Failed to apply Online tender to order ${orderId}:`, err);
   }
 
   // Log label routing for debugging
@@ -512,8 +447,8 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     .join(", ");
   console.log(
     `[Clover] Order ${orderId} created for ${input.customerName ?? "unknown"} (${orderTypeLabel}). ` +
-    `Employee: ${onlineEmployeeId ?? "none"} | Tender: ${tableTenderId ?? "none"} | ` +
-    `Routing: ${labelSummary}`
+    `Employee: ${CLOVER_ONLINE_EMPLOYEE_ID} | Tender: ${CLOVER_ONLINE_TENDER_ID} | ` +
+    `OrderType: ${CLOVER_ORDER_TYPE_IDS[input.orderType]} | Routing: ${labelSummary}`
   );
 
   // Fire-and-forget owner notification
