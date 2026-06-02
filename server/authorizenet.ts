@@ -309,6 +309,7 @@ const CartItemSchema = z.object({
   quantity: z.number().int().positive(),
   category: z.string().optional(),
   description: z.string().optional(), // modifier/customization details
+  cloverItemId: z.string().optional(), // Clover catalog item ID — enables kitchen printer routing
 });
 
 // ── Router ────────────────────────────────────────────────────────────────────
@@ -420,6 +421,7 @@ export const authorizeNetRouter = router({
             price: i.price,
             quantity: i.quantity,
             description: i.description,
+            cloverItemId: i.cloverItemId,
           })),
           orderType: input.orderType,
           customerName: input.customerName,

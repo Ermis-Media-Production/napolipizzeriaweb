@@ -32,7 +32,7 @@ import { CLOVER_ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
 
 export interface CloverOrderInput {
-  items: Array<{ name: string; price: number; quantity: number; description?: string }>;
+  items: Array<{ name: string; price: number; quantity: number; description?: string; cloverItemId?: string }>;
   orderType: "delivery" | "pickup" | "dine-in";
   customerName?: string;
   customerPhone?: string;
@@ -378,6 +378,13 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
       unitQty: item.quantity,
       printerLabel: { id: printerId },
     };
+
+    // If the item has a Clover catalog ID, include it so Clover can
+    // resolve the catalog entry — this enables automatic printer routing
+    // and ensures the item appears correctly on the kitchen ticket.
+    if (item.cloverItemId) {
+      lineItem.item = { id: item.cloverItemId };
+    }
 
     if (item.description && item.description.trim()) {
       const raw = item.description.trim();

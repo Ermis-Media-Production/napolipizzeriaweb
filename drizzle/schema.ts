@@ -160,6 +160,8 @@ export const orderItems = mysqlTable("orderItems", {
   lineTotal: decimal("lineTotal", { precision: 10, scale: 2 }).notNull(),
   /** Whether this item is a pizza (for capacity tracking) */
   isPizza: boolean("isPizza").default(false).notNull(),
+  /** Clover catalog item ID — enables kitchen printer routing via item.id in bulk_line_items */
+  cloverItemId: varchar("cloverItemId", { length: 64 }),
   /** Item status */
   status: mysqlEnum("status", ["active", "cancelled"]).default("active").notNull(),
   /** Refund amount issued for this item (0 if not refunded) */

@@ -97,6 +97,7 @@ const CartItemInputSchema = z.object({
   price: z.number(),
   quantity: z.number().default(1),
   category: z.string().optional(),
+  cloverItemId: z.string().optional(), // Clover catalog item ID — enables kitchen printer routing
 });
 
 type CartItemInput = z.infer<typeof CartItemInputSchema>;
@@ -348,6 +349,7 @@ export const cloverCheckoutRouter = router({
           quantity: item.quantity ?? 1,
           lineTotal: String(item.price * (item.quantity ?? 1)),
           isPizza,
+          cloverItemId: item.cloverItemId ?? null,
           status: "active",
           refundedAmount: "0",
         });
