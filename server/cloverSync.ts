@@ -209,10 +209,11 @@ export function getPrinterLabel(itemName: string): PrinterLabel {
 
 // ── Clover API helpers ─────────────────────────────────────────────────────────
 
-function cloverHeaders() {
+function cloverHeaders(extra?: Record<string, string>) {
   return {
     Authorization: `Bearer ${CLOVER_ENV.apiToken}`,
     "Content-Type": "application/json",
+    ...extra,
   };
 }
 
@@ -373,7 +374,14 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
   // Step 2: Add all line items with printer label assignments
   // The description field carries modifier/customization details (toppings, crust, sauce, etc.)
   // We format each modifier as a separate line for easy reading by kitchen staff.
-  const lineItems = input.items.map((item) => {
+  // For items with quantity > 1, we expand them into N individual line items.
+  // Using unitQty for standard items causes Clover to display "0.001 @ $X/unit"
+  // because unitQty uses a fixed-point scale of 1000 (only for PER_UNIT items).
+  const expandedItems = input.items.flatMap((item) =>
+    Array.from({ length: item.quantity }, () => ({ ...item, quantity: 1 }))
+  );
+
+  const lineItems = expandedItems.map((item) => {
     const printerLabel = getPrinterLabel(item.name);
     const printerIdMap: Record<PrinterLabel, string> = {
       Pizza:    CLOVER_PRINTER_IDS.PIZZA,
@@ -384,7 +392,8 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     const lineItem: Record<string, unknown> = {
       name: item.name,
       price: Math.round(item.price * 100), // cents
-      unitQty: item.quantity,
+      // unitQty is ONLY for PER_UNIT priced items (e.g. weight-based).
+      // For standard items, quantity is handled by creating N line items.
       printerLabel: { id: printerId },
     };
 
@@ -419,7 +428,7 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
   const createdLineItems: Array<{ id: string }> = bulkResponse.data?.items ?? [];
   const modificationPromises: Promise<unknown>[] = [];
 
-  input.items.forEach((item, idx) => {
+  expandedItems.forEach((item, idx) => {
     const lineItemId = createdLineItems[idx]?.id;
     if (!lineItemId || !item.modifications?.length) return;
 
@@ -432,9 +441,10 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
             .post(
               cloverUrl(`/orders/${orderId}/line_items/${lineItemId}/modifications`),
               {
-                name: mod.name,
+                // Per Clover docs: name must be inside modifier object, not at root.
+                // Root-level name is silently ignored by the API.
+                modifier: { id: mod.cloverModifierId, name: mod.name },
                 amount: mod.amount ?? 0,
-                modifier: { id: mod.cloverModifierId },
               },
               { headers: cloverHeaders() }
             )
@@ -493,7 +503,8 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
       {
         orderRef: { id: orderId },
       },
-      { headers: cloverHeaders() }
+      // User-Agent is required by the print_event endpoint per Clover docs.
+      { headers: cloverHeaders({ "User-Agent": "NapoliPizzeria/1.0" }) }
     );
     console.log(`[Clover] Print event fired for order ${orderId} (no deviceRef — Clover auto-routes to active device with Order Printers)`);
 
@@ -530,7 +541,7 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
   }
 
   // Log label routing for debugging
-  const labelSummary = input.items
+  const labelSummary = expandedItems
     .map((i) => `${i.name} → ${getPrinterLabel(i.name)}`)
     .join(", ");
   console.log(
