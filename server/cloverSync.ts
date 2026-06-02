@@ -20,7 +20,7 @@
  * Merchant configuration (verified via Clover API + WordPress EMP plugin):
  *   - Employee "online"  → DW4J35FH3R9B0
  *   - Tender "Online"    → T416DFP49C7BJ
- *   - Order type Pick up → CYNNEQA3ABD8Y  (default)
+ *   - Order type Pick up → GSGECWKG4KNWC  (default)
  *   - Order type Delivery → KKKWXJB30FE6R
  *   - Order type Dine In → ATSAYYBGKK8B0
  *   - Print Device ID    → 09615cdb-7801-4261-a70d-3bf94816f51a
@@ -69,7 +69,7 @@ export const CLOVER_ONLINE_TENDER_ID = "T416DFP49C7BJ";
  * Verified via GET /v3/merchants/{mId}/order_types
  */
 export const CLOVER_ORDER_TYPE_IDS = {
-  pickup:   "CYNNEQA3ABD8Y", // "Pick up"   — default order type
+  pickup:   "GSGECWKG4KNWC", // "Pick up"   — default order type (verified 2026-06-02)
   delivery: "KKKWXJB30FE6R", // "Delivery"
   "dine-in": "ATSAYYBGKK8B0", // "Dine In"
 } as const;
@@ -81,7 +81,7 @@ export const CLOVER_ORDER_TYPE_IDS = {
  * correct station, which then dispatches to the kitchen printers.
  * Verified: 09615CDB78014261A70D3BF94816F51A (API format without dashes)
  */
-export const CLOVER_PRINT_DEVICE_ID = "09615CDB78014261A70D3BF94816F51A";
+export const CLOVER_PRINT_DEVICE_ID = "09615CDB78014261A70D3BF94816F51A"; // 09615cdb-7801-4261-a70d-3bf94816f51a (verified 2026-06-02)
 
 // ── Printer label mapping ──────────────────────────────────────────────────────
 
