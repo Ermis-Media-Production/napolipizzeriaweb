@@ -403,10 +403,18 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     { headers: cloverHeaders() }
   );
 
-  // Step 3: Fire the print event targeting the Station Duo device.
-  // Including deviceRef ensures Clover routes the ticket to the correct
-  // station (the one with kitchen printers attached), matching the behavior
-  // of the WordPress EMP plugin Auto-Print configuration.
+  // Step 3: Wait 2s for Clover to finish processing the order asynchronously.
+  // Clover processes orders with modifications asynchronously — firing print_event
+  // immediately can race against Clover's internal write: the device receives the
+  // job before the ticket is fully renderable and silently drops it.
+  // (Same guardrail used by the WordPress EMP Clover plugin — confirmed in production.)
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+
+  // Step 4: Fire the print event BEFORE applying the tender.
+  // Clover treats a paid/closed order differently: print_event on a paid order
+  // generates a payment receipt (shows only the first item) instead of a full
+  // kitchen order ticket. Printing while the order is still open guarantees
+  // all line items appear on the printed ticket. (Guardrail R1 — WordPress plugin)
   try {
     await axios.post(
       cloverUrl(`/print_event`),
@@ -428,7 +436,9 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     console.warn(`[Clover] Failed to fire print event for order ${orderId}:`, msg);
   }
 
-  // Step 4: Apply the "Online" tender so the order matches WordPress payment records
+  // Step 5: Apply the "Online" tender AFTER printing.
+  // Applying the tender closes/pays the order — Clover then treats any subsequent
+  // print_event as a payment receipt instead of a kitchen ticket.
   try {
     await axios.post(
       cloverUrl(`/orders/${orderId}/payments`),
