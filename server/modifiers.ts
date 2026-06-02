@@ -253,6 +253,41 @@ export const modifiersRouter = router({
   // ── Item ↔ Modifier Group Assignments ────────────────────────────────────
 
   /**
+   * Get the three pizza modifier groups (Crust, Cut, Toppings) with all their options.
+   * Public — used by PizzaCustomizerModal to replace hardcoded lists.
+   * Keyed by role: { crust, cut, toppings }
+   */
+  listPizzaModifiers: publicProcedure.query(async () => {
+    const db = await requireDb();
+    const CRUST_CLOVER_ID = "VMHY08WAQHZ5J";
+    const CUT_CLOVER_ID = "X25FH8C1XGABW";
+    const TOPPINGS_CLOVER_ID = "ZBQA3B76GD2RY";
+
+    const groups = await db
+      .select()
+      .from(modifierGroups)
+      .orderBy(asc(modifierGroups.sortOrder));
+
+    const crustGroup = groups.find((g) => g.cloverGroupId === CRUST_CLOVER_ID) ?? null;
+    const cutGroup = groups.find((g) => g.cloverGroupId === CUT_CLOVER_ID) ?? null;
+    const toppingsGroup = groups.find((g) => g.cloverGroupId === TOPPINGS_CLOVER_ID) ?? null;
+
+    const allOptions = await db
+      .select()
+      .from(modifierOptions)
+      .orderBy(asc(modifierOptions.sortOrder));
+
+    const optsFor = (groupId: number | undefined) =>
+      groupId ? allOptions.filter((o) => o.groupId === groupId) : [];
+
+    return {
+      crust: crustGroup ? { ...crustGroup, options: optsFor(crustGroup.id) } : null,
+      cut: cutGroup ? { ...cutGroup, options: optsFor(cutGroup.id) } : null,
+      toppings: toppingsGroup ? { ...toppingsGroup, options: optsFor(toppingsGroup.id) } : null,
+    };
+  }),
+
+  /**
    * List all modifier groups assigned to a specific menu item.
    * Public — used by the ordering flow.
    */

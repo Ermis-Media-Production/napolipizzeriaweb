@@ -393,6 +393,35 @@ export default function CartDrawer() {
     },
   });
 
+  // Test Order mutation — offline mode, bypasses payment, calls Clover directly
+  const placeTestOrder = trpc.testOrder.placeTestOrder.useMutation({
+    onSuccess: (data) => {
+      clearCart();
+      closeCart();
+      navigate(`/order-success?payment=test&transaction_id=${data.cloverOrderId}&amount=${(data.totalCents / 100).toFixed(2)}&order_type=${buildOrderPayload().payload.orderType}&customer=${encodeURIComponent(buildOrderPayload().payload.customerName)}`);
+    },
+    onError: (err) => {
+      toast.error(`Test order failed: ${err.message}`);
+    },
+  });
+
+  const handleTestOrder = () => {
+    const { payload } = buildOrderPayload();
+    placeTestOrder.mutate({
+      items: items.map((i) => ({
+        name: i.name,
+        price: i.price,
+        quantity: i.quantity,
+        description: i.description,
+        cloverItemId: i.cloverItemId,
+        modifications: i.modifications,
+      })),
+      orderType: payload.orderType,
+      customerName: payload.customerName,
+      customerPhone: payload.customerPhone ?? "+17025550000",
+    });
+  };
+
   // Pay by Link mutation — generates Authorize.net hosted payment URL and sends via SMS
   const sendPayByLink = trpc.authnet.sendPayByLink.useMutation({
     onSuccess: (data) => {
@@ -1255,6 +1284,36 @@ export default function CartDrawer() {
                 <Loader2 size={24} className="animate-spin" style={{ color: "var(--napoli-red)" }} />
                 <p className="text-xs text-center" style={{ color: "oklch(0.50 0.03 30)" }}>
                   Loading payment system...
+                </p>
+              </div>
+            )}
+
+            {/* ── TEST ORDER BUTTON (dev/staging only) ────────────────────── */}
+            {import.meta.env.DEV && (
+              <div className="mt-6 pt-4 border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
+                <p className="text-xs font-semibold mb-2 text-center" style={{ color: "oklch(0.55 0.12 140)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
+                  🧪 DEV MODE — OFFLINE TEST
+                </p>
+                <button
+                  onClick={handleTestOrder}
+                  disabled={placeTestOrder.isPending}
+                  className="w-full py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2"
+                  style={{
+                    background: placeTestOrder.isPending ? "oklch(0.75 0.12 140)" : "oklch(0.55 0.18 140)",
+                    color: "white",
+                    fontFamily: "'Oswald', sans-serif",
+                    letterSpacing: "0.08em",
+                    cursor: placeTestOrder.isPending ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {placeTestOrder.isPending ? (
+                    <><Loader2 size={16} className="animate-spin" /> SENDING TO CLOVER...</>
+                  ) : (
+                    "🖨️ TEST PRINT — SKIP PAYMENT"
+                  )}
+                </button>
+                <p className="text-xs text-center mt-1" style={{ color: "oklch(0.55 0.03 30)" }}>
+                  Sends order directly to Clover without charging a card
                 </p>
               </div>
             )}
