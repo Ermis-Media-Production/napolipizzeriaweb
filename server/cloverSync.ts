@@ -346,7 +346,7 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
   const orderRes = await axios.post(
     cloverUrl("/orders"),
     {
-      state: "open",
+      state: "Open",
       currency: "USD",
       total: input.totalCents,
       title: reportTitle,
