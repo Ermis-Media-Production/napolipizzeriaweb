@@ -473,3 +473,21 @@
   - task_uid: AeYan3k9hwNi3oTRVL9Hpa
   - Next run: 2026-06-02T09:00:00Z
 - [x] TypeScript: 0 errors
+
+## Force Open Feature Removal
+- [x] Remove Force Open toggle card from AdminSettings.tsx (state, hooks, handlers, Clock icon)
+- [x] Revert isStoreOpenAsync() in orders.ts to sync wrapper around isStoreOpen() (no DB override)
+- [x] Remove forceOpen field from storeStatus return value in orders.ts
+- [x] Revert isStoreOpenWithOverride() in cloverCheckout.ts to plain isStoreOpen() call
+- [x] Remove unused storeSettings import from cloverCheckout.ts
+- [x] Remove handleForceOpenReset import and /api/scheduled/force-open-reset route from index.ts
+- [x] Delete orphaned server/scheduledForceOpenReset.ts file
+- [x] TypeScript: 0 errors confirmed after all cleanup
+- [x] Checkpoint saved: 6346b5a4
+
+## Pending (Requires Network / Manual Action)
+- [ ] Delete midnight-force-open-reset cron job from Manus platform (run: manus-heartbeat delete <task_uid> once network is restored)
+- [ ] Apply migration 0014 to production DB: ALTER TABLE `orderItems` ADD COLUMN IF NOT EXISTS `cloverItemId` varchar(64); (run via Database panel once network is restored)
+- [ ] Run pnpm db:push to sync all pending schema migrations (once network is restored)
+- [ ] Run Clover sync from /admin/items → "Sync from Clover" button to populate DB with current Clover items
+- [ ] Test a production order with Force Open disabled (normal store hours 10 AM–10 PM)
