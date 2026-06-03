@@ -12,6 +12,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { translateItem, translateCategory } from "@/lib/napoliTranslations";
 import { toast } from "sonner";
 import NapoliNavbar from "@/components/NapoliNavbar";
+import MenuLightbox, { type LightboxItem } from "@/components/MenuLightbox";
 import NapoliFooter from "@/components/NapoliFooter";
 import WingsCustomizerModal, { type WingsSelection } from "@/components/WingsCustomizerModal";
 import PizzaCustomizerModal, { type PizzaSelection } from "@/components/PizzaCustomizerModal";
@@ -878,6 +879,7 @@ function CloverSyncedItems({ addItem }: { addItem: (item: { id: string; name: st
     { includeUnavailable: false },
     { staleTime: 5 * 60 * 1000 }
   );
+  const [lightboxState, setLightboxState] = useState<{ items: LightboxItem[]; index: number } | null>(null);
 
   if (isLoading || !items || items.length === 0) return null;
 
@@ -891,8 +893,25 @@ function CloverSyncedItems({ addItem }: { addItem: (item: { id: string; name: st
 
   return (
     <>
+      {lightboxState && (
+        <MenuLightbox
+          items={lightboxState.items}
+          currentIndex={lightboxState.index}
+          onClose={() => setLightboxState(null)}
+          onNavigate={(i) => setLightboxState((s) => s ? { ...s, index: i } : null)}
+        />
+      )}
       {Object.entries(grouped).map(([cat, catItems]) => {
         const meta = CATEGORY_META[cat] ?? { label: cat.charAt(0).toUpperCase() + cat.slice(1), emoji: "🍽️" };
+        // Build lightbox items for this category section
+        const sectionLightboxItems: LightboxItem[] = catItems.map((ci) => ({
+          cloverId: ci.cloverItemId ?? ci.id.toString(),
+          name: ci.name,
+          imageUrl: ci.imageUrl,
+          customImageUrl: null,
+          price: Math.round(parseFloat(ci.price) * 100),
+          description: ci.description,
+        }));
         return (
           <React.Fragment key={cat}>
             <div
@@ -909,17 +928,26 @@ function CloverSyncedItems({ addItem }: { addItem: (item: { id: string; name: st
               style={{ borderColor: "oklch(0.88 0.015 80)" }}
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
-                {catItems.map((item) => {
+                {catItems.map((item, itemIdx) => {
                   const price = parseFloat(item.price);
+                  const hasPhoto = !!item.imageUrl;
                   return (
                     <div
                       key={item.id}
                       className="napoli-menu-item flex items-center gap-3 px-4 py-3 border-b border-r"
                       style={{ borderColor: "oklch(0.93 0.012 80)" }}
                     >
-                      {item.imageUrl ? (
-                        <div className="shrink-0 rounded overflow-hidden" style={{ width: 56, height: 56 }}>
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                      {hasPhoto ? (
+                        <div
+                          className="shrink-0 rounded overflow-hidden relative group cursor-zoom-in"
+                          style={{ width: 56, height: 56 }}
+                          onClick={() => setLightboxState({ items: sectionLightboxItems, index: itemIdx })}
+                          title="Click to enlarge"
+                        >
+                          <img src={item.imageUrl!} alt={item.name} className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105" loading="lazy" />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ background: "rgba(0,0,0,0.35)" }}>
+                            <ZoomIn size={16} color="white" />
+                          </div>
                         </div>
                       ) : (
                         <span className="text-2xl shrink-0">{meta.emoji}</span>
