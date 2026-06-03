@@ -536,3 +536,9 @@
 - [x] Update BurgerCustomizerModal to resolve cloverItemId from DB before adding to cart
 - [x] Update SubsCustomizerModal, WrapCustomizerModal to resolve cloverItemId from DB
 - [x] Verify order payload sent to Clover includes correct cloverItemId for all wizard-created items
+
+## Appetizer Photo Generation
+
+- [x] Generate AI food photos for all appetizer items missing real photos (mozzarella sticks, bread sticks, cheese bread sticks, cheese garlic bread, chicken quesadilla, chilli cheese fries, curly fries, curly cheese fries w/ bacon, french fries, garlic balls, jalapeño poppers, napoli combo platter, onion rings, zucchini sticks, breaded mushrooms)
+- [x] Update napoliPhotos.ts with all new AI-generated CloudFront CDN URLs for both canonical names and DB name aliases
+- [x] TypeScript: 0 errors
