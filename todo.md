@@ -512,3 +512,9 @@
 - [x] Implement handleAdd routing: pizza→PizzaCustomizerModal, wings→WingsCustomizerModal, burger→BurgerCustomizerModal, wrap→WrapCustomizerModal, subs→SubsCustomizerModal, appetizer→AppetizersCustomizerModal, salad→SaladsCustomizerModal, pasta→PastaCustomizerModal, special→SpecialCustomizerModal, lunch→LunchCustomizerModal
 - [x] Update CloverSyncedItems button to show "Order" label for customizer items
 - [x] Pass all customizer callbacks from Menu to CloverSyncedItems
+
+## Pizza Category Redesign — Step-by-Step Wizard
+- [x] Redesign PizzaCustomizerModal: Step 1 = choose pizza type, Step 2 = size, Step 3 = whole/half&half, Step 4 = extra toppings, Step 5 = cut style
+- [x] Show included toppings for specialty pizzas in Step 4 (fixed green chips, non-removable)
+- [x] Update pizza category in Menu.tsx to show single "Build My Pizza" entry point with specialty shortcuts
+- [x] Specialty pizzas use Plain Cheese base pricing (same NY style dough); toppings priced by size

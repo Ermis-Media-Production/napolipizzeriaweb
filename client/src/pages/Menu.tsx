@@ -691,6 +691,7 @@ interface CloverSyncedItemsProps {
   onPastaCustomize: (trigger: PastaModalTrigger) => void;
   onSpecialCustomize: (num: number) => void;
   onLunchCustomize: (item: LunchItem) => void;
+  onGlutenFreeOpen: () => void;
 }
 
 const LUNCH_NEEDS_CUSTOMIZER = new Set([2, 3, 4, 6, 9, 13, 16, 19, 24]);
@@ -708,6 +709,7 @@ function CloverSyncedItems({
   onPastaCustomize,
   onSpecialCustomize,
   onLunchCustomize,
+  onGlutenFreeOpen,
 }: CloverSyncedItemsProps) {
   const { data: items, isLoading } = trpc.menuItems.list.useQuery(
     { includeUnavailable: false },
@@ -821,7 +823,65 @@ function CloverSyncedItems({
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
+              {/* ── Pizza category: single entry point ── */}
+              {cat === "pizza" && (
+                <div className="px-5 py-6 flex flex-col gap-4">
+                  {/* Hero CTA */}
+                  <div
+                    className="flex flex-col sm:flex-row items-center gap-4 p-5 rounded-xl"
+                    style={{ background: "linear-gradient(135deg, oklch(0.97 0.04 27) 0%, oklch(0.99 0.015 80) 100%)", border: "2px solid var(--napoli-red)" }}
+                  >
+                    <div className="text-5xl">🍕</div>
+                    <div className="flex-1 text-center sm:text-left">
+                      <h3 className="text-lg font-bold" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>Hand Tossed New York Style</h3>
+                      <p className="text-sm mt-0.5" style={{ color: "oklch(0.45 0.03 30)", fontFamily: "'Lato', sans-serif" }}>Choose your pizza, size, toppings & cut — step by step</p>
+                      <p className="text-xs mt-1" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>Sizes: 10" · 14" · 16" · 18" · 24" · 28" · 30" · 36" · Gluten Free 14"</p>
+                    </div>
+                    <button
+                      onClick={() => onPizzaCustomize({ isSpecialty: false, freeToppings: 0, allowHalfAndHalf: true })}
+                      className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-95 hover:opacity-90 shrink-0"
+                      style={{ background: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}
+                    >
+                      <span className="text-base">🍕</span> Build My Pizza
+                    </button>
+                  </div>
+
+                  {/* Quick specialty shortcuts */}
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>Popular Specialties — tap to start</p>
+                    <div className="flex flex-wrap gap-2">
+                      {["BBQ Chicken", "Buffalo Chicken", "Supreme", "Meat Lover", "Vegetarian", "3 Cheese", "Italian", "Taco", "Greek", "White Pizza", "Ranch", "Pesto Chicken"].map((name) => (
+                        <button
+                          key={name}
+                          onClick={() => onPizzaCustomize({ pizzaName: name, isSpecialty: true, freeToppings: 0, allowHalfAndHalf: true })}
+                          className="px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all active:scale-95 hover:border-red-600 hover:text-red-700"
+                          style={{ borderColor: "oklch(0.82 0.015 80)", color: "oklch(0.35 0.04 30)", background: "white", fontFamily: "'Lato', sans-serif" }}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Gluten Free shortcut */}
+                  <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: "oklch(0.96 0.06 145 / 0.20)", border: "1px solid oklch(0.80 0.10 145)" }}>
+                    <span className="text-xl">🌾</span>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold" style={{ color: "var(--napoli-green)", fontFamily: "'Oswald', sans-serif" }}>Gluten Free Pizza — 14"</p>
+                      <p className="text-xs" style={{ color: "oklch(0.45 0.03 30)", fontFamily: "'Lato', sans-serif" }}>$12.75 base · +$2.75/topping</p>
+                    </div>
+                    <button
+                      onClick={() => onGlutenFreeOpen()}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95"
+                      style={{ background: "var(--napoli-green)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+                    >
+                      Order
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)", display: cat === "pizza" ? "none" : undefined }}>
                 {catItems.map((item, itemIdx) => {
                   const price = parseFloat(item.price);
                   const photo = item.imageUrl ?? (cat === "burger" ? getBurgerPhoto(item.name) : getMenuPhoto(item.name));
@@ -1227,6 +1287,7 @@ export default function Menu() {
           onPastaCustomize={(trigger) => setPastaModalTrigger(trigger)}
           onSpecialCustomize={(num) => setSpecialNum(num)}
           onLunchCustomize={(item) => setLunchItem(item)}
+          onGlutenFreeOpen={() => setGlutenFreeModalOpen(true)}
         />
 
       </div>
