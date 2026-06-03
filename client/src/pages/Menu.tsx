@@ -897,27 +897,52 @@ function CloverSyncedItems({
                     </div>
                   </div>
 
-                  {/* 3 type cards */}
+                  {/* 3 type cards with real photos */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {([
-                      { type: "Bone-In" as const, label: "Wings", emoji: "🍗", desc: "Classic bone-in · 6pc–80pc", from: "From $11.49" },
-                      { type: "Boneless" as const, label: "Boneless Wings", emoji: "🍖", desc: "All-meat bites · 6pc–80pc", from: "From $9.49" },
-                      { type: "Chicken Fingers" as const, label: "Tenders", emoji: "🍤", desc: "Hand-breaded · 5pc–80pc", from: "From $13.49" },
-                    ] as const).map(({ type, label, emoji, desc, from }) => (
+                      {
+                        type: "Bone-In" as const,
+                        label: "Wings",
+                        photo: "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/wings-bone-in-cy6LNXxUdyyo3uqGtCMzw9.webp",
+                        desc: "Classic bone-in · 6pc–80pc",
+                        from: "From $11.49",
+                      },
+                      {
+                        type: "Boneless" as const,
+                        label: "Boneless Wings",
+                        photo: "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/wings-boneless-MW4NGfxaXKRPobsxPdZaWs.webp",
+                        desc: "All-meat bites · 6pc–80pc",
+                        from: "From $9.49",
+                      },
+                      {
+                        type: "Chicken Fingers" as const,
+                        label: "Tenders",
+                        photo: "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/wings-tenders-ez4oQGRwZw7V4Fe4Wvo3Jt.webp",
+                        desc: "Hand-breaded · 5pc–80pc",
+                        from: "From $13.49",
+                      },
+                    ] as const).map(({ type, label, photo, desc, from }) => (
                       <button
                         key={type}
                         onClick={() => onWingsCustomize({ type, qty: "6pc", basePrice: 0, friesAddonPrice: 2 })}
-                        className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all active:scale-[0.98] hover:border-red-600"
+                        className="flex flex-col rounded-xl border-2 overflow-hidden transition-all active:scale-[0.98] hover:border-red-600 text-left"
                         style={{ borderColor: "oklch(0.88 0.015 80)", background: "white" }}
                       >
-                        <span className="text-3xl">{emoji}</span>
-                        <div className="text-center">
-                          <div className="text-sm font-bold" style={{ color: "oklch(0.25 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>{label}</div>
+                        {/* Photo */}
+                        <div className="relative w-full" style={{ height: "110px" }}>
+                          <img src={photo} alt={label} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+                          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.55) 100%)" }} />
+                          <div className="absolute bottom-0 left-0 px-3 pb-2">
+                            <span className="text-white font-bold text-sm napoli-label tracking-wide drop-shadow">{label}</span>
+                          </div>
+                        </div>
+                        {/* Info */}
+                        <div className="flex flex-col gap-1 px-3 py-2.5 flex-1">
                           <div className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>{desc}</div>
-                          <div className="text-xs font-bold mt-1" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>{from}</div>
+                          <div className="text-xs font-bold" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>{from}</div>
                         </div>
                         <div
-                          className="w-full py-1.5 rounded-lg text-xs font-bold text-center transition-all"
+                          className="w-full py-2 text-xs font-bold text-center transition-all"
                           style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
                         >
                           Order

@@ -1,10 +1,10 @@
 /**
  * testPrint.mjs
  *
- * Sends 3 test orders to Clover POS to verify how modifiers appear on kitchen printer tickets.
+ * Sends test orders to Clover POS to verify how modifiers appear on kitchen printer tickets.
  * Modifiers are sent as separate $0 line items (not in the note field).
  *
- * Run: node server/testPrint.mjs
+ * Run from cloud VM: node testPrint.mjs
  */
 
 import "dotenv/config";
@@ -38,8 +38,8 @@ const PRINTER_FOOD      = "MCWCF8204E7QM";
 const PRINTER_PIZZERIA  = "WBSHK4762NS76";
 
 // ── Routing logic (mirrors cloverSync.ts) ─────────────────────────────────────
-const PIZZA_KW = ["pizza","calzone","stromboli","chicago deep dish","sicilian","stuffed chicago","nutella pizza","half & half","4 topp combo","stuffed dough","gluten free pizza","gluten-free pizza"];
-const PIZZA_SPECIAL_NAMES = new Set(["bbq chicken","buffalo chicken","3 cheese","chicken alfredo","deluxe","greek","italian","meat lover","mexican style","napoli's special","pesto chicken","ranch","southwestern chicken","supreme","taco","vegetarian","white pizza"]);
+const PIZZA_KW = ["pizza","calzone","stromboli","chicago deep dish","sicilian","stuffed chicago","nutella pizza","4 topp combo","stuffed dough","gluten free pizza","gluten-free pizza"];
+const PIZZA_SPECIAL_NAMES = new Set(["bbq chicken","buffalo chicken","3 cheese","chicken alfredo","deluxe","greek","italian","meat lover","mexican style","napoli's special","pesto chicken","ranch","southwestern chicken","supreme","taco","vegetarian","white pizza","hawaiian"]);
 const DESSERT_KW = ["zeppoli","red velvet cake","eclair","brownie","cannoli","baklava","cheesecake","tiramisu","chocolate cake","carrot cake","dessert"];
 const BEV_KW = ["soda can","glass bottle soda","perrier","bottled water","2 liter","iced tea","root beer float","milkshake","frozen custard","wine","beer","juice","lemonade","water","beverage","drink","coffee","espresso","cappuccino"];
 const PIZZA_SIZE_SUFFIX = /\s*\(\d{1,2}["]\)\s*$/;
@@ -58,10 +58,9 @@ const PRINTER_IDS = { Pizza: PRINTER_PIZZA, Food: PRINTER_FOOD, Pizzeria: PRINTE
 function parseModifiers(description) {
   return description
     .trim()
-    .split(/ · |\n|\|/)
+    .split(" · ")
     .map(s => s.trim())
-    .filter(Boolean)
-    .map(s => s.replace(/(Half & Half)/gi, "*** $1 ***"));
+    .filter(Boolean);
 }
 
 function buildLineItems(items) {
@@ -77,11 +76,13 @@ function buildLineItems(items) {
     });
     if (item.description && item.description.trim()) {
       for (const mod of parseModifiers(item.description)) {
+        // Modifiers inherit the parent item's printerId — do NOT re-calculate
+        // from the modifier name (it won't contain the pizza name).
         lineItems.push({
           name: `  - ${mod}`,
           price: 0,
           unitQty: 1,
-          printerLabel: { id: printerId },
+          printerLabel: { id: printerId }, // same as parent
         });
       }
     }
@@ -91,7 +92,7 @@ function buildLineItems(items) {
 
 // ── Helper: create order + add items + fire print ─────────────────────────────
 async function sendTestOrder({ title, note, items, totalCents }) {
-  console.log(`\n──────────────────────────────────────────`);
+  console.log(`\n${"─".repeat(60)}`);
   console.log(`📋  Creating order: "${title}"`);
 
   const lineItems = buildLineItems(items);
@@ -100,7 +101,8 @@ async function sendTestOrder({ title, note, items, totalCents }) {
   console.log(`\n   Kitchen ticket preview:`);
   lineItems.forEach(li => {
     const priceStr = li.price > 0 ? `  $${(li.price/100).toFixed(2)}` : "";
-    console.log(`   ${li.name}${priceStr}`);
+    const label = getPrinterLabel(li.name);
+    console.log(`   [${label}] ${li.name}${priceStr}`);
   });
   console.log("");
 
@@ -129,7 +131,7 @@ async function sendTestOrder({ title, note, items, totalCents }) {
     { items: lineItems },
     { headers: HEADERS }
   );
-  console.log(`✅  ${lineItems.length} line item(s) added (${items.length} parent + ${lineItems.length - items.length} modifier rows)`);
+  console.log(`✅  ${lineItems.length} line item(s) added`);
 
   // 3. Fire print event
   try {
@@ -183,66 +185,65 @@ async function sendTestOrder({ title, note, items, totalCents }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TEST ORDER 1 — BURGER with full modifiers
+// TEST ORDER 1 — WHOLE PIZZA: Napoli's Special 16" with extra toppings
+// Description format: Size → Whole + included toppings → extras → Cut
 // ─────────────────────────────────────────────────────────────────────────────
 await sendTestOrder({
-  title: "TEST — Burger",
-  note: "Customer: Test Print | Phone: 555-0001",
-  totalCents: 1799,
+  title: "TEST — Whole Pizza (Napoli's Special 16\")",
+  note: "⚠️ TEST ORDER — PLEASE DISCARD",
+  totalCents: 2499,
   items: [
     {
-      name: "Napoli's 1000 Island",
-      price: 14.99,
-      qty: 1,
-      description: "Size: Full lb · Bread: Regular Bun · Sauce: 1000 Island · Sauce: Mustard · Extra: Cheese +$1 · Extra: Bacon +$1 · Remove: No Onion · Remove: No Pickles · ⚠ Allergy: Nut allergy",
-    },
-    {
-      name: "French Fries",
-      price: 2.99,
-      qty: 1,
-      description: "",
-    },
-  ],
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TEST ORDER 2 — PIZZA with toppings, crust, cut, and Half & Half
-// ─────────────────────────────────────────────────────────────────────────────
-await sendTestOrder({
-  title: "TEST — Pizza",
-  note: "Customer: Test Print | Phone: 555-0002",
-  totalCents: 2999,
-  items: [
-    {
-      name: "Napoli's Special (16\")",
+      name: "Napoli's Special Pizza (16\")",
       price: 24.99,
       qty: 1,
-      description: "Half & Half · LEFT: Napoli's Special (Pepperoni, Bacon, Black Olives, Feta) · RIGHT: BBQ Chicken (Chicken, Red Onions, Spice Honey BBQ Sauce) · Extra: Jalapeños +$3 · Size: 16\" · Crust: Stuffed · Cut: Square Cut · Notes: Extra crispy",
-    },
-    {
-      name: "Soda Can",
-      price: 2.00,
-      qty: 2,
-      description: "Flavor: Coke",
+      description: [
+        "Size: 16\"",
+        "Whole: Napoli's Special",
+        "  Included: Pepperoni",
+        "  Included: Bacon",
+        "  Included: Black Olives",
+        "  Included: Feta",
+        "  Extra: Jalapeños",
+        "  Extra: Mushrooms",
+        "Cut: Square Cut",
+      ].join(" · "),
     },
   ],
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TEST ORDER 3 — WINGS with sauce and half & half
+// TEST ORDER 2 — HALF & HALF PIZZA: BBQ Chicken / Buffalo Chicken 16"
+// Description format: Size → *** Half & Half *** → 1st Half + toppings → 2nd Half + toppings → Cut
 // ─────────────────────────────────────────────────────────────────────────────
 await sendTestOrder({
-  title: "TEST — Wings",
-  note: "Customer: Test Print | Phone: 555-0003",
-  totalCents: 1999,
+  title: "TEST — Half & Half Pizza (BBQ Chicken / Buffalo Chicken 16\")",
+  note: "⚠️ TEST ORDER — PLEASE DISCARD",
+  totalCents: 2799,
   items: [
     {
-      name: "Wings (20pc)",
-      price: 19.99,
+      name: "BBQ Chicken Pizza (16\")",
+      price: 27.99,
       qty: 1,
-      description: "Half & Half · HALF 1 (10pc): Buffalo Hot · HALF 2 (10pc): Garlic Parmesan · Side: Blue Cheese · Side: Ranch · Notes: Extra sauce on side",
+      description: [
+        "Size: 16\"",
+        "*** Half & Half ***",
+        "1st Half: BBQ Chicken",
+        "  Included: Chicken",
+        "  Included: Red Onions",
+        "  Included: Spicy Honey BBQ Sauce",
+        "  Extra: Jalapeños",
+        "2nd Half: Buffalo Chicken",
+        "  Included: Chicken",
+        "  Included: Mozzarella",
+        "  Included: Buffalo Sauce",
+        "  Included: Ranch Sauce",
+        "  Extra: Mushrooms",
+        "Cut: Triangle Cut",
+        "Note: Extra crispy please",
+      ].join(" · "),
     },
   ],
 });
 
-console.log("\n✅  All 3 test orders sent to Clover. Check the kitchen printers!");
+console.log("\n\n✅  Both test pizza orders sent to Clover. Check the kitchen printers!");

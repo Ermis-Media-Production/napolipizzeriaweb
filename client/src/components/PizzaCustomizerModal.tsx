@@ -278,22 +278,49 @@ function PizzaWizard({ selection, onClose }: { selection: PizzaSelection; onClos
     const cutLabel = CUT_OPTIONS.find((c) => c.id === selectedCut)?.label ?? selectedCut;
     const lines: string[] = [];
 
+    // ── 1. Size ──────────────────────────────────────────────────────────────
     lines.push(`Size: ${selectedSize}`);
+
+    // ── 2. Whole or Half & Half, with included toppings per side ─────────────
+    if (halfAndHalf) {
+      lines.push("*** Half & Half ***");
+
+      // 1st half — pizza name + included toppings
+      lines.push(`1st Half: ${selectedPizzaName}`);
+      for (const t of includedToppings) {
+        lines.push(`  Included: ${t}`);
+      }
+      // 1st half extra toppings
+      for (const t of firstHalfExtras) {
+        lines.push(`  Extra: ${t}`);
+      }
+
+      // 2nd half — same pizza (only extras differ in current flow)
+      lines.push(`2nd Half: ${selectedPizzaName}`);
+      for (const t of includedToppings) {
+        lines.push(`  Included: ${t}`);
+      }
+      // 2nd half extra toppings
+      for (const t of secondHalfExtras) {
+        lines.push(`  Extra: ${t}`);
+      }
+    } else {
+      // Whole pizza — included toppings
+      lines.push(`Whole: ${selectedPizzaName}`);
+      for (const t of includedToppings) {
+        lines.push(`  Included: ${t}`);
+      }
+      if (freeCount > 0) lines.push(`  (${freeCount} toppings included in price)`);
+      // Extra toppings for whole pizza
+      for (const t of extraToppings) {
+        lines.push(`  Extra: ${t}`);
+      }
+    }
+
+    // ── 3. Cut style ─────────────────────────────────────────────────────────
     lines.push(`Cut: ${cutLabel}`);
 
-    if (includedToppings.length > 0) {
-      lines.push(`Included: ${includedToppings.join(", ")}`);
-    }
-
-    if (halfAndHalf) {
-      const f = firstHalfExtras.length > 0 ? firstHalfExtras.join(", ") : "No extras";
-      const s = secondHalfExtras.length > 0 ? secondHalfExtras.join(", ") : "No extras";
-      lines.push(`Half & Half — 1st: ${f} | 2nd: ${s}`);
-    } else if (extraToppings.length > 0) {
-      lines.push(`Extra toppings: ${extraToppings.join(", ")}`);
-    }
-
-    if (freeCount > 0) lines.push(`(${freeCount} toppings included in price)`);
+    // ── 4. Special notes ─────────────────────────────────────────────────────
     if (notes.trim()) lines.push(`Note: ${notes.trim()}`);
 
     // Resolve the Clover catalog ID for this specific pizza + size combination

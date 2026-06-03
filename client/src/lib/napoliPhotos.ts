@@ -95,8 +95,11 @@ export const MENU_PHOTOS: Record<string, string> = {
   "Steak":                          C + "RXECXK4BDTJ6Y.jpeg",
 
   // ── WINGS ────────────────────────────────────────────────────
-  "Wings":                          C + "KQXZYE71T0EME.jpeg",
-  "Chicken Fingers":                C + "7BKS32E6KM95R.jpeg",
+  "Wings":                          "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/wings-bone-in-cy6LNXxUdyyo3uqGtCMzw9.webp",
+  "Boneless Wings":                 "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/wings-boneless-MW4NGfxaXKRPobsxPdZaWs.webp",
+  "Chicken Fingers":                "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/wings-tenders-ez4oQGRwZw7V4Fe4Wvo3Jt.webp",
+  "Chicken Tenders":                "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/wings-tenders-ez4oQGRwZw7V4Fe4Wvo3Jt.webp",
+  "Tenders":                        "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/wings-tenders-ez4oQGRwZw7V4Fe4Wvo3Jt.webp",
 
   // ── PASTA ────────────────────────────────────────────────────
   "Spaghetti & Meatballs":          S + "napoli_pasta_spaghetti_meatballs_f1a0f637.jpg",
