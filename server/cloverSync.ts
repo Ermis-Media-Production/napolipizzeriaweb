@@ -113,6 +113,7 @@ type PrinterLabel = (typeof CLOVER_PRINTER_LABELS)[keyof typeof CLOVER_PRINTER_L
  * Keywords that identify pizza-station items (case-insensitive).
  */
 const PIZZA_KEYWORDS = [
+  // Generic pizza words
   "pizza",
   "calzone",
   "stromboli",
@@ -126,6 +127,33 @@ const PIZZA_KEYWORDS = [
   "gluten free pizza",
   "gluten-free pizza",
 ];
+
+/**
+ * Pizza Special names from the menu that do NOT contain the word "pizza".
+ * Matched as exact full names (case-insensitive) to avoid false positives
+ * on items like "Greek Salad", "Ranch Dressing", "Italian Sub", etc.
+ * The name must end with a pizza size suffix like (10"), (14"), (16"), (18"),
+ * (24"), (28"), (30"), (36") — OR match one of these exact base names.
+ */
+const PIZZA_SPECIAL_NAMES = new Set([
+  "bbq chicken",
+  "buffalo chicken",
+  "3 cheese",
+  "chicken alfredo",
+  "deluxe",
+  "greek",
+  "italian",
+  "meat lover",
+  "mexican style",
+  "napoli's special",
+  "pesto chicken",
+  "ranch",
+  "southwestern chicken",
+  "supreme",
+  "taco",
+  "vegetarian",
+  "white pizza",
+]);
 
 /**
  * Keywords that identify dessert items → Pizzeria printer (TM-U220).
@@ -173,15 +201,26 @@ const BEVERAGE_KEYWORDS = [
  * Determine which Clover printer label an item should be routed to.
  *
  * Rules (evaluated in order):
- *   1. PIZZA_KEYWORDS match   → "Pizza"    (Star TSP100, pizza station)
- *   2. DESSERT_KEYWORDS match → "Pizzeria" (TM-U220, desserts/beverages)
- *   3. BEVERAGE_KEYWORDS match → "Pizzeria" (TM-U220, desserts/beverages)
- *   4. Everything else         → "Food"    (Star TSP100, hot food station)
+ *   1. PIZZA_KEYWORDS match          → "Pizza"    (Star TSP100, pizza station)
+ *   2. PIZZA_SPECIAL_NAMES match     → "Pizza"    (special pizzas without "pizza" in name)
+ *      - Exact base name match (e.g. "Napoli's Special"), OR
+ *      - Base name + size suffix, e.g. "Napoli's Special (16")" or "BBQ Chicken (24\")"
+ *   3. DESSERT_KEYWORDS match        → "Pizzeria" (TM-U220, desserts/beverages)
+ *   4. BEVERAGE_KEYWORDS match       → "Pizzeria" (TM-U220, desserts/beverages)
+ *   5. Everything else               → "Food"    (Star TSP100, hot food station)
  */
 export function getPrinterLabel(itemName: string): PrinterLabel {
   const lower = itemName.toLowerCase();
 
   if (PIZZA_KEYWORDS.some((kw) => lower.includes(kw))) {
+    return CLOVER_PRINTER_LABELS.PIZZA;
+  }
+
+  // Match pizza specials: either exact name or name + size suffix like (10"), (16"), (28"), etc.
+  // Strip trailing size suffix before checking the set, so "Napoli's Special (16")" → "napoli's special".
+  const PIZZA_SIZE_SUFFIX = /\s*\(\d{1,2}["\u201d]\)\s*$/;
+  const baseName = lower.replace(PIZZA_SIZE_SUFFIX, "").trim();
+  if (PIZZA_SPECIAL_NAMES.has(baseName)) {
     return CLOVER_PRINTER_LABELS.PIZZA;
   }
 
@@ -361,10 +400,30 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
 
   const orderId: string = orderRes.data.id;
 
-  // Step 2: Add all line items with printer label assignments
-  // The description field carries modifier/customization details (toppings, crust, sauce, etc.)
-  // We format each modifier as a separate line for easy reading by kitchen staff.
-  const lineItems = input.items.map((item) => {
+  // Step 2: Add all line items with printer label assignments.
+  // Modifiers (toppings, crust, sauce, size, extras, notes) are expanded as
+  // separate $0 line items immediately after the parent item so they appear
+  // as distinct rows on the kitchen printer ticket — one modifier per line.
+  // Clover only prints custom modifiers that are linked to inventory; sending
+  // them as $0 line items is the only reliable way to get them on the ticket.
+
+  /**
+   * Parse a description string into an array of modifier label strings.
+   * Splits on " · " (frontend separator), "\n", and "|" (pipe separator).
+   * Highlights Half & Half entries with asterisks.
+   */
+  function parseModifiers(description: string): string[] {
+    return description
+      .trim()
+      .split(/ · |\n|\|/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => s.replace(/(Half & Half)/gi, "*** $1 ***"));
+  }
+
+  const lineItems: Record<string, unknown>[] = [];
+
+  for (const item of input.items) {
     const printerLabel = getPrinterLabel(item.name);
     const printerIdMap: Record<PrinterLabel, string> = {
       Pizza:    CLOVER_PRINTER_IDS.PIZZA,
@@ -372,7 +431,9 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
       Pizzeria: CLOVER_PRINTER_IDS.PIZZERIA,
     };
     const printerId = printerIdMap[printerLabel];
-    const lineItem: Record<string, unknown> = {
+
+    // Parent item line
+    const parentItem: Record<string, unknown> = {
       name: item.name,
       price: Math.round(item.price * 100), // cents
       unitQty: item.quantity,
@@ -383,19 +444,25 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     // resolve the catalog entry — this enables automatic printer routing
     // and ensures the item appears correctly on the kitchen ticket.
     if (item.cloverItemId) {
-      lineItem.item = { id: item.cloverItemId };
+      parentItem.item = { id: item.cloverItemId };
     }
 
+    lineItems.push(parentItem);
+
+    // Modifier sub-items: each modifier becomes a $0 line item
+    // with the same printer label so it routes to the same kitchen station.
     if (item.description && item.description.trim()) {
-      const raw = item.description.trim();
-      let note = raw
-        .replace(/ · /g, "\n")  // frontend separator
-        .replace(/\|/g, "\n");  // pipe separators used in some modals
-      note = note.replace(/(Half & Half)/gi, "*** $1 ***");
-      lineItem.note = note;
+      const modifiers = parseModifiers(item.description);
+      for (const mod of modifiers) {
+        lineItems.push({
+          name: `  - ${mod}`,  // indent with dash so kitchen staff can visually group
+          price: 0,
+          unitQty: 1,
+          printerLabel: { id: printerId },
+        });
+      }
     }
-    return lineItem;
-  });
+  }
 
   await axios.post(
     cloverUrl(`/orders/${orderId}/bulk_line_items`),

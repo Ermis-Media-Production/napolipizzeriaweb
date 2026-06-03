@@ -542,3 +542,12 @@
 - [x] Generate AI food photos for all appetizer items missing real photos (mozzarella sticks, bread sticks, cheese bread sticks, cheese garlic bread, chicken quesadilla, chilli cheese fries, curly fries, curly cheese fries w/ bacon, french fries, garlic balls, jalapeño poppers, napoli combo platter, onion rings, zucchini sticks, breaded mushrooms)
 - [x] Update napoliPhotos.ts with all new AI-generated CloudFront CDN URLs for both canonical names and DB name aliases
 - [x] TypeScript: 0 errors
+
+## Modifier Line Items (Printer Ticket Format)
+
+- [x] Change modifier display from note field to separate $0 line items in cloverSync.ts
+- [x] Add PIZZA_SPECIAL_NAMES set with all pizza special names (BBQ Chicken, Buffalo Chicken, etc.) for accurate printer routing
+- [x] Update getPrinterLabel() to match pizza specials by exact base name + optional size suffix pattern (e.g. "Napoli's Special (16\")")
+- [x] Verify 13 pizza special names route to Pizza printer and 11 non-pizza items (Greek Salad, Ranch Dressing, etc.) do NOT false-positive
+- [x] Run 3 live test orders to Clover (Burger, Pizza, Wings) — all orders created and print_event fired successfully
+- [x] TypeScript: 0 errors after all changes
