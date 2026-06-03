@@ -881,7 +881,70 @@ function CloverSyncedItems({
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)", display: cat === "pizza" ? "none" : undefined }}>
+              {/* ── Wings category: single entry point ── */}
+              {cat === "wings" && (
+                <div className="px-5 py-6 flex flex-col gap-4">
+                  {/* Hero CTA */}
+                  <div
+                    className="flex flex-col sm:flex-row items-center gap-4 p-5 rounded-xl"
+                    style={{ background: "linear-gradient(135deg, oklch(0.97 0.04 27) 0%, oklch(0.99 0.015 80) 100%)", border: "2px solid var(--napoli-red)" }}
+                  >
+                    <div className="text-5xl">🍗</div>
+                    <div className="flex-1 text-center sm:text-left">
+                      <h3 className="text-lg font-bold" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>Wings, Boneless & Tenders</h3>
+                      <p className="text-sm mt-0.5" style={{ color: "oklch(0.45 0.03 30)", fontFamily: "'Lato', sans-serif" }}>Choose type, quantity, flavor & extras — step by step</p>
+                      <p className="text-xs mt-1" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>12 sauces · Half &amp; Half available for 10pc+</p>
+                    </div>
+                  </div>
+
+                  {/* 3 type cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {([
+                      { type: "Bone-In" as const, label: "Wings", emoji: "🍗", desc: "Classic bone-in · 6pc–80pc", from: "From $11.49" },
+                      { type: "Boneless" as const, label: "Boneless Wings", emoji: "🍖", desc: "All-meat bites · 6pc–80pc", from: "From $9.49" },
+                      { type: "Chicken Fingers" as const, label: "Tenders", emoji: "🍤", desc: "Hand-breaded · 5pc–80pc", from: "From $13.49" },
+                    ] as const).map(({ type, label, emoji, desc, from }) => (
+                      <button
+                        key={type}
+                        onClick={() => onWingsCustomize({ type, qty: "6pc", basePrice: 0, friesAddonPrice: 2 })}
+                        className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all active:scale-[0.98] hover:border-red-600"
+                        style={{ borderColor: "oklch(0.88 0.015 80)", background: "white" }}
+                      >
+                        <span className="text-3xl">{emoji}</span>
+                        <div className="text-center">
+                          <div className="text-sm font-bold" style={{ color: "oklch(0.25 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>{label}</div>
+                          <div className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>{desc}</div>
+                          <div className="text-xs font-bold mt-1" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>{from}</div>
+                        </div>
+                        <div
+                          className="w-full py-1.5 rounded-lg text-xs font-bold text-center transition-all"
+                          style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+                        >
+                          Order
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Flavors preview */}
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>Available Sauces &amp; Dry Rubs</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["Plain", "Mild", "Medium", "Hot", "Extra Hot", "BBQ", "Spicy Honey BBQ", "Lemon Pepper", "Teriyaki", "Spicy Teriyaki", "Sweet Red Chili", "Mango Habanero"].map((f) => (
+                        <span
+                          key={f}
+                          className="px-2.5 py-1 rounded-full text-xs border"
+                          style={{ borderColor: "oklch(0.88 0.015 80)", color: "oklch(0.40 0.04 30)", background: "white", fontFamily: "'Lato', sans-serif" }}
+                        >
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)", display: (cat === "pizza" || cat === "wings") ? "none" : undefined }}>
                 {catItems.map((item, itemIdx) => {
                   const price = parseFloat(item.price);
                   const photo = item.imageUrl ?? (cat === "burger" ? getBurgerPhoto(item.name) : getMenuPhoto(item.name));
