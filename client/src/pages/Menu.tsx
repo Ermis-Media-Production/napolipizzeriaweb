@@ -21,12 +21,12 @@ import SubsCustomizerModal, { type SubsTrigger } from "@/components/SubsCustomiz
 import { CalzoneCustomizerModal, type CalzoneTrigger } from "@/components/CalzoneCustomizerModal";
 import BurgerCustomizerModal, { type BurgerTrigger } from "@/components/BurgerCustomizerModal";
 import AppetizersCustomizerModal, { type AppetizersModalTrigger, APPETIZER_MODAL_ITEMS } from "@/components/AppetizersCustomizerModal";
-import SpecialCustomizerModal from "@/components/SpecialCustomizerModal";
-import LunchCustomizerModal from "@/components/LunchCustomizerModal";
+import SpecialCustomizerModal, { SPECIAL_CONFIGS } from "@/components/SpecialCustomizerModal";
+import LunchCustomizerModal, { type LunchItem } from "@/components/LunchCustomizerModal";
 import SaladsCustomizerModal, { type SaladsModalTrigger, SALAD_MODAL_ITEMS } from "@/components/SaladsCustomizerModal";
 import PastaCustomizerModal, { type PastaModalTrigger, PASTA_MODAL_ITEMS } from "@/components/PastaCustomizerModal";
 import GlutenFreePizzaModal from "@/components/GlutenFreePizzaModal";
-// napoliData imports removed — menu is now fully Clover-synced
+import { LUNCH_SPECIALS } from "@/lib/napoliData";
 import { getMenuPhoto, getBurgerPhoto } from "@/lib/napoliPhotos";
 import { NutritionBadges } from "@/components/NutritionBadges";
 
@@ -665,7 +665,50 @@ const CATEGORY_META: Record<string, { label: string; emoji: string; photo?: stri
   soup:      { label: "Soups", emoji: "🍲", order: 15 },
 };
 
-function CloverSyncedItems({ addItem }: { addItem: (item: { id: string; name: string; price: number; quantity: number; category: string; cloverItemId?: string }) => void }) {
+// ── Helpers for routing Clover items to customizer modals ─────────────────────
+
+/** Parse the #N prefix from a Clover special item name, e.g. "#5 - 24 \" Cheese Pizza..." → 5 */
+function parseSpecialNum(name: string): number | null {
+  const m = name.match(/^#\s*(\d+)/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/** Return true if the item name looks like an Anytime Special (has pizza size like 16", 28") */
+function isAnytimeSpecial(name: string): boolean {
+  return /\d+"/.test(name) || /\d+\s*inch/i.test(name);
+}
+
+interface CloverSyncedItemsProps {
+  addItem: (item: { id: string; name: string; price: number; quantity: number; category: string; cloverItemId?: string }) => void;
+  onPizzaCustomize: (sel: PizzaSelection) => void;
+  onWingsCustomize: (sel: WingsSelection) => void;
+  onBurgerCustomize: (trigger: BurgerTrigger) => void;
+  onWrapCustomize: (trigger: WrapTrigger) => void;
+  onSubsCustomize: (trigger: SubsTrigger) => void;
+  onCalzoneCustomize: (trigger: CalzoneTrigger) => void;
+  onAppetizersCustomize: (trigger: AppetizersModalTrigger) => void;
+  onSaladsCustomize: (trigger: SaladsModalTrigger) => void;
+  onPastaCustomize: (trigger: PastaModalTrigger) => void;
+  onSpecialCustomize: (num: number) => void;
+  onLunchCustomize: (item: LunchItem) => void;
+}
+
+const LUNCH_NEEDS_CUSTOMIZER = new Set([2, 3, 4, 6, 9, 13, 16, 19, 24]);
+
+function CloverSyncedItems({
+  addItem,
+  onPizzaCustomize,
+  onWingsCustomize,
+  onBurgerCustomize,
+  onWrapCustomize,
+  onSubsCustomize,
+  onCalzoneCustomize,
+  onAppetizersCustomize,
+  onSaladsCustomize,
+  onPastaCustomize,
+  onSpecialCustomize,
+  onLunchCustomize,
+}: CloverSyncedItemsProps) {
   const { data: items, isLoading } = trpc.menuItems.list.useQuery(
     { includeUnavailable: false },
     { staleTime: 5 * 60 * 1000 }
@@ -784,6 +827,103 @@ function CloverSyncedItems({ addItem }: { addItem: (item: { id: string; name: st
                   const photo = item.imageUrl ?? (cat === "burger" ? getBurgerPhoto(item.name) : getMenuPhoto(item.name));
                   const isLunchOpen = !isLunch || lunchTimer.isOpen;
 
+                  // ── Determine if this item needs a customizer modal ──
+                  const needsCustomizer = (() => {
+                    if (cat === "pizza") return true;
+                    if (cat === "wings") return true;
+                    if (cat === "burger") return true;
+                    if (cat === "sandwich") return true;
+                    if (cat === "appetizer") return APPETIZER_MODAL_ITEMS.includes(item.name);
+                    if (cat === "salad") return SALAD_MODAL_ITEMS.includes(item.name);
+                    if (cat === "pasta") return PASTA_MODAL_ITEMS.includes(item.name);
+                    if (cat === "special" || cat === "lunch") {
+                      const num = parseSpecialNum(item.name);
+                      if (num === null) return false;
+                      // Anytime Special: name contains a pizza size like 16", 28"
+                      if (isAnytimeSpecial(item.name)) {
+                        return SPECIAL_CONFIGS.some((s) => s.num === num);
+                      }
+                      // Lunch Special: needs customizer for certain numbers
+                      return LUNCH_NEEDS_CUSTOMIZER.has(num);
+                    }
+                    return false;
+                  })();
+
+                  // ── Handler: route to correct customizer or direct add ──
+                  const handleAdd = () => {
+                    if (!isLunchOpen) return;
+                    if (!needsCustomizer || price <= 0) {
+                      addItem({ id: `clover-${item.id}-${Date.now()}`, name: item.name, price, quantity: 1, category: cat, cloverItemId: item.cloverItemId ?? undefined });
+                      toast.success(`${item.name} added to cart!`);
+                      return;
+                    }
+                    // Route to the appropriate customizer
+                    if (cat === "pizza") {
+                      onPizzaCustomize({ pizzaName: item.name, isSpecialty: false, freeToppings: 0, allowHalfAndHalf: true });
+                      return;
+                    }
+                    if (cat === "wings") {
+                      // Parse type and qty from name, e.g. "10pc Bone-In Wings"
+                      const nameLower = item.name.toLowerCase();
+                      const type: WingsSelection["type"] = nameLower.includes("boneless") ? "Boneless" : nameLower.includes("finger") ? "Chicken Fingers" : "Bone-In";
+                      const qtyMatch = item.name.match(/(\d+)\s*pc/i);
+                      const qty = qtyMatch ? `${qtyMatch[1]}pc` : "6pc";
+                      const friesAddon = price >= 50 ? 4 : 2;
+                      onWingsCustomize({ type, qty, basePrice: price, friesAddonPrice: friesAddon });
+                      return;
+                    }
+                    if (cat === "burger") {
+                      onBurgerCustomize({ open: true, preselectedBurger: item.name });
+                      return;
+                    }
+                    if (cat === "sandwich") {
+                      const nameLower = item.name.toLowerCase();
+                      if (nameLower.includes("wrap")) {
+                        onWrapCustomize({ basePrice: price });
+                      } else {
+                        const isTripleDecker = nameLower.includes("triple decker");
+                        onSubsCustomize({ subName: item.name, basePrice: price, showAddons: !isTripleDecker });
+                      }
+                      return;
+                    }
+                    if (cat === "appetizer") {
+                      onAppetizersCustomize({ itemName: item.name });
+                      return;
+                    }
+                    if (cat === "salad") {
+                      onSaladsCustomize({ itemName: item.name });
+                      return;
+                    }
+                    if (cat === "pasta") {
+                      onPastaCustomize({ itemName: item.name });
+                      return;
+                    }
+                    if (cat === "special" || cat === "lunch") {
+                      const num = parseSpecialNum(item.name);
+                      if (num === null) {
+                        addItem({ id: `clover-${item.id}-${Date.now()}`, name: item.name, price, quantity: 1, category: cat, cloverItemId: item.cloverItemId ?? undefined });
+                        toast.success(`${item.name} added to cart!`);
+                        return;
+                      }
+                      if (isAnytimeSpecial(item.name)) {
+                        onSpecialCustomize(num);
+                      } else {
+                        // Lunch special — find the matching LUNCH_SPECIALS entry
+                        const lunchEntry = LUNCH_SPECIALS.items.find((ls) => ls.num === num);
+                        if (lunchEntry) {
+                          onLunchCustomize({ num: lunchEntry.num, name: lunchEntry.name, price: `$${price.toFixed(2)}` });
+                        } else {
+                          addItem({ id: `clover-${item.id}-${Date.now()}`, name: item.name, price, quantity: 1, category: cat, cloverItemId: item.cloverItemId ?? undefined });
+                          toast.success(`${item.name} added to cart!`);
+                        }
+                      }
+                      return;
+                    }
+                    // Fallback: direct add
+                    addItem({ id: `clover-${item.id}-${Date.now()}`, name: item.name, price, quantity: 1, category: cat, cloverItemId: item.cloverItemId ?? undefined });
+                    toast.success(`${item.name} added to cart!`);
+                  };
+
                   return (
                     <div
                       key={item.id}
@@ -822,15 +962,14 @@ function CloverSyncedItems({ addItem }: { addItem: (item: { id: string; name: st
                         {price > 0 && (
                           <button
                             disabled={!isLunchOpen}
-                            onClick={() => {
-                              if (!isLunchOpen) return;
-                              addItem({ id: `clover-${item.id}-${Date.now()}`, name: item.name, price, quantity: 1, category: cat, cloverItemId: item.cloverItemId ?? undefined });
-                              toast.success(`${item.name} added to cart!`);
-                            }}
-                            className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90"
-                            style={{ background: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)", color: "white", cursor: isLunchOpen ? "pointer" : "not-allowed" }}
+                            onClick={handleAdd}
+                            className={needsCustomizer
+                              ? "flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-bold transition-all active:scale-95 hover:opacity-90 shrink-0"
+                              : "w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90"}
+                            style={{ background: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)", color: "white", cursor: isLunchOpen ? "pointer" : "not-allowed", fontFamily: needsCustomizer ? "'Oswald', sans-serif" : undefined }}
                           >
-                            <Plus size={13} />
+                            <Plus size={needsCustomizer ? 11 : 13} />
+                            {needsCustomizer && <span>Order</span>}
                           </button>
                         )}
                       </div>
@@ -870,6 +1009,7 @@ export default function Menu() {
   const [pastaModalTrigger, setPastaModalTrigger] = useState<PastaModalTrigger | null>(null);
   const [glutenFreeModalOpen, setGlutenFreeModalOpen] = useState(false);
   const [specialNum, setSpecialNum] = useState<number | null>(null);
+  const [lunchItem, setLunchItem] = useState<LunchItem | null>(null);
 
   // Auto-scroll the sticky nav bar to center the active category button
   const scrollNavToActive = (id: string) => {
@@ -1059,7 +1199,35 @@ export default function Menu() {
           onClose={() => setSpecialNum(null)}
         />
 
-        <CloverSyncedItems addItem={addItem} />
+        {/* Wings Customizer Modal */}
+        <WingsCustomizerModal
+          key={wingsModalKey}
+          selection={wingsSelection}
+          onClose={() => setWingsSelection(null)}
+        />
+
+        {/* Lunch Customizer Modal */}
+        {lunchItem && (
+          <LunchCustomizerModal
+            item={lunchItem}
+            onClose={() => setLunchItem(null)}
+          />
+        )}
+
+        <CloverSyncedItems
+          addItem={addItem}
+          onPizzaCustomize={(sel) => { setPizzaModalKey((k) => k + 1); setPizzaSelection(sel); }}
+          onWingsCustomize={(sel) => { setWingsModalKey((k) => k + 1); setWingsSelection(sel); }}
+          onBurgerCustomize={(trigger) => { setBurgerModalKey((k) => k + 1); setBurgerTrigger(trigger); }}
+          onWrapCustomize={(trigger) => { setWrapModalKey((k) => k + 1); setWrapTrigger(trigger); }}
+          onSubsCustomize={(trigger) => { setSubsModalKey((k) => k + 1); setSubsTrigger(trigger); }}
+          onCalzoneCustomize={(trigger) => { setCalzoneModalKey((k) => k + 1); setCalzoneTrigger(trigger); }}
+          onAppetizersCustomize={(trigger) => setAppetizersModalTrigger(trigger)}
+          onSaladsCustomize={(trigger) => setSaladsModalTrigger(trigger)}
+          onPastaCustomize={(trigger) => setPastaModalTrigger(trigger)}
+          onSpecialCustomize={(num) => setSpecialNum(num)}
+          onLunchCustomize={(item) => setLunchItem(item)}
+        />
 
       </div>
 
