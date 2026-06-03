@@ -120,6 +120,19 @@ export const MENU_PHOTOS: Record<string, string> = {
   "Beef or Chicken Philly":         S + "napoli-beef-chicken-philly_6d157067.jpg",
   "Eggplant Parmigiana Sub":        S + "napoli_sandwich_eggplant_parm_7ce46d96.webp",
 
+  // ── LUNCH SPECIALS ─────────────────────────────────────────
+  // Items that don't already have a photo via another key
+  "Triple Decker BLT + Fries":                    S + "blt_triple_decker_fries_fac39bff.jpg",
+  "2 Slices of Cheese or Pepperoni Pizza":         S + "pizza_slice_pepperoni_6d64ce25.jpg",
+  "Philly Cheesesteak + Fries":                    S + "philly_cheesesteak_fries_7f67bcea.jpg",
+  "6 Wings + Dinner Salad":                        S + "wings_dinner_salad_baa523bb.jpg",
+  "Hot Pastrami + Fries":                          S + "hot_pastrami_fries_19e20638.jpg",
+  "Grilled Sausage & Peppers Sub + Fries":         S + "sausage_peppers_sub_fries_37d10201.jpg",
+  "10 Wings + Fries":                              S + "wings_10_fries_ea6558dd.jpg",
+  "1 Slice Cheese or Pepperoni + 6 Boneless Wings":S + "slice_boneless_wings_bf838c8b.jpg",
+  "Nutella Pizza":                                 S + "nutella_pizza_fb49d4fe.jpg",
+  "Chicken or Lamb Gyro + Fries":                  S + "gyro_fries_e4032080.jpg",
+
   // ── BURGERS ──────────────────────────────────────────────────
   "Hamburger":                      S + "napoli_hamburger_regular_no_cheese_621b8d14.webp",
   "Cheeseburger":                   S + "napoli_cheeseburger_88e6c254.webp",

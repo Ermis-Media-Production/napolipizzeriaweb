@@ -358,12 +358,52 @@ function AnytimeSpecialRow({
   );
 }
 
-function LunchSpecialRow({ item, isLeft, isLunchOpen }: { item: { num: number; name: string; price: string }; isLeft: boolean; isLunchOpen: boolean }) {
+function LunchSpecialsGrid({ isLunchOpen }: { isLunchOpen: boolean }) {
+  const lunchLightboxItems: LightboxItem[] = LUNCH_SPECIALS.items
+    .filter(it => !!getMenuPhoto(it.name))
+    .map(it => ({
+      cloverId: `lunch-${it.num}`,
+      name: `#${it.num} ${it.name}`,
+      imageUrl: getMenuPhoto(it.name),
+      price: Math.round((parsePrice(it.price) ?? 0) * 100),
+      description: it.price,
+    }));
+  const [lunchLightbox, setLunchLightbox] = useState<{ index: number } | null>(null);
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        {LUNCH_SPECIALS.items.map((item, i) => {
+          const photoIdx = lunchLightboxItems.findIndex(l => l.cloverId === `lunch-${item.num}`);
+          return (
+            <LunchSpecialRow
+              key={item.num}
+              item={item}
+              isLeft={i % 2 === 0}
+              isLunchOpen={isLunchOpen}
+              onPhotoClick={photoIdx >= 0 ? () => setLunchLightbox({ index: photoIdx }) : undefined}
+            />
+          );
+        })}
+      </div>
+      {lunchLightbox !== null && (
+        <MenuLightbox
+          items={lunchLightboxItems}
+          currentIndex={lunchLightbox.index}
+          onClose={() => setLunchLightbox(null)}
+          onNavigate={(idx) => setLunchLightbox({ index: idx })}
+        />
+      )}
+    </>
+  );
+}
+
+function LunchSpecialRow({ item, isLeft, isLunchOpen, onPhotoClick }: { item: { num: number; name: string; price: string }; isLeft: boolean; isLunchOpen: boolean; onPhotoClick?: () => void }) {
   const { addItem, openCart } = useCart();
   const { lang } = useLanguage();
   const translated = translateItem(item.name, undefined, lang);
   const numericPrice = parsePrice(item.price);
   const [showCustomizer, setShowCustomizer] = useState(false);
+  const photo = getMenuPhoto(item.name);
 
   // Items that need customization (choice, topping, or wing sauce)
   const NEEDS_CUSTOMIZER = new Set([2, 3, 4, 6, 9, 13, 16, 19, 24]);
@@ -400,12 +440,26 @@ function LunchSpecialRow({ item, isLeft, isLunchOpen }: { item: { num: number; n
           transition: "opacity 0.3s ease",
         }}
       >
-        <span
-          className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 napoli-price"
-          style={{ background: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)", color: "white" }}
-        >
-          {item.num}
-        </span>
+        {photo ? (
+          <div
+            className="relative group cursor-pointer shrink-0 rounded-md overflow-hidden"
+            style={{ width: 48, height: 48 }}
+            onClick={onPhotoClick}
+            title="Click to enlarge"
+          >
+            <img src={photo} alt={item.name} className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105" loading="lazy" />
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ background: "rgba(0,0,0,0.35)" }}>
+              <ZoomIn size={14} color="white" />
+            </div>
+          </div>
+        ) : (
+          <span
+            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 napoli-price"
+            style={{ background: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)", color: "white" }}
+          >
+            {item.num}
+          </span>
+        )}
         <div className="flex-1 min-w-0">
           <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{translated.name}</span>
         </div>
@@ -1209,11 +1263,8 @@ export default function Menu() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {LUNCH_SPECIALS.items.map((item, i) => (
-              <LunchSpecialRow key={item.num} item={item} isLeft={i % 2 === 0} isLunchOpen={lunchTimer.isOpen} />
-            ))}
-          </div>
+          <LunchSpecialsGrid isLunchOpen={lunchTimer.isOpen} />
+
         </MenuCard>
 
         {/* ── PIZZERIA ───────────────────────────────────────── */}
