@@ -491,3 +491,11 @@
 - [ ] Run pnpm db:push to sync all pending schema migrations (once network is restored)
 - [ ] Run Clover sync from /admin/items → "Sync from Clover" button to populate DB with current Clover items
 - [ ] Test a production order with Force Open disabled (normal store hours 10 AM–10 PM)
+
+## cloverItemId in All Payment Flows (Kitchen Printer Routing Fix)
+- [x] cloverCheckout.ts webhook: pass cloverItemId from DB orderItems to pushOrderToClover
+- [x] stripe.ts: add cloverItemId to CartItemSchema, cartItems metadata serialization (x2), items type (x2), orderItems insert (x2), and pushOrderToClover calls (x2)
+- [x] authorizenet.ts: already had cloverItemId in schema and pushOrderToClover call — verified correct
+- [x] Clover API docs analysis: state "open" → "Open" alignment applied
+- [x] TypeScript: 0 errors
+- [ ] Physical: On Clover Station Duo — Setup → Order Manager → Print Settings → enable "Automatically print new orders" + "Print orders from all devices"

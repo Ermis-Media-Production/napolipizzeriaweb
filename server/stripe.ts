@@ -64,6 +64,7 @@ const CartItemSchema = z.object({
   quantity: z.number().int().positive(),
   category: z.string().optional(),
   description: z.string().optional(),
+  cloverItemId: z.string().optional(),
 });
 
 // ─── tRPC router ──────────────────────────────────────────────────────────────
@@ -188,7 +189,7 @@ export const stripeRouter = router({
           restaurantName: "The Original Napoli Pizzeria",
           // Serialize cart items so the webhook can push them to Clover and create the order
           cartItems: JSON.stringify(
-            input.items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category ?? "", description: i.description ?? "" }))
+            input.items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category ?? "", description: i.description ?? "", cloverItemId: i.cloverItemId ?? "" }))
           ),
           // Scheduling fields
           scheduledAt: input.scheduledAt ? String(input.scheduledAt) : "",
@@ -282,7 +283,7 @@ export const stripeRouter = router({
           customerEmail: input.customerEmail ?? "",
           restaurantName: "The Original Napoli Pizzeria",
           cartItems: JSON.stringify(
-            input.items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category ?? "", description: i.description ?? "" }))
+            input.items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category ?? "", description: i.description ?? "", cloverItemId: i.cloverItemId ?? "" }))
           ),
           scheduledAt: input.scheduledAt ? String(input.scheduledAt) : "",
           isAsap: input.isAsap ? "true" : "false",
@@ -415,7 +416,7 @@ async function createScheduledOrderFromStripe(session: Stripe.Checkout.Session):
   const meta = session.metadata ?? {};
 
   // Parse cart items
-  let items: Array<{ id: string; name: string; price: number; quantity: number; category?: string; description?: string }> = [];
+  let items: Array<{ id: string; name: string; price: number; quantity: number; category?: string; description?: string; cloverItemId?: string }> = [];
   try {
     items = meta.cartItems ? JSON.parse(meta.cartItems) : [];
   } catch {
@@ -514,6 +515,7 @@ async function createScheduledOrderFromStripe(session: Stripe.Checkout.Session):
         quantity: item.quantity ?? 1,
         lineTotal: String(item.price * (item.quantity ?? 1)),
         isPizza,
+        cloverItemId: item.cloverItemId || null,
         status: "active",
         refundedAmount: "0",
       });
@@ -542,6 +544,7 @@ Stripe Session: ${session.id}`,
         price: i.price,
         quantity: i.quantity ?? 1,
         description: i.description ?? undefined,
+        cloverItemId: i.cloverItemId || undefined,
       })),
       orderType: orderType as "delivery" | "pickup" | "dine-in",
       customerName,
@@ -581,7 +584,7 @@ async function createScheduledOrderFromPaymentIntent(intent: Stripe.PaymentInten
 
   const meta = intent.metadata ?? {};
 
-  let items: Array<{ id: string; name: string; price: number; quantity: number; category?: string; description?: string }> = [];
+  let items: Array<{ id: string; name: string; price: number; quantity: number; category?: string; description?: string; cloverItemId?: string }> = [];
   try {
     items = meta.cartItems ? JSON.parse(meta.cartItems) : [];
   } catch {
@@ -650,6 +653,7 @@ async function createScheduledOrderFromPaymentIntent(intent: Stripe.PaymentInten
         quantity: item.quantity ?? 1,
         lineTotal: String(item.price * (item.quantity ?? 1)),
         isPizza,
+        cloverItemId: item.cloverItemId || null,
         status: "active",
         refundedAmount: "0",
       });
@@ -667,6 +671,7 @@ async function createScheduledOrderFromPaymentIntent(intent: Stripe.PaymentInten
         price: i.price,
         quantity: i.quantity ?? 1,
         description: i.description ?? undefined,
+        cloverItemId: i.cloverItemId || undefined,
       })),
       orderType: orderType as "delivery" | "pickup" | "dine-in",
       customerName,
