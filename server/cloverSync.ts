@@ -407,6 +407,10 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
   // Step 1: Create order via atomic_order (single call — no race conditions).
   // The atomic endpoint processes line items and modifications synchronously
   // before returning, so print_event fires against a fully-rendered ticket.
+  // total = sum of all line item prices in cents (pre-tax). Clover uses this
+  // to validate the order total; omitting it can cause silent failures.
+  const orderTotal = lineItems.reduce((sum: number, li: Record<string, unknown>) => sum + (li.price as number), 0);
+
   const atomicRes = await axios.post(
     cloverUrl("/atomic_order/orders"),
     {
@@ -416,6 +420,7 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
         title: reportTitle,
         orderType: { id: CLOVER_ORDER_TYPE_IDS[input.orderType] },
         employee: { id: CLOVER_ONLINE_EMPLOYEE_ID },
+        total: orderTotal,
       },
     },
     { headers: cloverHeaders() }
@@ -423,6 +428,20 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
 
   const orderId: string = atomicRes.data.id;
   console.log(`[Clover] Atomic order created: ${orderId}`);
+
+  // Step 1b: PATCH employee explicitly — Clover ignores employee in atomic order
+  // payload and requires a separate PATCH to assign it. Without this, the order
+  // may not route correctly to the device. (Confirmed in CloverPlugin production.)
+  try {
+    await axios.post(
+      cloverUrl(`/orders/${orderId}`),
+      { employee: { id: CLOVER_ONLINE_EMPLOYEE_ID } },
+      { headers: cloverHeaders() }
+    );
+    console.log(`[Clover] Employee patched on order ${orderId}`);
+  } catch (err) {
+    console.warn(`[Clover] Failed to patch employee on order ${orderId}:`, err);
+  }
 
   // Step 2: Wait 2s — Clover processes atomic orders asynchronously internally.
   // Firing print_event immediately can race against Clover's write; the device
