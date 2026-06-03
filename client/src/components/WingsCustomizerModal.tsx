@@ -212,6 +212,13 @@ function WingsCustomizerInner({ initialType, onClose }: { initialType: WingType;
     setFlavorB("");
   }
 
+  // Clover catalog IDs for wings types (verified from DB — do not change without re-syncing)
+  const WINGS_CLOVER_IDS: Record<WingType, string> = {
+    "Bone-In": "KQXZYE71T0EME",
+    "Boneless": "5Y7Y3AQ23XFPG",
+    "Chicken Fingers": "R71JXR9M68JNJ",
+  };
+
   function handleAddToCart() {
     const addons: string[] = [];
     if (isHalfHalf) {
@@ -238,6 +245,7 @@ function WingsCustomizerInner({ initialType, onClose }: { initialType: WingType;
       quantity: 1,
       category: "wings",
       description,
+      cloverItemId: WINGS_CLOVER_IDS[selectedType],
     });
 
     toast.success(`${typeOption.label} (${selectedRow!.qty}) added to cart`, {

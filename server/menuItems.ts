@@ -5,7 +5,7 @@
  * Admin: createMenuItem, updateMenuItem, deleteMenuItem, uploadMenuItemPhoto
  */
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, like, or } from "drizzle-orm";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { adminProcedure, publicProcedure, router } from "./_core/trpc";
@@ -97,6 +97,68 @@ export const menuItemsRouter = router({
 
       if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Menu item not found" });
       return item;
+    }),
+
+  /**
+   * Resolve Clover catalog IDs for a batch of items by fuzzy name + category match.
+   * Used by wizard modals (Pizza, Wings, Burgers, etc.) to attach the correct
+   * cloverItemId to cart items so kitchen printer routing works correctly.
+   *
+   * Strategy: for each requested item, find the DB row whose name CONTAINS the
+   * requested name (or vice-versa) in the given category, and return its cloverItemId.
+   */
+  resolveCloverIds: publicProcedure
+    .input(
+      z.object({
+        items: z.array(
+          z.object({
+            name: z.string(),
+            category: z.string().optional(),
+          })
+        ),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = await requireDb();
+
+      const results: Record<string, string | null> = {};
+
+      for (const req of input.items) {
+        const nameLower = req.name.toLowerCase();
+        const conditions = [
+          or(
+            like(menuItems.name, `%${req.name}%`),
+            like(menuItems.name, `${req.name}%`)
+          ),
+        ];
+        if (req.category) {
+          conditions.push(eq(menuItems.category, req.category));
+        }
+
+        const rows = await db
+          .select({ name: menuItems.name, cloverItemId: menuItems.cloverItemId, category: menuItems.category })
+          .from(menuItems)
+          .where(and(...conditions))
+          .orderBy(asc(menuItems.sortOrder), asc(menuItems.name))
+          .limit(10);
+
+        // Pick the best match: prefer exact name match, then shortest name (most specific)
+        let best: { name: string; cloverItemId: string | null; category: string } | null = null;
+        for (const row of rows) {
+          const rowLower = row.name.toLowerCase();
+          if (rowLower === nameLower) {
+            best = row;
+            break;
+          }
+          if (!best || row.name.length < best.name.length) {
+            best = row;
+          }
+        }
+
+        results[req.name] = best?.cloverItemId ?? null;
+      }
+
+      return results;
     }),
 
   /**

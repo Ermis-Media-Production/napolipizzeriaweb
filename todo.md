@@ -518,3 +518,21 @@
 - [x] Show included toppings for specialty pizzas in Step 4 (fixed green chips, non-removable)
 - [x] Update pizza category in Menu.tsx to show single "Build My Pizza" entry point with specialty shortcuts
 - [x] Specialty pizzas use Plain Cheese base pricing (same NY style dough); toppings priced by size
+
+## Burger Category Redesign & Legal Pages
+
+- [x] Rewrite BurgerCustomizerModal: Step 1 = burger type, Step 2 = size (½ lb / Full lb), Step 3 = sauces, Step 4 = customizations (remove: no onion, no pickles, no mustard, no jalapeño; extras), Step 5 = allergy note with legal disclaimer
+- [x] Update Burgers category in Menu.tsx: single entry card per burger type (not per size)
+- [x] Add allergy disclaimer in website footer
+- [x] Create Terms & Conditions page at /terms protecting the restaurant (allergies, liability, ordering policy)
+- [x] Add Terms link to footer and navigation
+
+## Clover Item Mapping for Wizards
+
+- [x] Audit cart → order → Clover flow to understand how cloverItemId is used when sending to printer
+- [x] Add tRPC query to look up cloverItemId by item name/category in each wizard
+- [x] Update PizzaCustomizerModal to resolve cloverItemId from DB before adding to cart
+- [x] Update WingsCustomizerModal to resolve cloverItemId from DB before adding to cart
+- [x] Update BurgerCustomizerModal to resolve cloverItemId from DB before adding to cart
+- [ ] Update SubsCustomizerModal, WrapCustomizerModal to resolve cloverItemId from DB
+- [ ] Verify order payload sent to Clover includes correct cloverItemId for all wizard-created items

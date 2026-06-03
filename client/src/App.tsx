@@ -22,6 +22,7 @@ import AdminModifierManager from "./pages/AdminModifierManager";
 import AdminAiCosts from "@/pages/AdminAiCosts";
 import AdminItemsDashboard from "@/pages/AdminItemsDashboard";
 import Catering from "./pages/Catering";
+import Terms from "./pages/Terms";
 import Reservations from "./pages/Reservations";
 import MyOrder from "./pages/MyOrder";
 
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/catering" component={Catering} />
       <Route path="/reservations" component={Reservations} />
       <Route path="/order" component={Order} />
+      <Route path="/terms" component={Terms} />
       <Route path="/order-success" component={OrderSuccess} />
       <Route path="/my-order/:orderRef" component={MyOrder} />
       <Route path="/admin" component={AdminDashboard} />

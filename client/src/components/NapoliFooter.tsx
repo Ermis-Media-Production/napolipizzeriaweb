@@ -207,6 +207,23 @@ export default function NapoliFooter() {
             </div>
           </div>
 
+          {/* Allergen Disclaimer Bar */}
+          <div
+            className="rounded-lg px-4 py-3 mb-5"
+            style={{ background: "oklch(0.20 0.04 30)", border: "1px solid oklch(0.30 0.05 30)" }}
+          >
+            <p className="text-xs napoli-body leading-relaxed" style={{ color: "oklch(0.68 0.015 80)" }}>
+              <span className="font-bold" style={{ color: "var(--napoli-gold)" }}>ALLERGEN NOTICE: </span>
+              Our kitchen handles wheat/gluten, dairy, eggs, tree nuts, peanuts, soy, fish, shellfish, and sesame. Cross-contamination may occur.
+              It is the customer&apos;s responsibility to notify us of any food allergies before ordering.
+              Napoli Pizzeria is not liable for allergic reactions when allergies have not been disclosed prior to order placement.
+              By placing an order, you accept this risk.{" "}
+              <Link href="/terms">
+                <span className="underline cursor-pointer hover:text-napoli-red transition-colors">View full Terms &amp; Conditions.</span>
+              </Link>
+            </p>
+          </div>
+
           {/* Bottom bar */}
           <div
             className="border-t pt-6 flex flex-col md:flex-row items-center justify-between gap-3"
@@ -215,9 +232,12 @@ export default function NapoliFooter() {
             <p className="text-xs napoli-body" style={{ color: "oklch(0.45 0.015 80)" }}>
               © {new Date().getFullYear()} The Original Napoli Pizzeria. All rights reserved.
             </p>
-            <p className="text-xs napoli-body" style={{ color: "oklch(0.40 0.015 80)" }}>
-              Taxes not included. Prices subject to change without notice. $1.99 Starting delivery charge. $1.00 Credit Card Charge.
-            </p>
+            <div className="flex flex-wrap items-center gap-3 text-xs napoli-body" style={{ color: "oklch(0.40 0.015 80)" }}>
+              <span>Taxes not included. Prices subject to change. $1.99 Starting delivery. $1.00 Card fee.</span>
+              <Link href="/terms">
+                <span className="underline cursor-pointer hover:text-napoli-red transition-colors">Terms &amp; Conditions</span>
+              </Link>
+            </div>
           </div>
         </div>
       </div>

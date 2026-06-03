@@ -26,7 +26,7 @@ import LunchCustomizerModal, { type LunchItem } from "@/components/LunchCustomiz
 import SaladsCustomizerModal, { type SaladsModalTrigger, SALAD_MODAL_ITEMS } from "@/components/SaladsCustomizerModal";
 import PastaCustomizerModal, { type PastaModalTrigger, PASTA_MODAL_ITEMS } from "@/components/PastaCustomizerModal";
 import GlutenFreePizzaModal from "@/components/GlutenFreePizzaModal";
-import { LUNCH_SPECIALS } from "@/lib/napoliData";
+import { LUNCH_SPECIALS, BURGERS } from "@/lib/napoliData";
 import { getMenuPhoto, getBurgerPhoto } from "@/lib/napoliPhotos";
 import { NutritionBadges } from "@/components/NutritionBadges";
 
@@ -944,7 +944,70 @@ function CloverSyncedItems({
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)", display: (cat === "pizza" || cat === "wings") ? "none" : undefined }}>
+              {/* ── Burger category: single entry point per type ── */}
+              {cat === "burger" && (
+                <div className="px-5 py-6 flex flex-col gap-4">
+                  {/* Hero CTA */}
+                  <div
+                    className="flex flex-col sm:flex-row items-center gap-4 p-5 rounded-xl"
+                    style={{ background: "linear-gradient(135deg, oklch(0.97 0.04 27) 0%, oklch(0.99 0.015 80) 100%)", border: "2px solid var(--napoli-red)" }}
+                  >
+                    <div className="text-5xl">🍔</div>
+                    <div className="flex-1 text-center sm:text-left">
+                      <h3 className="text-lg font-bold" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>100% Angus Beef Burgers</h3>
+                      <p className="text-sm mt-0.5" style={{ color: "oklch(0.45 0.03 30)", fontFamily: "'Lato', sans-serif" }}>Choose your burger, size, doneness, sauces &amp; extras — step by step</p>
+                      <p className="text-xs mt-1" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>½ lb from $11.49 · 1 lb from $14.49 · Gluten Free Bread available</p>
+                    </div>
+                  </div>
+
+                  {/* One card per burger type */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {BURGERS.items.map((b) => (
+                      <button
+                        key={b.name}
+                        onClick={() => onBurgerCustomize({ open: true, preselectedBurger: b.name })}
+                        className="flex flex-col gap-2 p-4 rounded-xl border-2 text-left transition-all active:scale-[0.98] hover:border-red-600"
+                        style={{ borderColor: "oklch(0.88 0.015 80)", background: "white" }}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold leading-tight" style={{ color: "oklch(0.25 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>{b.name}</p>
+                            {b.desc && (
+                              <p className="text-xs mt-0.5 leading-tight" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>{b.desc}</p>
+                            )}
+                          </div>
+                          <span className="text-xl shrink-0">🍔</span>
+                        </div>
+                        <div className="flex items-center justify-between mt-auto">
+                          <div>
+                            <span className="text-xs font-bold" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>{b.half}</span>
+                            <span className="text-xs" style={{ color: "oklch(0.65 0.015 80)", fontFamily: "'Lato', sans-serif" }}> / {b.single}</span>
+                          </div>
+                          <div
+                            className="px-3 py-1 rounded-lg text-xs font-bold"
+                            style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+                          >
+                            Order
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Included toppings note */}
+                  <div
+                    className="flex items-start gap-3 p-3 rounded-lg"
+                    style={{ background: "oklch(0.97 0.012 80)", border: "1px solid oklch(0.90 0.015 80)" }}
+                  >
+                    <span className="text-base shrink-0">ℹ️</span>
+                    <p className="text-xs" style={{ color: "oklch(0.45 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+                      All burgers include: <strong>Cheese, Lettuce, Tomatoes, Onions, Pickles &amp; Mayo</strong>. You can remove any ingredient during checkout. Add Cheese +$1 · Add Bacon +$1 · Add Avocado +$1.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)", display: (cat === "pizza" || cat === "wings" || cat === "burger") ? "none" : undefined }}>
                 {catItems.map((item, itemIdx) => {
                   const price = parseFloat(item.price);
                   const photo = item.imageUrl ?? (cat === "burger" ? getBurgerPhoto(item.name) : getMenuPhoto(item.name));

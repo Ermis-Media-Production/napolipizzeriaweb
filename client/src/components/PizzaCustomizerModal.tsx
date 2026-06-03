@@ -7,11 +7,12 @@
  * Step 4 — Extra toppings (included toppings shown fixed; extras charged by size)
  * Step 5 — Cut style + special notes + add to cart
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   X, ChevronLeft, ChevronRight, Check, ShoppingCart, Plus, Minus, Pizza,
 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import {
   PIZZA_SIZES,
@@ -269,8 +270,11 @@ function PizzaWizard({ selection, onClose }: { selection: PizzaSelection; onClos
     setter((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]);
   }
 
+  // ── Resolve Clover item ID ─────────────────────────────────────────────
+  const utils = trpc.useUtils();
+
   // ── Add to cart ────────────────────────────────────────────────────────
-  function handleAddToCart() {
+  const handleAddToCart = useCallback(async () => {
     const cutLabel = CUT_OPTIONS.find((c) => c.id === selectedCut)?.label ?? selectedCut;
     const lines: string[] = [];
 
@@ -292,6 +296,20 @@ function PizzaWizard({ selection, onClose }: { selection: PizzaSelection; onClos
     if (freeCount > 0) lines.push(`(${freeCount} toppings included in price)`);
     if (notes.trim()) lines.push(`Note: ${notes.trim()}`);
 
+    // Resolve the Clover catalog ID for this specific pizza + size combination
+    // e.g. "BBQ Chicken 16\"" → matches "BBQ Chicken 16\" Pizza" in DB
+    let cloverItemId: string | undefined;
+    try {
+      const searchName = `${selectedPizzaName} ${selectedSize}`;
+      const resolved = await utils.client.menuItems.resolveCloverIds.query({
+        items: [{ name: searchName, category: "pizza" }],
+      });
+      cloverItemId = resolved[searchName] ?? undefined;
+    } catch {
+      // Non-fatal — order still goes through without catalog ID
+      console.warn("[Pizza] Could not resolve cloverItemId");
+    }
+
     addItem({
       id: `pizza-${selectedPizzaName}-${selectedSize}-${selectedCut}-${Date.now()}`,
       name: `${selectedPizzaName} Pizza (${selectedSize})`,
@@ -299,11 +317,12 @@ function PizzaWizard({ selection, onClose }: { selection: PizzaSelection; onClos
       quantity: 1,
       category: "pizza",
       description: lines.join(" · "),
+      cloverItemId,
     });
 
     toast.success(`${selectedPizzaName} Pizza (${selectedSize}) added to cart!`);
     onClose();
-  }
+  }, [selectedPizzaName, selectedSize, selectedCut, grandTotal, halfAndHalf, extraToppings, firstHalfExtras, secondHalfExtras, includedToppings, freeCount, notes, addItem, utils, onClose]);
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
