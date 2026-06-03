@@ -23,8 +23,8 @@
  *   - Order type Pick up → CYNNEQA3ABD8Y  (default)
  *   - Order type Delivery → KKKWXJB30FE6R
  *   - Order type Dine In → ATSAYYBGKK8B0
- *   - Print Device ID    → 09615cdb-7801-4261-a70d-3bf94816f51a
- *     (Station Duo 2nd Gen — same device configured in WordPress for Auto-Print)
+ *   - Print Device ID    → 1cca370b-f6a2-70ff-2e40-35a38a246183
+ *     (Station Duo 2nd Gen PRIMARY — serial C055UG52262800, terminalPrefix 0)
  */
 
 import axios from "axios";
@@ -79,9 +79,9 @@ export const CLOVER_ORDER_TYPE_IDS = {
  * This is the Station Duo (2nd Gen) configured in WordPress as the Auto-Print device.
  * Including deviceRef in the print_event ensures the ticket is routed to the
  * correct station, which then dispatches to the kitchen printers.
- * Verified: 09615CDB78014261A70D3BF94816F51A (API format without dashes)
+ * Verified: 1CCA370BF6A270FF2E4035A38A246183 (API format without dashes)
  */
-export const CLOVER_PRINT_DEVICE_ID = "09615CDB78014261A70D3BF94816F51A"; // 09615cdb-7801-4261-a70d-3bf94816f51a (verified 2026-06-02)
+export const CLOVER_PRINT_DEVICE_ID = "1CCA370BF6A270FF2E4035A38A246183"; // 1cca370b-f6a2-70ff-2e40-35a38a246183 — Station Duo 2nd Gen PRIMARY (serial C055UG52262800, terminalPrefix 0)
 
 // ── Printer label mapping ──────────────────────────────────────────────────────
 
