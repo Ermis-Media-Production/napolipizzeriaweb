@@ -233,6 +233,8 @@ export default function WingsCustomizerModal({ selection, onClose }: Props) {
 function WingsCustomizerInner({ initialType, onClose }: { initialType: WingType; onClose: () => void }) {
   const { addItem, openCart } = useCart();
 
+  // For < 10pc: steps are 1=Qty, 3=Sauce, 4=Add-ons (skip step 2)
+  // For >= 10pc: steps are 1=Qty, 2=FlavorMode, 3=Sauce, 4=Add-ons
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedRow, setSelectedRow] = useState<WingRow | null>(null);
 
@@ -261,6 +263,19 @@ function WingsCustomizerInner({ initialType, onClose }: { initialType: WingType;
   const totalPrice = basePrice + (addFries ? friesAddonPrice : 0) + ranchPrice;
 
   const canProceedStep1 = selectedRow !== null;
+
+  // When qty < 10, skip flavor mode step and go straight to sauce
+  function handleProceedFromQty() {
+    if (!canProceedStep1) return;
+    const qty = parseInt(selectedRow!.qty.replace(/[^0-9]/g, ""), 10);
+    if (qty >= 10) {
+      setStep(2); // show flavor mode
+    } else {
+      setIsHalfHalf(false); // force one flavor
+      setStep(3); // skip to sauce
+    }
+  }
+
   const canProceedStep3 = isHalfHalf
     ? flavorA !== "" && flavorB !== "" && flavorA !== flavorB
     : flavor !== "";
@@ -361,18 +376,32 @@ function WingsCustomizerInner({ initialType, onClose }: { initialType: WingType;
           </div>
         </div>
 
-        {/* ── Step indicator ── */}
+        {/* ── Step indicator — 3 steps for <10pc, 4 steps for 10pc+ ── */}
         <div
           className="flex items-center justify-center gap-2 px-5 py-2.5 shrink-0"
           style={{ background: "oklch(0.97 0.012 80)", borderBottom: "1px solid oklch(0.90 0.015 80)" }}
         >
-          <StepDot num={1} label="Quantity" active={step === 1} done={step > 1} />
-          <div className="w-6 h-0.5 rounded mb-3" style={{ background: step > 1 ? "var(--napoli-red)" : "oklch(0.88 0.015 80)" }} />
-          <StepDot num={2} label="Flavor Mode" active={step === 2} done={step > 2} />
-          <div className="w-6 h-0.5 rounded mb-3" style={{ background: step > 2 ? "var(--napoli-red)" : "oklch(0.88 0.015 80)" }} />
-          <StepDot num={3} label="Sauce" active={step === 3} done={step > 3} />
-          <div className="w-6 h-0.5 rounded mb-3" style={{ background: step > 3 ? "var(--napoli-red)" : "oklch(0.88 0.015 80)" }} />
-          <StepDot num={4} label="Add-ons" active={step === 4} done={false} />
+          {halfHalfEligible ? (
+            // 4-step indicator for 10pc+
+            <>
+              <StepDot num={1} label="Quantity" active={step === 1} done={step > 1} />
+              <div className="w-5 h-0.5 rounded mb-3" style={{ background: step > 1 ? "var(--napoli-red)" : "oklch(0.88 0.015 80)" }} />
+              <StepDot num={2} label="Flavor Mode" active={step === 2} done={step > 2} />
+              <div className="w-5 h-0.5 rounded mb-3" style={{ background: step > 2 ? "var(--napoli-red)" : "oklch(0.88 0.015 80)" }} />
+              <StepDot num={3} label="Sauce" active={step === 3} done={step > 3} />
+              <div className="w-5 h-0.5 rounded mb-3" style={{ background: step > 3 ? "var(--napoli-red)" : "oklch(0.88 0.015 80)" }} />
+              <StepDot num={4} label="Add-ons" active={step === 4} done={false} />
+            </>
+          ) : (
+            // 3-step indicator for <10pc (no Flavor Mode step)
+            <>
+              <StepDot num={1} label="Quantity" active={step === 1} done={step > 1} />
+              <div className="w-8 h-0.5 rounded mb-3" style={{ background: step > 1 ? "var(--napoli-red)" : "oklch(0.88 0.015 80)" }} />
+              <StepDot num={2} label="Sauce" active={step === 3} done={step > 3} />
+              <div className="w-8 h-0.5 rounded mb-3" style={{ background: step > 3 ? "var(--napoli-red)" : "oklch(0.88 0.015 80)" }} />
+              <StepDot num={3} label="Add-ons" active={step === 4} done={false} />
+            </>
+          )}
         </div>
 
         {/* ── Scrollable body ── */}
@@ -425,12 +454,12 @@ function WingsCustomizerInner({ initialType, onClose }: { initialType: WingType;
               </div>
 
               <button
-                onClick={() => canProceedStep1 && setStep(2)}
+                onClick={handleProceedFromQty}
                 disabled={!canProceedStep1}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold napoli-label tracking-wider transition-all active:scale-95 disabled:opacity-40"
                 style={{ background: canProceedStep1 ? "var(--napoli-red)" : "oklch(0.75 0.015 80)", color: "white" }}
               >
-                Next — Choose Flavor Mode <ChevronRight size={15} />
+                {canProceedStep1 && qtyNum >= 10 ? "Next — Choose Flavor Mode" : "Next — Pick Sauce"} <ChevronRight size={15} />
               </button>
             </div>
           )}
@@ -621,7 +650,7 @@ function WingsCustomizerInner({ initialType, onClose }: { initialType: WingType;
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => setStep(2)}
+                  onClick={() => halfHalfEligible ? setStep(2) : setStep(1)}
                   className="flex items-center gap-1.5 px-4 py-3 rounded-lg text-sm font-semibold transition-all active:scale-95"
                   style={{ border: "1.5px solid oklch(0.82 0.015 80)", color: "oklch(0.40 0.04 30)", fontFamily: "'Oswald', sans-serif", background: "white" }}
                 >
