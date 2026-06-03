@@ -534,5 +534,5 @@
 - [x] Update PizzaCustomizerModal to resolve cloverItemId from DB before adding to cart
 - [x] Update WingsCustomizerModal to resolve cloverItemId from DB before adding to cart
 - [x] Update BurgerCustomizerModal to resolve cloverItemId from DB before adding to cart
-- [ ] Update SubsCustomizerModal, WrapCustomizerModal to resolve cloverItemId from DB
-- [ ] Verify order payload sent to Clover includes correct cloverItemId for all wizard-created items
+- [x] Update SubsCustomizerModal, WrapCustomizerModal to resolve cloverItemId from DB
+- [x] Verify order payload sent to Clover includes correct cloverItemId for all wizard-created items

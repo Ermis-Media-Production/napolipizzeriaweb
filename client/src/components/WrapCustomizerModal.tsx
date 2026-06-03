@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { X, ChevronRight, Check, ShoppingCart } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
 const WRAP_TYPES = [
@@ -50,6 +51,7 @@ export default function WrapCustomizerModal({ trigger, onClose }: Props) {
 
 function WrapCustomizerInner({ trigger, onClose }: { trigger: WrapTrigger; onClose: () => void }) {
   const { addItem, openCart } = useCart();
+  const utils = trpc.useUtils();
 
   const [step, setStep] = useState<Step>(1);
   const [wrapType, setWrapType]   = useState("");
@@ -60,11 +62,22 @@ function WrapCustomizerInner({ trigger, onClose }: { trigger: WrapTrigger; onClo
   const selectedSauce = SAUCE_OPTIONS.find(s => s.id === sauce)!;
   const totalPrice = trigger.basePrice + selectedSauce.extra;
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     const addons: string[] = [];
     addons.push(breadType);
     if (sauce !== "none") addons.push(`${selectedSauce.label} (+$${selectedSauce.extra.toFixed(2)})`);
     if (notes.trim()) addons.push(`Note: ${notes.trim()}`);
+
+    // Resolve cloverItemId from DB using fuzzy name match
+    let cloverItemId: string | undefined;
+    try {
+      const results = await utils.client.menuItems.resolveCloverIds.query({
+        items: [{ name: `${wrapType} Wrap`, category: "sandwich" }],
+      });
+      cloverItemId = (results[0] as { cloverItemId?: string })?.cloverItemId ?? undefined;
+    } catch {
+      // Non-blocking
+    }
 
     addItem({
       id: `wrap-${wrapType}-${breadType}-${sauce}-${Date.now()}`,
@@ -73,6 +86,7 @@ function WrapCustomizerInner({ trigger, onClose }: { trigger: WrapTrigger; onClo
       quantity: 1,
       category: "wraps",
       description: addons.join(" · "),
+      cloverItemId,
     });
 
     toast.success(`${wrapType} Wrap added to cart`, {

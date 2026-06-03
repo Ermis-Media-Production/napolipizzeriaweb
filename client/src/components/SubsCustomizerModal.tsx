@@ -10,6 +10,7 @@
 import { useState } from "react";
 import { X, ChevronRight, Check, ShoppingCart } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
 const BREAD_TYPES = [
@@ -55,6 +56,7 @@ export default function SubsCustomizerModal({ trigger, onClose }: Props) {
 
 function SubsCustomizerInner({ trigger, onClose }: { trigger: SubsTrigger; onClose: () => void }) {
   const { addItem, openCart } = useCart();
+  const utils = trpc.useUtils();
 
   const [step, setStep]         = useState<Step>(1);
   const [breadType, setBreadType] = useState("");
@@ -79,7 +81,7 @@ function SubsCustomizerInner({ trigger, onClose }: { trigger: SubsTrigger; onClo
 
   const totalPrice = trigger.basePrice + addonTotal;
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     const parts: string[] = [];
     parts.push(breadType);
     if (side) parts.push(`Side: ${side}`);
@@ -89,6 +91,17 @@ function SubsCustomizerInner({ trigger, onClose }: { trigger: SubsTrigger; onClo
     }
     if (notes.trim()) parts.push(`Note: ${notes.trim()}`);
 
+    // Resolve cloverItemId from DB using fuzzy name match
+    let cloverItemId: string | undefined;
+    try {
+      const results = await utils.client.menuItems.resolveCloverIds.query({
+        items: [{ name: trigger.subName, category: "sandwich" }],
+      });
+      cloverItemId = (results[0] as { cloverItemId?: string })?.cloverItemId ?? undefined;
+    } catch {
+      // Non-blocking — order still goes through without cloverItemId
+    }
+
     addItem({
       id: `sub-${trigger.subName}-${breadType}-${Date.now()}`,
       name: trigger.subName,
@@ -96,6 +109,7 @@ function SubsCustomizerInner({ trigger, onClose }: { trigger: SubsTrigger; onClo
       quantity: 1,
       category: "subs",
       description: parts.join(" · "),
+      cloverItemId,
     });
 
     toast.success(`${trigger.subName} added to cart`, {
