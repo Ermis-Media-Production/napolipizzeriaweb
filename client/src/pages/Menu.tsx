@@ -26,12 +26,7 @@ import LunchCustomizerModal from "@/components/LunchCustomizerModal";
 import SaladsCustomizerModal, { type SaladsModalTrigger, SALAD_MODAL_ITEMS } from "@/components/SaladsCustomizerModal";
 import PastaCustomizerModal, { type PastaModalTrigger, PASTA_MODAL_ITEMS } from "@/components/PastaCustomizerModal";
 import GlutenFreePizzaModal from "@/components/GlutenFreePizzaModal";
-import {
-  MENU_CATEGORIES, APPETIZERS, LUNCH_SPECIALS, PIZZA_SIZES, PIZZA_BASE_PRICES,
-  PIZZA_SPECIALS, PIZZA_30_TOPPINGS, STUFFED_DOUGH, WINGS, PASTA, SUBS,
-  BURGERS, TRIPLE_DECKERS, SALADS, DESSERTS, CHILDRENS_MENU, BEVERAGES,
-  ANYTIME_SPECIALS, SOUPS, WRAPS, SIDES, CHICAGO_DEEP_DISH, SICILIAN_PIZZA,
-} from "@/lib/napoliData";
+// napoliData imports removed — menu is now fully Clover-synced
 import { getMenuPhoto, getBurgerPhoto } from "@/lib/napoliPhotos";
 import { NutritionBadges } from "@/components/NutritionBadges";
 
@@ -358,265 +353,6 @@ function AnytimeSpecialRow({
   );
 }
 
-function LunchSpecialsGrid({ isLunchOpen }: { isLunchOpen: boolean }) {
-  const lunchLightboxItems: LightboxItem[] = LUNCH_SPECIALS.items
-    .filter(it => !!getMenuPhoto(it.name))
-    .map(it => ({
-      cloverId: `lunch-${it.num}`,
-      name: `#${it.num} ${it.name}`,
-      imageUrl: getMenuPhoto(it.name),
-      price: Math.round((parsePrice(it.price) ?? 0) * 100),
-      description: it.price,
-    }));
-  const [lunchLightbox, setLunchLightbox] = useState<{ index: number } | null>(null);
-  return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {LUNCH_SPECIALS.items.map((item, i) => {
-          const photoIdx = lunchLightboxItems.findIndex(l => l.cloverId === `lunch-${item.num}`);
-          return (
-            <LunchSpecialRow
-              key={item.num}
-              item={item}
-              isLeft={i % 2 === 0}
-              isLunchOpen={isLunchOpen}
-              onPhotoClick={photoIdx >= 0 ? () => setLunchLightbox({ index: photoIdx }) : undefined}
-            />
-          );
-        })}
-      </div>
-      {lunchLightbox !== null && (
-        <MenuLightbox
-          items={lunchLightboxItems}
-          currentIndex={lunchLightbox.index}
-          onClose={() => setLunchLightbox(null)}
-          onNavigate={(idx) => setLunchLightbox({ index: idx })}
-        />
-      )}
-    </>
-  );
-}
-
-function LunchSpecialRow({ item, isLeft, isLunchOpen, onPhotoClick }: { item: { num: number; name: string; price: string }; isLeft: boolean; isLunchOpen: boolean; onPhotoClick?: () => void }) {
-  const { addItem, openCart } = useCart();
-  const { lang } = useLanguage();
-  const translated = translateItem(item.name, undefined, lang);
-  const numericPrice = parsePrice(item.price);
-  const [showCustomizer, setShowCustomizer] = useState(false);
-  const photo = getMenuPhoto(item.name);
-
-  // Items that need customization (choice, topping, or wing sauce)
-  const NEEDS_CUSTOMIZER = new Set([2, 3, 4, 6, 9, 13, 16, 19, 24]);
-  const needsCustomizer = NEEDS_CUSTOMIZER.has(item.num);
-
-  const handleAdd = () => {
-    if (!numericPrice || !isLunchOpen) return;
-    if (needsCustomizer) {
-      setShowCustomizer(true);
-      return;
-    }
-    // Simple items: just add with free soda note
-    addItem({
-      id: `lunch-${item.num}-${Date.now()}`,
-      name: `#${item.num} ${item.name}`,
-      price: numericPrice,
-      quantity: 1,
-      category: "lunch",
-      description: "Includes free can of soda",
-    });
-    toast.success(`#${item.num} ${item.name} added to cart`, {
-      action: { label: "View Cart", onClick: openCart },
-    });
-  };
-
-  return (
-    <>
-      <div
-        className="napoli-menu-item flex items-center gap-3 px-5 py-3 border-b"
-        style={{
-          borderColor: "oklch(0.93 0.012 80)",
-          borderRight: isLeft ? "1px solid oklch(0.93 0.012 80)" : "none",
-          opacity: isLunchOpen ? 1 : 0.45,
-          transition: "opacity 0.3s ease",
-        }}
-      >
-        {photo ? (
-          <div
-            className="relative group cursor-pointer shrink-0 rounded-md overflow-hidden"
-            style={{ width: 48, height: 48 }}
-            onClick={onPhotoClick}
-            title="Click to enlarge"
-          >
-            <img src={photo} alt={item.name} className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105" loading="lazy" />
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ background: "rgba(0,0,0,0.35)" }}>
-              <ZoomIn size={14} color="white" />
-            </div>
-          </div>
-        ) : (
-          <span
-            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 napoli-price"
-            style={{ background: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)", color: "white" }}
-          >
-            {item.num}
-          </span>
-        )}
-        <div className="flex-1 min-w-0">
-          <span className="text-sm napoli-body font-semibold" style={{ color: "var(--napoli-dark)" }}>{translated.name}</span>
-        </div>
-        <span className="napoli-price text-sm shrink-0" style={{ color: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)" }}>{item.price}</span>
-        {numericPrice && (
-          <button
-            onClick={handleAdd}
-            disabled={!isLunchOpen}
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all shrink-0"
-            style={{
-              background: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)",
-              color: "white",
-              cursor: isLunchOpen ? "pointer" : "not-allowed",
-            }}
-            title={isLunchOpen ? `Add #${item.num} ${item.name} to cart` : "Lunch Special not available after 3 PM"}
-          >
-            <Plus size={14} />
-          </button>
-        )}
-      </div>
-      {showCustomizer && (
-        <LunchCustomizerModal
-          item={item}
-          onClose={() => setShowCustomizer(false)}
-        />
-      )}
-    </>
-  );
-}
-
-function ItemRow({ name, desc, price, highlight, category }: { name: string; desc?: string; price?: string; highlight?: boolean; category?: string }) {
-  const { addItem, openCart } = useCart();
-  const { lang } = useLanguage();
-  const translated = translateItem(name, desc, lang);
-  const numericPrice = parsePrice(price);
-  const photo = getMenuPhoto(name);
-  const [zoomOpen, setZoomOpen] = useState(false);
-
-  const handleAdd = () => {
-    if (!numericPrice) return;
-    addItem({
-      id: `${name}-${Date.now()}`,
-      name,
-      price: numericPrice,
-      quantity: 1,
-      category: category ?? "food",
-      description: desc,
-    });
-    toast.success(`${name} added to cart`, {
-      action: { label: "View Cart", onClick: openCart },
-    });
-  };
-
-  return (
-    <>
-    {zoomOpen && photo && (
-      <ImageZoomLightbox src={photo} alt={translated.name} onClose={() => setZoomOpen(false)} />
-    )}
-    <div
-      className="napoli-menu-item flex items-start gap-3 px-4 py-3 border-b last:border-b-0"
-      style={{
-        borderColor: "oklch(0.93 0.012 80)",
-        background: highlight ? "oklch(0.99 0.02 65 / 0.4)" : "transparent",
-      }}
-    >
-      {photo && (
-        <div
-          className="shrink-0 rounded overflow-hidden relative cursor-zoom-in group"
-          style={{ width: 64, height: 64 }}
-          onClick={() => setZoomOpen(true)}
-          title="Click to enlarge"
-        >
-          <img
-            src={photo}
-            alt={name}
-            className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-            loading="lazy"
-          />
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ background: "rgba(0,0,0,0.35)" }}>
-            <ZoomIn size={18} color="white" />
-          </div>
-        </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{translated.name}</span>
-        {translated.desc && <p className="text-xs napoli-body mt-0.5 leading-relaxed" style={{ color: "oklch(0.52 0.03 30)" }}>{translated.desc}</p>}
-        <NutritionBadges itemName={name} />
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {price && (
-          <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>{price}</span>
-        )}
-        {numericPrice && (
-          <button
-            onClick={handleAdd}
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90 hover:opacity-90"
-            style={{ background: "var(--napoli-red)", color: "white" }}
-            title={`Add ${name} to cart`}
-          >
-            <Plus size={14} />
-          </button>
-        )}
-      </div>
-    </div>
-    </>
-  );
-}
-
-
-
-function WholeLottaPastaRow() {
-  const { addItem, openCart } = useCart();
-  const numericPrice = parsePrice(PASTA.wholeLottaPrice);
-
-  const handleAdd = () => {
-    if (!numericPrice) return;
-    addItem({
-      id: `whole-lotta-pasta-${Date.now()}`,
-      name: "Napoli's Whole Lotta Pasta",
-      price: numericPrice,
-      quantity: 1,
-      category: "pasta",
-      description: PASTA.wholeLottaItems.join(", "),
-    });
-    toast.success("Napoli's Whole Lotta Pasta added to cart", {
-      action: { label: "View Cart", onClick: openCart },
-    });
-  };
-
-  return (
-    <div className="px-5 py-4 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.99 0.02 65 / 0.3)" }}>
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <span className="napoli-badge-gold mb-1 inline-block">Best Value</span>
-          <h4 className="napoli-heading text-base" style={{ color: "var(--napoli-dark)" }}>Napoli's Whole Lotta Pasta</h4>
-          <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>
-            {PASTA.wholeLottaItems.join(", ")}
-          </p>
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="napoli-price text-xl" style={{ color: "var(--napoli-red)" }}>{PASTA.wholeLottaPrice}</span>
-          {numericPrice && (
-            <button
-              onClick={handleAdd}
-              className="w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 hover:opacity-90"
-              style={{ background: "var(--napoli-red)", color: "white" }}
-              title="Add Napoli's Whole Lotta Pasta to cart"
-            >
-              <Plus size={16} />
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function ImageZoomLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
   // Close on Escape key
   useEffect(() => {
@@ -911,21 +647,22 @@ function KidsMenuGrid({
 
 // ── Clover-Synced DB Items Section ──────────────────────────────────────────
 
-const CATEGORY_META: Record<string, { label: string; emoji: string }> = {
-  pizza: { label: "Clover Pizzeria Items", emoji: "🍕" },
-  burger: { label: "Clover Burger Items", emoji: "🍔" },
-  pasta: { label: "Clover Pasta Items", emoji: "🍝" },
-  wings: { label: "Clover Wings Items", emoji: "🍗" },
-  salad: { label: "Clover Salad Items", emoji: "🥗" },
-  soup: { label: "Clover Soup Items", emoji: "🍲" },
-  sandwich: { label: "Clover Sandwich Items", emoji: "🥖" },
-  wrap: { label: "Clover Wrap Items", emoji: "🌯" },
-  appetizer: { label: "Clover Appetizer Items", emoji: "🧅" },
-  kids: { label: "Clover Kids Items", emoji: "🧒" },
-  beverage: { label: "Clover Beverage Items", emoji: "🥤" },
-  dessert: { label: "Clover Dessert Items", emoji: "🍰" },
-  special: { label: "Clover Special Items", emoji: "⭐" },
-  catering: { label: "Clover Catering Items", emoji: "🍽️" },
+const CATEGORY_META: Record<string, { label: string; emoji: string; photo?: string; order: number }> = {
+  appetizer: { label: "Appetizers", emoji: "🧅", photo: "/manus-storage/napoli-appetizers_dc37c73d.jpg", order: 1 },
+  lunch:     { label: "Lunch Specials", emoji: "🕙", photo: "/manus-storage/napoli-lunch_94df386a.jpg", order: 2 },
+  pizza:     { label: "Pizzeria", emoji: "🍕", photo: "/manus-storage/napoli-pizza-header_a1b2c3d4.jpg", order: 3 },
+  wings:     { label: "Wings", emoji: "🍗", order: 4 },
+  pasta:     { label: "Pasta", emoji: "🍝", order: 5 },
+  sandwich:  { label: "Subs & Sandwiches", emoji: "🥖", order: 6 },
+  burger:    { label: "Burgers", emoji: "🍔", order: 7 },
+  salad:     { label: "Salads", emoji: "🥗", order: 8 },
+  sides:     { label: "Sides", emoji: "🍟", order: 9 },
+  dessert:   { label: "Desserts", emoji: "🍰", order: 10 },
+  kids:      { label: "Children's Menu", emoji: "🧒", order: 11 },
+  beverage:  { label: "Beverages", emoji: "🥤", order: 12 },
+  special:   { label: "Anytime Specials", emoji: "⭐", photo: "/manus-storage/napoli-specials-header_30ef5751.jpg", order: 13 },
+  catering:  { label: "Catering", emoji: "🍽️", order: 14 },
+  soup:      { label: "Soups", emoji: "🍲", order: 15 },
 };
 
 function CloverSyncedItems({ addItem }: { addItem: (item: { id: string; name: string; price: number; quantity: number; category: string; cloverItemId?: string }) => void }) {
@@ -933,17 +670,38 @@ function CloverSyncedItems({ addItem }: { addItem: (item: { id: string; name: st
     { includeUnavailable: false },
     { staleTime: 5 * 60 * 1000 }
   );
-  const [lightboxState, setLightboxState] = useState<{ items: LightboxItem[]; index: number } | null>(null);
+  const [lightboxState, setLightboxState] = useState<{ items: LightboxItem[]; catKey: string; index: number } | null>(null);
+  const lunchTimer = useLunchTimer();
+  const { lang } = useLanguage();
 
-  if (isLoading || !items || items.length === 0) return null;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "var(--napoli-red)", borderTopColor: "transparent" }} />
+          <p className="text-sm napoli-body" style={{ color: "oklch(0.55 0.03 30)" }}>Loading menu…</p>
+        </div>
+      </div>
+    );
+  }
 
-  // Group by category
+  if (!items || items.length === 0) return null;
+
+  // Group by category, skip "fee" items
   const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
     const cat = item.category || "special";
+    if (cat === "fee") return acc;
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(item);
     return acc;
   }, {});
+
+  // Sort categories by defined order
+  const sortedCats = Object.keys(grouped).sort((a, b) => {
+    const oa = CATEGORY_META[a]?.order ?? 99;
+    const ob = CATEGORY_META[b]?.order ?? 99;
+    return oa - ob;
+  });
 
   return (
     <>
@@ -955,50 +713,91 @@ function CloverSyncedItems({ addItem }: { addItem: (item: { id: string; name: st
           onNavigate={(i) => setLightboxState((s) => s ? { ...s, index: i } : null)}
         />
       )}
-      {Object.entries(grouped).map(([cat, catItems]) => {
-        const meta = CATEGORY_META[cat] ?? { label: cat.charAt(0).toUpperCase() + cat.slice(1), emoji: "🍽️" };
-        // Build lightbox items for this category section
+      {sortedCats.map((cat) => {
+        const catItems = grouped[cat];
+        const meta = CATEGORY_META[cat] ?? { label: cat.charAt(0).toUpperCase() + cat.slice(1), emoji: "🍽️", order: 99 };
+        const isLunch = cat === "lunch";
+
+        // Build lightbox items for this category (use photo fallback)
         const sectionLightboxItems: LightboxItem[] = catItems.map((ci) => ({
           cloverId: ci.cloverItemId ?? ci.id.toString(),
           name: ci.name,
-          imageUrl: ci.imageUrl,
-          customImageUrl: null,
+          imageUrl: ci.imageUrl ?? getMenuPhoto(ci.name),
           price: Math.round(parseFloat(ci.price) * 100),
           description: ci.description,
         }));
+
         return (
           <React.Fragment key={cat}>
-            <div
-              id={`clover-${cat}`}
-              className="flex items-center gap-3 py-3 px-5 rounded-t-md scroll-mt-24 mt-2"
-              style={{ background: "var(--napoli-red)" }}
-            >
-              <span className="text-xl">{meta.emoji}</span>
-              <h2 className="napoli-label text-base text-white tracking-widest">{meta.label}</h2>
-              <span className="ml-auto text-xs text-white/60 napoli-body">Synced from Clover</span>
-            </div>
-            <div
-              className="rounded-b-md border border-t-0 bg-white mb-6"
-              style={{ borderColor: "oklch(0.88 0.015 80)" }}
-            >
+            {/* Section header */}
+            {meta.photo ? (
+              <div
+                id={cat}
+                className="relative overflow-hidden rounded-t-md scroll-mt-24 mt-2"
+                style={{ height: "140px" }}
+              >
+                <img src={meta.photo} alt={meta.label} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+                <div className="absolute inset-0" style={{ background: "linear-gradient(to right, rgba(180,20,20,0.88) 0%, rgba(180,20,20,0.55) 60%, rgba(0,0,0,0.25) 100%)" }} />
+                <div className="relative flex items-center h-full px-5">
+                  <span className="text-3xl drop-shadow">{meta.emoji}</span>
+                  <h2 className="napoli-label text-xl text-white tracking-widest drop-shadow-md ml-3">{translateCategory(meta.label, lang)}</h2>
+                </div>
+              </div>
+            ) : (
+              <div
+                id={cat}
+                className="flex items-center gap-3 py-3 px-5 rounded-t-md scroll-mt-24 mt-2"
+                style={{ background: "var(--napoli-red)" }}
+              >
+                <span className="text-xl">{meta.emoji}</span>
+                <h2 className="napoli-label text-base text-white tracking-widest">{translateCategory(meta.label, lang)}</h2>
+              </div>
+            )}
+
+            <div className="rounded-b-md border border-t-0 bg-white mb-6" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
+              {/* Lunch timer bar */}
+              {isLunch && (
+                <div
+                  className="px-5 py-3 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2"
+                  style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="napoli-badge-green">Mon–Fri 10AM–3PM Only</span>
+                    <span className="napoli-label text-xs font-bold" style={{ color: "var(--napoli-green)" }}>
+                      🥤 FREE Can of Soda with any Lunch Special!
+                    </span>
+                  </div>
+                  <LunchTimerBadge />
+                </div>
+              )}
+              {isLunch && !lunchTimer.isOpen && lunchTimer.hasStarted && (
+                <div className="px-5 py-4 text-center" style={{ background: "oklch(0.96 0.01 30)" }}>
+                  <p className="napoli-label text-sm font-bold" style={{ color: "oklch(0.45 0.06 30)" }}>
+                    🔒 Lunch Specials are only available 10 AM – 3 PM
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
                 {catItems.map((item, itemIdx) => {
                   const price = parseFloat(item.price);
-                  const hasPhoto = !!item.imageUrl;
+                  const photo = item.imageUrl ?? (cat === "burger" ? getBurgerPhoto(item.name) : getMenuPhoto(item.name));
+                  const isLunchOpen = !isLunch || lunchTimer.isOpen;
+
                   return (
                     <div
                       key={item.id}
                       className="napoli-menu-item flex items-center gap-3 px-4 py-3 border-b border-r"
-                      style={{ borderColor: "oklch(0.93 0.012 80)" }}
+                      style={{ borderColor: "oklch(0.93 0.012 80)", opacity: isLunchOpen ? 1 : 0.5 }}
                     >
-                      {hasPhoto ? (
+                      {photo ? (
                         <div
                           className="shrink-0 rounded overflow-hidden relative group cursor-zoom-in"
                           style={{ width: 56, height: 56 }}
-                          onClick={() => setLightboxState({ items: sectionLightboxItems, index: itemIdx })}
+                          onClick={() => setLightboxState({ items: sectionLightboxItems, catKey: cat, index: itemIdx })}
                           title="Click to enlarge"
                         >
-                          <img src={item.imageUrl!} alt={item.name} className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105" loading="lazy" />
+                          <img src={photo} alt={item.name} className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105" loading="lazy" />
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ background: "rgba(0,0,0,0.35)" }}>
                             <ZoomIn size={16} color="white" />
                           </div>
@@ -1014,19 +813,22 @@ function CloverSyncedItems({ addItem }: { addItem: (item: { id: string; name: st
                         {price === 0 && (
                           <p className="text-xs napoli-body mt-0.5 italic" style={{ color: "oklch(0.52 0.03 30)" }}>See options</p>
                         )}
+                        <NutritionBadges itemName={item.name} compact />
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {price > 0 && (
-                          <span className="napoli-price text-sm font-bold" style={{ color: "var(--napoli-red)" }}>${price.toFixed(2)}</span>
+                          <span className="napoli-price text-sm font-bold" style={{ color: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)" }}>${price.toFixed(2)}</span>
                         )}
                         {price > 0 && (
                           <button
+                            disabled={!isLunchOpen}
                             onClick={() => {
+                              if (!isLunchOpen) return;
                               addItem({ id: `clover-${item.id}-${Date.now()}`, name: item.name, price, quantity: 1, category: cat, cloverItemId: item.cloverItemId ?? undefined });
                               toast.success(`${item.name} added to cart!`);
                             }}
                             className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90"
-                            style={{ background: "var(--napoli-red)", color: "white" }}
+                            style={{ background: isLunchOpen ? "var(--napoli-red)" : "oklch(0.55 0.02 30)", color: "white", cursor: isLunchOpen ? "pointer" : "not-allowed" }}
                           >
                             <Plus size={13} />
                           </button>
@@ -1090,7 +892,7 @@ export default function Menu() {
 
   // Update active category as user scrolls through the menu
   useEffect(() => {
-    const sectionIds = MENU_CATEGORIES.map((c) => c.id);
+    const sectionIds = Object.keys(CATEGORY_META);
     const observers: IntersectionObserver[] = [];
 
     sectionIds.forEach((id) => {
@@ -1167,20 +969,22 @@ export default function Menu() {
       >
         <div className="container">
           <div className="flex gap-0.5 py-2 min-w-max">
-            {MENU_CATEGORIES.map((cat) => (
+            {Object.entries(CATEGORY_META)
+              .sort((a, b) => a[1].order - b[1].order)
+              .map(([id, meta]) => (
               <button
-                key={cat.id}
-                data-cat-id={cat.id}
-                onClick={() => scrollTo(cat.id)}
+                key={id}
+                data-cat-id={id}
+                onClick={() => scrollTo(id)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded text-xs napoli-label whitespace-nowrap transition-colors"
                 style={{
                   fontFamily: "'Oswald', sans-serif",
-                  background: activeCategory === cat.id ? "var(--napoli-red)" : "transparent",
-                  color: activeCategory === cat.id ? "white" : "var(--napoli-dark)",
+                  background: activeCategory === id ? "var(--napoli-red)" : "transparent",
+                  color: activeCategory === id ? "white" : "var(--napoli-dark)",
                 }}
               >
-                <span>{cat.emoji}</span>
-                {translateCategory(cat.label, lang)}
+                <span>{meta.emoji}</span>
+                {translateCategory(meta.label, lang)}
               </button>
             ))}
           </div>
@@ -1188,528 +992,7 @@ export default function Menu() {
       </div>
 
       <div className="container py-8 flex-1">
-        {/* ── APPETIZERS ─────────────────────────────────────── */}
-        <SectionHeader id="appetizers" title="Appetizers" emoji="🧅" photo="/manus-storage/napoli-appetizers_dc37c73d.jpg" />
-        <MenuCard>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
-            {APPETIZERS.map((item) => (
-              <div key={item.name} style={{ borderBottom: "1px solid oklch(0.93 0.012 80)", borderRight: "1px solid oklch(0.93 0.012 80)" }}>
-                {APPETIZER_MODAL_ITEMS.includes(item.name) ? (
-                  <AppetizersItemRow
-                    name={item.name}
-                    desc={item.desc}
-                    price={(item as any).price ?? ((item as any).prices?.[0]?.price)}
-                    highlight={(item as any).highlight}
-                    onOpen={() => setAppetizersModalTrigger({ itemName: item.name })}
-                  />
-                ) : (
-                  <ItemRow name={item.name} desc={item.desc} price={(item as any).price} highlight={(item as any).highlight} category="appetizers" />
-                )}
-              </div>
-            ))}
-          </div>
-        </MenuCard>
-
-        {/* ── LUNCH SPECIALS ─────────────────────────────────── */}
-        {/* Custom section header with digital clock embedded */}
-        <div
-          id="lunch"
-          className="relative overflow-hidden rounded-t-md scroll-mt-24"
-          style={{ minHeight: "140px" }}
-        >
-          <img
-            src="/manus-storage/napoli-lunch_94df386a.jpg"
-            alt="Lunch Specials"
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="lazy"
-          />
-          <div
-            className="absolute inset-0"
-            style={{ background: "linear-gradient(to right, rgba(180,20,20,0.88) 0%, rgba(180,20,20,0.55) 60%, rgba(0,0,0,0.25) 100%)" }}
-          />
-          {/* Title row */}
-          <div className="relative flex items-center h-full px-5 py-4">
-            <span className="text-3xl drop-shadow">🕙</span>
-            <h2 className="napoli-label text-xl text-white tracking-widest drop-shadow-md ml-3">Lunch Specials</h2>
-          </div>
-        </div>
-        <MenuCard>
-          {/* Info bar */}
-          <div
-            className="px-5 py-3 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2"
-            style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="napoli-badge-green">Mon–Fri 10AM–3PM Only</span>
-              <span className="napoli-label text-xs font-bold" style={{ color: "var(--napoli-green)" }}>
-                🥤 FREE Can of Soda with any Lunch Special!
-              </span>
-            </div>
-            <LunchTimerBadge />
-          </div>
-
-          {/* Closed overlay message */}
-          {!lunchTimer.isOpen && lunchTimer.hasStarted && (
-            <div
-              className="px-5 py-4 text-center"
-              style={{ background: "oklch(0.96 0.01 30)" }}
-            >
-              <p className="napoli-label text-sm font-bold" style={{ color: "oklch(0.45 0.06 30)" }}>
-                🔒 Lunch Specials are only available 10 AM – 3 PM
-              </p>
-              <p className="napoli-body text-xs mt-1" style={{ color: "oklch(0.55 0.04 30)" }}>
-                Come back tomorrow! Our full menu is available all day.
-              </p>
-            </div>
-          )}
-
-          <LunchSpecialsGrid isLunchOpen={lunchTimer.isOpen} />
-
-        </MenuCard>
-
-        {/* ── PIZZERIA ───────────────────────────────────────── */}
-        <SectionHeader id="pizza" title="Pizzeria — Hand Tossed New York Style" emoji="🍕" photo="/manus-storage/napoli-pizza-hero_66a71a97.jpg" />
-        <MenuCard>
-          {/* Plain Cheese Pizza */}
-          <div className="napoli-menu-item flex items-center gap-3 px-5 py-4">
-            <img
-              src="/manus-storage/cheese_pizza_00fdae04.webp"
-              alt="Plain Cheese Pizza"
-              className="w-14 h-14 rounded object-cover shrink-0"
-            />
-            <div className="flex-1 min-w-0">
-              <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>Plain Cheese</span>
-              <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>Classic New York-style hand-tossed crust loaded with mozzarella — the perfect base. Add your own toppings to customize.</p>
-              <div className="overflow-x-auto mt-2">
-                <table className="text-xs">
-                  <thead>
-                    <tr>
-                      {PIZZA_SIZES.map((s) => (
-                        <th key={s} className="text-center pr-3 pb-0.5 napoli-label" style={{ color: "oklch(0.52 0.03 30)" }}>{s}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      {PIZZA_BASE_PRICES["Plain Cheese"].map((p, i) => (
-                        <td key={i} className="text-center pr-3 napoli-price font-semibold" style={{ color: "var(--napoli-red)" }}>{p}</td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                setPizzaModalKey(k => k + 1);
-                setPizzaSelection({ pizzaName: "Plain Cheese", isSpecialty: false, freeToppings: 0, allowHalfAndHalf: true });
-              }}
-              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
-              style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
-            >
-              <Plus size={13} /> Order
-            </button>
-          </div>
-          {/* 4 Topping Combo */}
-          <div className="napoli-menu-item flex items-center gap-3 px-5 py-4 border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-            <img
-              src="/manus-storage/four_topping_combo_10890069.png"
-              alt="4 Topping Combo Pizza"
-              className="w-14 h-14 rounded object-cover shrink-0"
-            />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>4 Topping Combo</span>
-                <span className="text-xs font-semibold px-1.5 py-0.5 rounded" style={{ background: "oklch(0.95 0.06 60)", color: "oklch(0.45 0.12 50)", fontFamily: "'Oswald', sans-serif" }}>BEST VALUE</span>
-              </div>
-              <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>Hand-tossed New York-style crust with cheese — choose any 4 toppings from 30 options. Half &amp; Half available.</p>
-              <div className="overflow-x-auto mt-2">
-                <table className="text-xs">
-                  <thead>
-                    <tr>
-                      {PIZZA_SIZES.map((s) => (
-                        <th key={s} className="text-center pr-3 pb-0.5 napoli-label" style={{ color: "oklch(0.52 0.03 30)" }}>{s}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      {PIZZA_BASE_PRICES["4 Topping Combo"].map((p, i) => (
-                        <td key={i} className="text-center pr-3 napoli-price font-semibold" style={{ color: "var(--napoli-red)" }}>{p}</td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                setPizzaModalKey(k => k + 1);
-                setPizzaSelection({ pizzaName: "4 Topping Combo", isSpecialty: false, freeToppings: 4, allowHalfAndHalf: true });
-              }}
-              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
-              style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
-            >
-              <Plus size={13} /> Order
-            </button>
-          </div>
-
-          {/* Gluten Free Pizza */}
-          <div
-            className="napoli-menu-item flex items-center gap-3 px-5 py-4 border-t"
-            style={{ borderColor: "oklch(0.88 0.015 80)" }}
-          >
-            <img
-              src="https://cloverstatic.com/menu-assets/items/Q5P394HBCYWV6.jpeg"
-              alt="Gluten Free Pizza 14 inch"
-              className="w-14 h-14 rounded object-cover shrink-0"
-            />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>Gluten Free Pizza 14"</span>
-                <span className="napoli-badge-green text-xs">Gluten Free</span>
-              </div>
-              <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>Hand-tossed 14" gluten-free crust — includes cheese. Add toppings to customize.</p>
-              <p className="napoli-price text-sm mt-1" style={{ color: "var(--napoli-red)" }}>$12.75 · Add Topping $2.75</p>
-            </div>
-            <button
-              onClick={() => {
-              setPizzaModalKey(k => k + 1);
-              setPizzaSelection({
-                pizzaName: "Gluten Free Pizza 14\"",
-                isSpecialty: false,
-                freeToppings: 0,
-                allowHalfAndHalf: false,
-              });
-            }}
-              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
-              style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
-            >
-              <Plus size={13} /> Order
-            </button>
-          </div>
-
-          {/* Sicilian */}
-          <div
-            className="napoli-menu-item flex items-center justify-between gap-4 px-5 py-4 border-t"
-            style={{ borderColor: "oklch(0.88 0.015 80)" }}
-          >
-            <div className="flex-1 min-w-0">
-              <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>Sicilian 12x8</span>
-              <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{SICILIAN_PIZZA.desc}</p>
-              <p className="napoli-price text-sm mt-1" style={{ color: "var(--napoli-red)" }}>{SICILIAN_PIZZA.baseLabel} · Add Topping ${SICILIAN_PIZZA.extraToppingPrice.toFixed(2)}</p>
-            </div>
-            <button
-              onClick={() => {
-                setCalzoneModalKey(k => k + 1);
-                setCalzoneTrigger({
-                  itemType: "Sicilian",
-                  flatPrice: SICILIAN_PIZZA.basePrice,
-                  flatPriceLabel: SICILIAN_PIZZA.baseLabel,
-                  flatExtraToppingPrice: SICILIAN_PIZZA.extraToppingPrice,
-                  freeToppings: SICILIAN_PIZZA.freeToppings,
-                  baseDesc: SICILIAN_PIZZA.desc,
-                });
-              }}
-              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
-              style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
-            >
-              <Plus size={13} /> Order
-            </button>
-          </div>
-
-          {/* Chicago Deep Dish */}
-          <div
-            className="napoli-menu-item flex items-center justify-between gap-4 px-5 py-4 border-t"
-            style={{ borderColor: "oklch(0.88 0.015 80)" }}
-          >
-            <div className="flex-1 min-w-0">
-              <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>Stuffed Chicago Deep Dish</span>
-              <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{CHICAGO_DEEP_DISH.desc}</p>
-              <p className="napoli-price text-sm mt-1" style={{ color: "var(--napoli-red)" }}>
-                {CHICAGO_DEEP_DISH.combo4Label} · Add Topping ${CHICAGO_DEEP_DISH.extraToppingPrice.toFixed(2)}
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                setCalzoneModalKey(k => k + 1);
-                setCalzoneTrigger({
-                  itemType: "Chicago Deep Dish",
-                  flatPrice: CHICAGO_DEEP_DISH.combo4Price,
-                  flatPriceLabel: CHICAGO_DEEP_DISH.combo4Label,
-                  flatExtraToppingPrice: CHICAGO_DEEP_DISH.extraToppingPrice,
-                  freeToppings: CHICAGO_DEEP_DISH.freeToppings,
-                  baseDesc: CHICAGO_DEEP_DISH.desc,
-                });
-              }}
-              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded text-sm font-semibold transition-all active:scale-95"
-              style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
-            >
-              <Plus size={13} /> Order
-            </button>
-          </div>
-
-          {/* 30 Toppings */}
-          <div className="px-5 py-4 border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-            <div className="flex items-center justify-between mb-3">
-              <p className="napoli-label text-xs" style={{ color: "var(--napoli-red)" }}>30 Toppings Available</p>
-              <button
-                onClick={() => setShowAllToppings(!showAllToppings)}
-                className="flex items-center gap-1 text-xs napoli-label"
-                style={{ color: "var(--napoli-green)" }}
-              >
-                {showAllToppings ? "Hide" : "Show All"} {showAllToppings ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-              </button>
-            </div>
-            <div className={`flex flex-wrap gap-2 ${!showAllToppings ? "max-h-16 overflow-hidden" : ""}`}>
-              {PIZZA_30_TOPPINGS.map((t) => (
-                <span
-                  key={t}
-                  className="text-xs px-2.5 py-1 rounded border napoli-body"
-                  style={{ borderColor: "oklch(0.88 0.015 80)", color: "oklch(0.42 0.03 30)" }}
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Specialty pizzas */}
-          <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-            {/* Sub-section header — same dark/red style as SectionHeader */}
-            <div
-              id="specialty-pizzas"
-              className="flex items-center gap-3 px-5 py-3 scroll-mt-24"
-              style={{ background: "oklch(0.13 0.04 27)", borderBottom: "3px solid var(--napoli-red)" }}
-            >
-              <span className="text-xl">⭐</span>
-              <div>
-                <h3
-                  className="napoli-label text-base text-white tracking-widest"
-                >
-                  Napoli's Special Creations
-                </h3>
-                <p className="text-xs mt-0.5" style={{ color: "oklch(0.72 0.04 80)", fontFamily: "'Lato', sans-serif" }}>
-                  Available in 10" · 14" · 16" · 18" · 24" · 28" · 30" · 36"
-                </p>
-              </div>
-            </div>
-            <div className="px-5 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
-              {PIZZA_SPECIALS.map((pizza) => {
-                const pizzaPhoto = getMenuPhoto(pizza.name);
-                return (
-                <div
-                  key={pizza.name}
-                  className="napoli-menu-item flex items-start justify-between gap-3 py-3 px-3 border-b border-r"
-                  style={{ borderColor: "oklch(0.93 0.012 80)" }}
-                >
-                  <div className="flex items-start gap-3">
-                    {pizzaPhoto ? (
-                      <div className="shrink-0 rounded overflow-hidden" style={{ width: 56, height: 56 }}>
-                        <img src={pizzaPhoto} alt={pizza.name} className="w-full h-full object-cover" loading="lazy" />
-                      </div>
-                    ) : (
-                      <div className="w-2 h-2 rounded-full mt-1.5 shrink-0 bg-napoli-red" />
-                    )}
-                    <div>
-                      <span className="text-sm napoli-body font-bold" style={{ color: "var(--napoli-dark)" }}>{pizza.name}</span>
-                      <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{pizza.desc}</p>
-                      <NutritionBadges itemName={pizza.name} compact />
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => { setPizzaModalKey(k => k + 1); setPizzaSelection({ pizzaName: pizza.name, isSpecialty: true }); }}
-                    className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all active:scale-95"
-                    style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
-                  >
-                    <Plus size={11} /> Order
-                  </button>
-                </div>
-                );
-              })}
-            </div>
-            </div>
-          </div>
-
-          {/* Stuffed Dough — Calzone & Stromboli + Wraps — rich card grid */}
-          <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-            <div className="px-5 py-3" style={{ background: "oklch(0.97 0.012 80)" }}>
-              <p className="napoli-label text-xs" style={{ color: "var(--napoli-red)" }}>Stuffed Dough &amp; Wraps</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x" style={{ borderColor: "oklch(0.90 0.012 80)" }}>
-
-              {/* Calzone card */}
-              {(() => {
-                const calzone = STUFFED_DOUGH.find(i => i.name === "Calzone")!;
-                return (
-                  <div className="flex flex-col">
-                    <div className="relative overflow-hidden" style={{ height: "180px" }}>
-                      <img
-                        src="/manus-storage/calzone_09c781a8.jpeg"
-                        alt="Calzone"
-                        className="w-full h-full object-cover"
-                        style={{ transition: "transform 0.4s cubic-bezier(0.23,1,0.32,1)" }}
-                        onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.05)")}
-                        onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
-                      />
-                      <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 55%)" }} />
-                      <span className="absolute bottom-3 left-4 text-white font-bold text-lg" style={{ fontFamily: "'Oswald', sans-serif", textShadow: "0 1px 4px rgba(0,0,0,0.7)" }}>Calzone</span>
-                    </div>
-                    <div className="flex flex-col flex-1 px-4 py-4 gap-3">
-                      <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{calzone.desc}</p>
-                      <div className="flex items-center justify-between mt-auto">
-                        <p className="napoli-price text-sm font-bold" style={{ color: "var(--napoli-red)" }}>From {(calzone as any).prices?.[0]}</p>
-                        <button
-                          onClick={() => {
-                            setCalzoneModalKey(k => k + 1);
-                            setCalzoneTrigger({
-                              itemType: "Calzone",
-                              sizes: (calzone as any).sizes,
-                              prices: (calzone as any).prices,
-                              freeToppings: 2,
-                              baseDesc: calzone.desc ?? "",
-                            });
-                          }}
-                          className="flex items-center gap-1.5 px-4 py-2 rounded text-xs font-semibold transition-all active:scale-95"
-                          style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
-                        >
-                          <Plus size={12} /> Order
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Stromboli card */}
-              {(() => {
-                const stromboli = STUFFED_DOUGH.find(i => i.name === "Stromboli")!;
-                return (
-                  <div className="flex flex-col">
-                    <div className="relative overflow-hidden" style={{ height: "180px" }}>
-                      <img
-                        src="/manus-storage/stromboli_5764df6f.jpeg"
-                        alt="Stromboli"
-                        className="w-full h-full object-cover"
-                        style={{ transition: "transform 0.4s cubic-bezier(0.23,1,0.32,1)" }}
-                        onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.05)")}
-                        onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
-                      />
-                      <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 55%)" }} />
-                      <span className="absolute bottom-3 left-4 text-white font-bold text-lg" style={{ fontFamily: "'Oswald', sans-serif", textShadow: "0 1px 4px rgba(0,0,0,0.7)" }}>Stromboli</span>
-                    </div>
-                    <div className="flex flex-col flex-1 px-4 py-4 gap-3">
-                      <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{stromboli.desc}</p>
-                      <div className="flex items-center justify-between mt-auto">
-                        <p className="napoli-price text-sm font-bold" style={{ color: "var(--napoli-red)" }}>From {(stromboli as any).prices?.[0]}</p>
-                        <button
-                          onClick={() => {
-                            setCalzoneModalKey(k => k + 1);
-                            setCalzoneTrigger({
-                              itemType: "Stromboli",
-                              sizes: (stromboli as any).sizes,
-                              prices: (stromboli as any).prices,
-                              freeToppings: 4,
-                              baseDesc: stromboli.desc ?? "",
-                            });
-                          }}
-                          className="flex items-center gap-1.5 px-4 py-2 rounded text-xs font-semibold transition-all active:scale-95"
-                          style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
-                        >
-                          <Plus size={12} /> Order
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Wraps card */}
-              <div className="flex flex-col">
-                <div className="relative overflow-hidden" style={{ height: "180px" }}>
-                  <img
-                    src="/manus-storage/wraps_a9dc4567.jpeg"
-                    alt="Wraps"
-                    className="w-full h-full object-cover"
-                    style={{ transition: "transform 0.4s cubic-bezier(0.23,1,0.32,1)" }}
-                    onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.05)")}
-                    onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
-                  />
-                  <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 55%)" }} />
-                  <span className="absolute bottom-3 left-4 text-white font-bold text-lg" style={{ fontFamily: "'Oswald', sans-serif", textShadow: "0 1px 4px rgba(0,0,0,0.7)" }}>Wraps</span>
-                </div>
-                <div className="flex flex-col flex-1 px-4 py-4 gap-3">
-                  <span className="napoli-badge-green text-xs self-start">Gluten Free Bread Available</span>
-                  <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{WRAPS.note}</p>
-                  <div className="flex items-center justify-between mt-auto">
-                    <p className="napoli-price text-sm font-bold" style={{ color: "var(--napoli-red)" }}>From ${(parsePrice(WRAPS.price) ?? 0).toFixed(2)}</p>
-                    <button
-                      onClick={() => { setWrapModalKey(k => k + 1); setWrapTrigger({ basePrice: parsePrice(WRAPS.price) ?? 0 }); }}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded text-xs font-semibold transition-all active:scale-95"
-                      style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
-                    >
-                      <Plus size={12} /> Order
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-                </MenuCard>
-
-        {/* ── WINGS ──────────────────────────────────────────── */}
-        <SectionHeader id="wings" title="Wings, Wing Dings & Fingers" emoji="🍗" photo="/manus-storage/napoli-wings_5305444c.jpg" />
-        <MenuCard>
-          {/* Note + Flavors */}
-          <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
-            <p className="text-xs napoli-body mb-2" style={{ color: "oklch(0.52 0.03 30)" }}>{WINGS.note}</p>
-            <div className="flex flex-wrap gap-1.5">
-              <span className="napoli-label text-xs shrink-0" style={{ color: "var(--napoli-red)" }}>Flavors:</span>
-              {WINGS.flavors.map((f) => (
-                <span key={f} className="text-xs px-2 py-0.5 rounded border napoli-body" style={{ borderColor: "oklch(0.88 0.015 80)", color: "oklch(0.42 0.03 30)" }}>{f}</span>
-              ))}
-            </div>
-          </div>
-          {/* 3-column card grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4">
-            <WingsTypeCard
-              type="Bone-In"
-              label="Bone-In Wings"
-              description="Traditional bone-in chicken wings — crispy outside, juicy inside. Tossed in your choice of sauce."
-              photo="/manus-storage/chicken_wings_07165612.webp"
-              accentColor="var(--napoli-red)"
-              rows={WINGS.boneIn}
-              onSelect={(sel) => { setWingsModalKey(k => k + 1); setWingsSelection(sel); }}
-            />
-            <WingsTypeCard
-              type="Boneless"
-              label="Boneless Wings"
-              description="All-white meat boneless bites — same great flavors, no bones. Perfect for sharing."
-              photo="/manus-storage/boneless_wings_d47c8973.webp"
-              accentColor="oklch(0.52 0.12 250)"
-              rows={WINGS.boneless}
-              onSelect={(sel) => { setWingsModalKey(k => k + 1); setWingsSelection(sel); }}
-            />
-            <WingsTypeCard
-              type="Chicken Fingers"
-              label="Chicken Fingers"
-              description="Golden-fried chicken tenders — crispy, tender strips served with your choice of dipping sauce."
-              photo="/manus-storage/chicken_tenders_850105df.webp"
-              accentColor="oklch(0.26 0.10 145)"
-              rows={WINGS.chickenFingers}
-              onSelect={(sel) => { setWingsModalKey(k => k + 1); setWingsSelection(sel); }}
-            />
-          </div>
-          {/* Wings Customizer Modal */}
-          <WingsCustomizerModal
-            key={wingsModalKey}
-            selection={wingsSelection}
-            onClose={() => setWingsSelection(null)}
-          />
-        </MenuCard>
-
+        {/* ── ALL MENU ITEMS (Clover-synced) ─────────────────── */}
         {/* Pizza Customizer Modal — rendered at top level so it overlays everything */}
         <PizzaCustomizerModal
           key={pizzaModalKey}
@@ -1776,358 +1059,8 @@ export default function Menu() {
           onClose={() => setSpecialNum(null)}
         />
 
-        {/* ── PASTA ──────────────────────────────────────────── */}
-        <SectionHeader id="pasta" title="Pasta" emoji="🍝" photo="/manus-storage/napoli-lunch_94df386a.jpg" />
-        <MenuCard>
-          <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
-            <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>Served w/ Garlic Bread & House Salad</p>
-          </div>
-          {/* Whole Lotta Pasta */}
-          <WholeLottaPastaRow />
-          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-            <div>
-              <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Classic Pasta</p>
-              {PASTA.classic.map((item) => PASTA_MODAL_ITEMS.includes(item.name) ? (
-                <AppetizersItemRow key={`classic-${item.name}`} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
-              ) : (
-                <ItemRow key={`classic-${item.name}`} name={item.name} price={item.price} />
-              ))}
-            </div>
-            <div>
-              <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Ravioli</p>
-              {PASTA.ravioli.map((item) => PASTA_MODAL_ITEMS.includes(item.name) ? (
-                <AppetizersItemRow key={`ravioli-${item.name}`} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
-              ) : (
-                <ItemRow key={`ravioli-${item.name}`} name={item.name} price={item.price} />
-              ))}
-            </div>
-            <div>
-              <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Tortellini & Parmigiana</p>
-              {PASTA.tortellini.map((item) => PASTA_MODAL_ITEMS.includes(item.name) ? (
-                <AppetizersItemRow key={`tortellini-${item.name}`} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
-              ) : (
-                <ItemRow key={`tortellini-${item.name}`} name={item.name} price={item.price} />
-              ))}
-              {PASTA.parmigiana.map((item) => PASTA_MODAL_ITEMS.includes(item.name) ? (
-                <AppetizersItemRow key={`parmigiana-${item.name}`} name={item.name} price={item.price} onOpen={() => setPastaModalTrigger({ itemName: item.name })} />
-              ) : (
-                <ItemRow key={`parmigiana-${item.name}`} name={item.name} price={item.price} />
-              ))}
-            </div>
-          </div>
-        </MenuCard>
-
-        {/* ── SUBS & SANDWICHES ──────────────────────────────── */}
-        <SectionHeader id="subs" title="Sub Sandwiches" emoji="🥖" photo="/manus-storage/napoli-subs_cb6cce6c.jpg" />
-        <MenuCard>
-          {/* Note */}
-          <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
-            <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{SUBS.note}</p>
-          </div>
-
-          {/* Cold Subs */}
-          <div>
-            <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Served Cold</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
-            {SUBS.cold.map((s) => {
-              const basePrice = parsePrice(s.price) ?? 0;
-              const subPhoto = getMenuPhoto(s.name);
-              return (
-                <div
-                  key={s.name}
-                  className="napoli-menu-item flex items-center gap-3 px-4 py-3 border-b last:border-b-0"
-                  style={{ borderColor: "oklch(0.93 0.012 80)" }}
-                >
-                  {subPhoto && (
-                    <div className="shrink-0 rounded overflow-hidden" style={{ width: 56, height: 56 }}>
-                      <img src={subPhoto} alt={s.name} className="w-full h-full object-cover" loading="lazy" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{s.name}</span>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>${basePrice.toFixed(2)}</span>
-                    <button
-                      onClick={() => { setSubsModalKey(k => k + 1); setSubsTrigger({ subName: s.name, basePrice, showAddons: true }); }}
-                      className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all active:scale-95"
-                      style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
-                    >
-                      <Plus size={11} /> Order
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            </div>
-          </div>
-
-          {/* Hot Subs */}
-          <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-            <p className="napoli-label text-xs px-5 py-2 border-b" style={{ color: "var(--napoli-red)", borderColor: "oklch(0.88 0.015 80)" }}>Served Hot</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
-            {SUBS.hotDetailed.map((s) => {
-              const basePrice = parsePrice(s.price) ?? 0;
-              const addNote = s.add ? s.add + (s.desc ? " · " + s.desc : "") : s.desc;
-              const hotSubPhoto = getMenuPhoto(s.name);
-              return (
-                <div
-                  key={s.name}
-                  className="napoli-menu-item flex items-center gap-3 px-4 py-3 border-b last:border-b-0"
-                  style={{ borderColor: "oklch(0.93 0.012 80)" }}
-                >
-                  {hotSubPhoto && (
-                    <div className="shrink-0 rounded overflow-hidden" style={{ width: 56, height: 56 }}>
-                      <img src={hotSubPhoto} alt={s.name} className="w-full h-full object-cover" loading="lazy" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{s.name === "Eggplant Parmigiana Sub" ? "Eggplant Parmigiana" : s.name}</span>
-                    {addNote && <p className="text-xs napoli-body mt-0.5" style={{ color: "oklch(0.52 0.03 30)" }}>{addNote}</p>}
-                    <NutritionBadges itemName={s.name} />
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>${basePrice.toFixed(2)}</span>
-                    <button
-                      onClick={() => { setSubsModalKey(k => k + 1); setSubsTrigger({ subName: s.name, basePrice, addNote, showAddons: true }); }}
-                      className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all active:scale-95"
-                      style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
-                    >
-                      <Plus size={11} /> Order
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            </div>
-          </div>
-
-          {/* Triple Deckers */}
-          <div className="border-t" style={{ borderColor: "oklch(0.88 0.015 80)" }}>
-            <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
-              <p className="napoli-label text-xs" style={{ color: "var(--napoli-red)" }}>Triple Deckers <span className="napoli-badge-green ml-2">Gluten Free Bread Available</span></p>
-              <p className="text-xs napoli-body mt-1" style={{ color: "oklch(0.52 0.03 30)" }}>{TRIPLE_DECKERS.note}</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
-            {TRIPLE_DECKERS.items.map((item) => {
-              const basePrice = parsePrice(item.price) ?? 0;
-              const triplePhoto = getMenuPhoto(item.name);
-              return (
-                <div
-                  key={item.name}
-                  className="napoli-menu-item flex items-center gap-3 px-4 py-3 border-b last:border-b-0"
-                  style={{ borderColor: "oklch(0.93 0.012 80)" }}
-                >
-                  {triplePhoto && (
-                    <div className="shrink-0 rounded overflow-hidden" style={{ width: 56, height: 56 }}>
-                      <img src={triplePhoto} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <span className="napoli-body text-sm font-bold" style={{ color: "var(--napoli-dark)" }}>{item.name}</span>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="napoli-price text-sm" style={{ color: "var(--napoli-red)" }}>${basePrice.toFixed(2)}</span>
-                    <button
-                      onClick={() => { setSubsModalKey(k => k + 1); setSubsTrigger({ subName: item.name, basePrice, showAddons: false }); }}
-                      className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-all active:scale-95"
-                      style={{ background: "var(--napoli-red)", color: "white", fontFamily: "'Oswald', sans-serif" }}
-                    >
-                      <Plus size={11} /> Order
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            </div>
-          </div>
-        </MenuCard>
-
-        {/* ── BURGERS ────────────────────────────────────────── */}
-        <SectionHeader id="burgers" title="100% Angus Beef Burgers" emoji="🍔" photo="/manus-storage/napoli-burger_bea110a3.png" />
-        <MenuCard>
-          <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
-            <p className="text-xs napoli-body" style={{ color: "oklch(0.52 0.03 30)" }}>{BURGERS.note}</p>
-            <div className="flex flex-wrap gap-2 mt-2">
-              <span className="napoli-badge-green">🌾 Gluten Free Bread Available</span>
-              <span className="text-xs px-2 py-0.5 rounded border napoli-body" style={{ borderColor: "oklch(0.88 0.015 80)", color: "oklch(0.42 0.03 30)" }}>🧀 Add Cheese $1</span>
-              <span className="text-xs px-2 py-0.5 rounded border napoli-body" style={{ borderColor: "oklch(0.88 0.015 80)", color: "oklch(0.42 0.03 30)" }}>🥓 Add Bacon $1</span>
-              <span className="text-xs px-2 py-0.5 rounded border napoli-body" style={{ borderColor: "oklch(0.88 0.015 80)", color: "oklch(0.42 0.03 30)" }}>🥑 Add Avocado $1</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2">
-            {BURGERS.items.map((item) => (
-              <BurgerRow
-                key={item.name}
-                item={item}
-                onOpenModal={(burgerName, size) => {
-                  setBurgerModalKey(k => k + 1);
-                  setBurgerTrigger({ open: true, preselectedBurger: burgerName, preselectedSize: size });
-                }}
-              />
-            ))}
-          </div>
-        </MenuCard>
-
-        {/* ── SALADS ─────────────────────────────────────────── */}
-        <SectionHeader id="salads" title="Salads" emoji="🥗" photo="/manus-storage/napoli-salads_7d324c51.jpg" />
-        <MenuCard>
-          <div className="px-5 py-2 border-b text-xs napoli-body" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)", color: "oklch(0.52 0.03 30)" }}>
-            Add Chicken $7.49 or Steak $9.49
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
-            {SALADS.map((item) => (
-              <div key={item.name} style={{ borderBottom: "1px solid oklch(0.93 0.012 80)", borderRight: "1px solid oklch(0.93 0.012 80)" }}>
-                {SALAD_MODAL_ITEMS.includes(item.name) ? (
-                  <AppetizersItemRow
-                    name={item.name}
-                    desc={item.desc}
-                    price={(item as any).price ?? ((item as any).prices?.[0]?.price)}
-                    highlight={(item as any).highlight}
-                    onOpen={() => setSaladsModalTrigger({ itemName: item.name })}
-                  />
-                ) : (
-                  <ItemRow name={item.name} desc={item.desc} price={(item as any).price} highlight={(item as any).highlight} category="salads" />
-                )}
-              </div>
-            ))}
-          </div>
-        </MenuCard>
-
-        {/* ── DESSERTS ───────────────────────────────────────── */}
-        <SectionHeader id="desserts" title="Desserts" emoji="🍰" photo="/manus-storage/napoli-desserts_fba7c0ae.png" />
-        <MenuCard>
-          <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
-            <span className="napoli-price text-lg" style={{ color: "var(--napoli-red)" }}>{DESSERTS.price}</span>
-            <span className="text-xs napoli-body ml-2" style={{ color: "oklch(0.52 0.03 30)" }}>each</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)" }}>
-            {DESSERTS.items.map((item) => (
-              <div key={item} style={{ borderBottom: "1px solid oklch(0.93 0.012 80)", borderRight: "1px solid oklch(0.93 0.012 80)" }}>
-                <ItemRow name={item} price={DESSERTS.price} category="desserts" />
-              </div>
-            ))}
-          </div>
-        </MenuCard>
-
-        {/* ── CHILDREN'S MENU ────────────────────────────────────── */}
-        <SectionHeader id="childrens" title={lang === "es" ? "Menú Infantil" : "Children's Menu"} emoji="🧒" photo="/manus-storage/kids_chicken_fingers_d6e5299d.jpeg" />
-        <MenuCard>
-          <div className="px-5 py-3 border-b" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)" }}>
-            <span className="napoli-price text-lg" style={{ color: "var(--napoli-red)" }}>{CHILDRENS_MENU.price}</span>
-            <span className="text-xs napoli-body ml-2" style={{ color: "oklch(0.52 0.03 30)" }}>
-              {lang === "es" ? "c/u · Incluye bebida y postre" : "each · Includes drink & dessert"}
-            </span>
-          </div>
-          <KidsMenuGrid price={CHILDRENS_MENU.price} items={CHILDRENS_MENU.items} addItem={addItem} openCart={openCart} />
-        </MenuCard>
-
-        {/* ── BEVERAGES ──────────────────────────────────────────────── */}
-        {/* Custom header — deep navy theme for drinks */}
-        <div
-          id="beverages"
-          className="flex items-center gap-3 py-3 px-5 rounded-t-md scroll-mt-24"
-          style={{ background: "oklch(0.28 0.08 255)" }}
-        >
-          <span className="text-xl">🥤</span>
-          <h2 className="napoli-label text-base text-white tracking-widest">Beverages</h2>
-        </div>
-        <div
-          className="rounded-b-md border border-t-0 mb-8 overflow-hidden"
-          style={{ borderColor: "oklch(0.45 0.06 255)", background: "oklch(0.96 0.02 255)" }}
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0">
-            {BEVERAGES.map((bev) => {
-              const bevPhoto = getMenuPhoto(bev.name);
-              if ((bev as any).prices) {
-                return <React.Fragment key={bev.name}>{(bev as any).prices.map((p: any) => (
-                  <div
-                    key={p.size}
-                    className="flex items-center gap-3 px-4 py-3 border-b border-r"
-                    style={{ borderColor: "oklch(0.87 0.04 255)" }}
-                  >
-                    {bevPhoto ? (
-                      <div className="shrink-0 rounded overflow-hidden" style={{ width: 44, height: 44 }}>
-                        <img src={bevPhoto} alt={bev.name} className="w-full h-full object-cover" loading="lazy" />
-                      </div>
-                    ) : <span className="text-base">🥤</span>}
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm font-semibold napoli-body" style={{ color: "oklch(0.22 0.08 255)" }}>{bev.name} <span className="font-normal text-xs" style={{ color: "oklch(0.50 0.05 255)" }}>({p.size})</span></span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="napoli-price text-sm font-bold" style={{ color: "oklch(0.35 0.14 255)" }}>{p.price}</span>
-                      <button
-                        onClick={() => { const price = parseFloat(p.price.replace("$","")); addItem({ id: `bev-${bev.name}-${p.size}-${Date.now()}`, name: `${bev.name} (${p.size})`, price, quantity: 1, category: "beverages" }); toast.success(`${bev.name} (${p.size}) added to cart!`); }}
-                        className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90"
-                        style={{ background: "oklch(0.38 0.12 255)", color: "white" }}
-                      >
-                        <Plus size={13} />
-                      </button>
-                    </div>
-                  </div>
-                ))}</React.Fragment>;
-              }
-              if ((bev as any).price) {
-                const price = parseFloat(((bev as any).price as string).replace("$",""));
-                const label = bev.name + ((bev as any).size ? ` (${(bev as any).size})` : "");
-                return (
-                  <div
-                    key={bev.name}
-                    className="flex items-center gap-3 px-4 py-3 border-b border-r"
-                    style={{ borderColor: "oklch(0.87 0.04 255)" }}
-                  >
-                    {bevPhoto ? (
-                      <div className="shrink-0 rounded overflow-hidden" style={{ width: 44, height: 44 }}>
-                        <img src={bevPhoto} alt={bev.name} className="w-full h-full object-cover" loading="lazy" />
-                      </div>
-                    ) : <span className="text-base">🍶</span>}
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm font-semibold napoli-body" style={{ color: "oklch(0.22 0.08 255)" }}>{label}</span>
-                      {(bev as any).note && <p className="text-xs" style={{ color: "oklch(0.50 0.05 255)" }}>{(bev as any).note}</p>}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="napoli-price text-sm font-bold" style={{ color: "oklch(0.35 0.14 255)" }}>{(bev as any).price}</span>
-                      <button
-                        onClick={() => { addItem({ id: `bev-${bev.name}-${Date.now()}`, name: label, price, quantity: 1, category: "beverages" }); toast.success(`${label} added to cart!`); }}
-                        className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90"
-                        style={{ background: "oklch(0.38 0.12 255)", color: "white" }}
-                      >
-                        <Plus size={13} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              }
-              return (
-                <div key={bev.name} className="flex items-center gap-3 px-4 py-3 border-b border-r" style={{ borderColor: "oklch(0.87 0.04 255)" }}>
-                  {bevPhoto ? (
-                    <div className="shrink-0 rounded overflow-hidden" style={{ width: 44, height: 44 }}>
-                      <img src={bevPhoto} alt={bev.name} className="w-full h-full object-cover" loading="lazy" />
-                    </div>
-                  ) : <span className="text-base">🥤</span>}
-                  <span className="napoli-body text-sm flex-1" style={{ color: "oklch(0.22 0.08 255)" }}>{bev.name}</span>
-                  {(bev as any).note && <span className="text-xs napoli-body italic" style={{ color: "oklch(0.50 0.05 255)" }}>{(bev as any).note}</span>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── CLOVER-SYNCED DB ITEMS ─────────────────────────── */}
         <CloverSyncedItems addItem={addItem} />
 
-        {/* ── ANYTIME SPECIALS ───────────────────────────────── */}
-        <SectionHeader id="specials" title="Anytime Specials" emoji="⭐" photo="/manus-storage/napoli-specials-header_30ef5751.jpg" />
-        <MenuCard>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0">
-            {ANYTIME_SPECIALS.map((item) => (
-              <AnytimeSpecialRow key={item.num} item={item} onCustomize={setSpecialNum} />
-            ))}
-          </div>
-          <div className="px-5 py-3 border-t text-xs napoli-body" style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.97 0.012 80)", color: "oklch(0.52 0.03 30)" }}>
-            Taxes not included. Offers cannot be combined. Management reserves all rights. Prices are subject to change without notice. $1.99 Starting delivery charge. No Personal Checks.
-          </div>
-        </MenuCard>
       </div>
 
       {/* ── NUTRITIONAL & ALLERGY DISCLAIMER ─────────────────── */}

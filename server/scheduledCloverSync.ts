@@ -37,17 +37,70 @@ function cloverUrl(path: string) {
 function categoryToSlug(categoryName: string | undefined): string {
   if (!categoryName) return "special";
   const name = categoryName.toLowerCase().trim();
+
+  // Exact matches first
+  const EXACT: Record<string, string> = {
+    "appetizers": "appetizer",
+    "appetizer": "appetizer",
+    "lunch specials": "lunch",
+    "lunch special": "lunch",
+    "lunch": "lunch",
+    "pizza": "pizza",
+    "pizzas": "pizza",
+    "calzone": "pizza",
+    "stromboli": "pizza",
+    "wings": "wings",
+    "wing": "wings",
+    "pasta": "pasta",
+    "pastas": "pasta",
+    "subs": "sandwich",
+    "sub": "sandwich",
+    "sandwiches": "sandwich",
+    "sandwich": "sandwich",
+    "wraps": "sandwich",
+    "wrap": "sandwich",
+    "triple deckers": "sandwich",
+    "triple decker": "sandwich",
+    "burgers": "burger",
+    "burger": "burger",
+    "salads": "salad",
+    "salad": "salad",
+    "sides": "sides",
+    "side": "sides",
+    "desserts": "dessert",
+    "dessert": "dessert",
+    "children's menu": "kids",
+    "kids menu": "kids",
+    "kids": "kids",
+    "beverages": "beverage",
+    "beverage": "beverage",
+    "drinks": "beverage",
+    "drink": "beverage",
+    "soups": "soup",
+    "soup": "soup",
+    "catering": "catering",
+    "anytime specials": "special",
+    "specials": "special",
+    "special": "special",
+  };
+  if (EXACT[name]) return EXACT[name];
+
+  // Fuzzy fallback
   if (name.includes("pizza") || name.includes("calzone") || name.includes("stromboli")) return "pizza";
-  if (name.includes("burger") || name.includes("sandwich") || name.includes("wrap")) return "burger";
+  if (name.includes("wing")) return "wings";
+  if (name.includes("appetizer") || name.includes("starter")) return "appetizer";
+  if (name.includes("lunch")) return "lunch";
   if (name.includes("pasta") || name.includes("spaghetti") || name.includes("lasagna")) return "pasta";
-  if (name.includes("wing") || name.includes("appetizer") || name.includes("starter")) return "wings";
+  if (name.includes("sub") || name.includes("sandwich") || name.includes("wrap") || name.includes("triple decker")) return "sandwich";
+  if (name.includes("burger")) return "burger";
   if (name.includes("salad")) return "salad";
+  if (name.includes("side")) return "sides";
   if (name.includes("soup")) return "soup";
   if (name.includes("kids") || name.includes("children")) return "kids";
   if (name.includes("drink") || name.includes("beverage") || name.includes("soda") || name.includes("beer") || name.includes("wine")) return "beverage";
   if (name.includes("dessert") || name.includes("sweet") || name.includes("cake") || name.includes("ice cream")) return "dessert";
-  if (name.includes("lunch") || name.includes("special")) return "special";
   if (name.includes("catering")) return "catering";
+  if (name.includes("special")) return "special";
   return "special";
 }
 

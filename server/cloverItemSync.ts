@@ -106,20 +106,90 @@ function cloverPrinterIdToLabel(printerId: string): "Food" | "Pizza" | "Pizzeria
 }
 
 // ── Map Clover category name to local slug ────────────────────────────────────
+// Explicit lookup table first (exact Clover category names), then fuzzy fallback
+const CATEGORY_SLUG_MAP: Record<string, string> = {
+  // Pizza variants → pizza
+  "pizza": "pizza",
+  "hand tossed new york style": "pizza",
+  "specialty pizza": "pizza",
+  "special pizza & wings": "pizza",
+  "gluten free pizza": "pizza",
+  "sicilian 12x8": "pizza",
+  "stuffed dough": "pizza",
+  "calzone & stromboli": "pizza",
+  "4 topp combo": "pizza",
+  "bbq chicken pizza": "pizza",
+  "buffalo chicken": "pizza",
+  "chicken alfredo pizza": "pizza",
+  "deluxe pizza": "pizza",
+  "five cheese pizza": "pizza",
+  "greek pizza": "pizza",
+  "italian pizza": "pizza",
+  "meat lover": "pizza",
+  "mexican style": "pizza",
+  "napoli's special": "pizza",
+  "pesto chicken": "pizza",
+  "ranch pizza": "pizza",
+  "southwestern chicken pizza": "pizza",
+  "supreme pizza": "pizza",
+  "taco pizza": "pizza",
+  "ultimate meat lover": "pizza",
+  "ultimate vegetarian": "pizza",
+  "vegetarian pizza": "pizza",
+  "white pizza": "pizza",
+  // Burgers → burger
+  "burgers": "burger",
+  "1/2 pound burger": "burger",
+  "full pound burger": "burger",
+  // Sandwiches/Wraps → sandwich
+  "sandwiches": "sandwich",
+  "wraps": "sandwich",
+  // Wings → wings
+  "wings": "wings",
+  // Appetizers → appetizer
+  "appetizers": "appetizer",
+  // Pasta → pasta
+  "pasta": "pasta",
+  // Salads → salad
+  "salads": "salad",
+  // Sides → sides
+  "sides": "sides",
+  "dressings sides": "sides",
+  // Desserts → dessert
+  "desserts": "dessert",
+  // Kids → kids
+  "children's menu": "kids",
+  // Beverages → beverage
+  "drinks": "beverage",
+  "glass bottle soda": "beverage",
+  // Specials → special
+  "anytime specials": "special",
+  "lunch special": "lunch",
+  "pick up special": "special",
+  "mother's day offers": "special",
+  // Delivery charge → fee (hidden from menu)
+  "delivery charge": "fee",
+};
 
 function categoryToSlug(categoryName: string | undefined): string {
   if (!categoryName) return "special";
   const name = categoryName.toLowerCase().trim();
+  if (CATEGORY_SLUG_MAP[name]) return CATEGORY_SLUG_MAP[name];
+  // Fuzzy fallback
   if (name.includes("pizza") || name.includes("calzone") || name.includes("stromboli")) return "pizza";
-  if (name.includes("burger") || name.includes("sandwich") || name.includes("wrap")) return "burger";
+  if (name.includes("burger")) return "burger";
+  if (name.includes("sandwich") || name.includes("wrap") || name.includes("sub")) return "sandwich";
   if (name.includes("pasta") || name.includes("spaghetti") || name.includes("lasagna")) return "pasta";
-  if (name.includes("wing") || name.includes("appetizer") || name.includes("starter")) return "wings";
+  if (name.includes("wing")) return "wings";
+  if (name.includes("appetizer") || name.includes("starter")) return "appetizer";
   if (name.includes("salad")) return "salad";
   if (name.includes("soup")) return "soup";
   if (name.includes("kids") || name.includes("children")) return "kids";
   if (name.includes("drink") || name.includes("beverage") || name.includes("soda") || name.includes("beer") || name.includes("wine")) return "beverage";
   if (name.includes("dessert") || name.includes("sweet") || name.includes("cake") || name.includes("ice cream")) return "dessert";
-  if (name.includes("lunch") || name.includes("special")) return "special";
+  if (name.includes("lunch")) return "lunch";
+  if (name.includes("special")) return "special";
+  if (name.includes("side") || name.includes("dressing")) return "sides";
   if (name.includes("catering")) return "catering";
   return "special";
 }
