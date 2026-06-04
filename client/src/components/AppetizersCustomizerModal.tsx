@@ -21,6 +21,8 @@ interface AddOn {
   sublabel?: string;
   price: number;
   emoji?: string;
+  /** Clover modifier option ID — enables structured modification on kitchen ticket */
+  cloverModifierId?: string;
 }
 
 // ── Per-item configuration ────────────────────────────────────────────────────
@@ -39,8 +41,8 @@ const ITEM_CONFIGS: ItemConfig[] = [
     basePrice: 14.49,
     description: "Deep Fried: Onion Rings, Zucchini Sticks, Breaded Mushrooms, Mozzarella Sticks & Jalapeño Peppers",
     addOns: [
-      { id: "extra-ranch", label: "Extra Ranch", sublabel: "Additional dipping cup", price: 0.75, emoji: "🥣" },
-      { id: "extra-marinara", label: "Extra Marinara", sublabel: "Additional dipping cup", price: 0.75, emoji: "🍅" },
+      { id: "extra-ranch", label: "Extra Ranch", sublabel: "Additional dipping cup", price: 0.75, emoji: "🥣", cloverModifierId: "S497T39SE9NMP" },
+      { id: "extra-marinara", label: "Extra Marinara", sublabel: "Additional dipping cup", price: 0.75, emoji: "🍅", cloverModifierId: "S497T39SE9NMP" },
     ],
   },
   {
@@ -63,7 +65,7 @@ const ITEM_CONFIGS: ItemConfig[] = [
     description: "12 freshly baked bread sticks",
     addOns: [
       { id: "cheese", label: "Add Cheese", sublabel: "Melted mozzarella on top", price: 3.0, emoji: "🧀" },
-      { id: "extra-marinara", label: "Extra Marinara", sublabel: "Additional dipping cup", price: 0.75, emoji: "🍅" },
+      { id: "extra-marinara", label: "Extra Marinara", sublabel: "Additional dipping cup", price: 0.75, emoji: "🍅", cloverModifierId: "S497T39SE9NMP" },
     ],
   },
   {
@@ -80,8 +82,8 @@ const ITEM_CONFIGS: ItemConfig[] = [
     basePrice: 3.49,
     description: "20 golden garlic dough balls stuffed with mozzarella",
     addOns: [
-      { id: "extra-marinara", label: "Extra Marinara", sublabel: "Additional dipping cup", price: 0.75, emoji: "🍅" },
-      { id: "extra-ranch", label: "Extra Ranch", sublabel: "Additional dipping cup", price: 0.75, emoji: "🥣" },
+      { id: "extra-marinara", label: "Extra Marinara", sublabel: "Additional dipping cup", price: 0.75, emoji: "🍅", cloverModifierId: "S497T39SE9NMP" },
+      { id: "extra-ranch", label: "Extra Ranch", sublabel: "Additional dipping cup", price: 0.75, emoji: "🥣", cloverModifierId: "S497T39SE9NMP" },
     ],
   },
   {
@@ -89,8 +91,8 @@ const ITEM_CONFIGS: ItemConfig[] = [
     basePrice: 10.49,
     description: "12 crispy breaded mushrooms",
     addOns: [
-      { id: "extra-ranch", label: "Extra Ranch", sublabel: "Additional dipping cup", price: 0.75, emoji: "🥣" },
-      { id: "extra-marinara", label: "Extra Marinara", sublabel: "Additional dipping cup", price: 0.75, emoji: "🍅" },
+      { id: "extra-ranch", label: "Extra Ranch", sublabel: "Additional dipping cup", price: 0.75, emoji: "🥣", cloverModifierId: "S497T39SE9NMP" },
+      { id: "extra-marinara", label: "Extra Marinara", sublabel: "Additional dipping cup", price: 0.75, emoji: "🍅", cloverModifierId: "S497T39SE9NMP" },
     ],
   },
   {
@@ -98,8 +100,8 @@ const ITEM_CONFIGS: ItemConfig[] = [
     basePrice: 10.49,
     description: "8 crispy golden fried ravioli",
     addOns: [
-      { id: "extra-marinara", label: "Extra Marinara", sublabel: "Additional dipping cup", price: 0.75, emoji: "🍅" },
-      { id: "extra-ranch", label: "Extra Ranch", sublabel: "Additional dipping cup", price: 0.75, emoji: "🥣" },
+      { id: "extra-marinara", label: "Extra Marinara", sublabel: "Additional dipping cup", price: 0.75, emoji: "🍅", cloverModifierId: "S497T39SE9NMP" },
+      { id: "extra-ranch", label: "Extra Ranch", sublabel: "Additional dipping cup", price: 0.75, emoji: "🥣", cloverModifierId: "S497T39SE9NMP" },
     ],
   },
   {
@@ -107,8 +109,8 @@ const ITEM_CONFIGS: ItemConfig[] = [
     basePrice: 10.49,
     description: "12 crispy breaded zucchini sticks",
     addOns: [
-      { id: "extra-ranch", label: "Extra Ranch", sublabel: "Additional dipping cup", price: 0.75, emoji: "🥣" },
-      { id: "extra-marinara", label: "Extra Marinara", sublabel: "Additional dipping cup", price: 0.75, emoji: "🍅" },
+      { id: "extra-ranch", label: "Extra Ranch", sublabel: "Additional dipping cup", price: 0.75, emoji: "🥣", cloverModifierId: "S497T39SE9NMP" },
+      { id: "extra-marinara", label: "Extra Marinara", sublabel: "Additional dipping cup", price: 0.75, emoji: "🍅", cloverModifierId: "S497T39SE9NMP" },
     ],
   },
   {
@@ -116,8 +118,8 @@ const ITEM_CONFIGS: ItemConfig[] = [
     basePrice: 10.49,
     description: "6 crispy jalapeño poppers with cream cheese filling",
     addOns: [
-      { id: "extra-ranch", label: "Extra Ranch", sublabel: "Additional dipping cup", price: 0.75, emoji: "🥣" },
-      { id: "extra-marinara", label: "Extra Marinara", sublabel: "Additional dipping cup", price: 0.75, emoji: "🍅" },
+      { id: "extra-ranch", label: "Extra Ranch", sublabel: "Additional dipping cup", price: 0.75, emoji: "🥣", cloverModifierId: "S497T39SE9NMP" },
+      { id: "extra-marinara", label: "Extra Marinara", sublabel: "Additional dipping cup", price: 0.75, emoji: "🍅", cloverModifierId: "S497T39SE9NMP" },
     ],
   },
   {
@@ -163,8 +165,8 @@ const ITEM_CONFIGS: ItemConfig[] = [
     basePrice: 9.49,
     description: "Golden crispy breaded onion rings",
     addOns: [
-      { id: "extra-ranch", label: "Extra Ranch", sublabel: "Additional dipping cup", price: 0.75, emoji: "🥣" },
-      { id: "extra-marinara", label: "Extra Marinara", sublabel: "Additional dipping cup", price: 0.75, emoji: "🍅" },
+      { id: "extra-ranch", label: "Extra Ranch", sublabel: "Additional dipping cup", price: 0.75, emoji: "🥣", cloverModifierId: "S497T39SE9NMP" },
+      { id: "extra-marinara", label: "Extra Marinara", sublabel: "Additional dipping cup", price: 0.75, emoji: "🍅", cloverModifierId: "S497T39SE9NMP" },
     ],
   },
 ];
@@ -343,6 +345,13 @@ function AppetizersModalInner({
     const sizeLabel = config.sizes ? ` (${config.sizes[selectedSizeIdx].label})` : "";
     const addOnDesc = selectedAddOns.map((a) => a.label).join(", ");
 
+    // Build structured modifications for Clover kitchen ticket
+    const modifications = selectedAddOns.map((a) => ({
+      name: a.label,
+      amount: Math.round(a.price * 100), // cents
+      cloverModifierId: a.cloverModifierId,
+    }));
+
     addItem({
       id: `${config.name}-${Date.now()}`,
       name: `${config.name}${sizeLabel}`,
@@ -351,6 +360,7 @@ function AppetizersModalInner({
       category: "appetizers",
       description: addOnDesc || undefined,
       cloverItemId,
+      modifications: modifications.length > 0 ? modifications : undefined,
     });
 
     toast.success(`${config.name}${sizeLabel} added to cart`, {
