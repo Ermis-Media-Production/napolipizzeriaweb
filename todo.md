@@ -551,3 +551,18 @@
 - [x] Verify 13 pizza special names route to Pizza printer and 11 non-pizza items (Greek Salad, Ranch Dressing, etc.) do NOT false-positive
 - [x] Run 3 live test orders to Clover (Burger, Pizza, Wings) — all orders created and print_event fired successfully
 - [x] TypeScript: 0 errors after all changes
+
+## Subs & Sandwiches Photo Update
+
+- [x] Generate AI food photos for 4 sub items with generic Clover CDN photos (Ham & Cheese, Turkey & Cheese, California Turkey, Crispy Chicken)
+- [x] Update napoliPhotos.ts SUBS section with new CloudFront CDN URLs
+- [x] Add Sub: prefix key for Crispy Chicken sub to avoid conflict with Wrap Crispy Chicken photo
+- [x] Add getSubPhoto() helper function (mirrors getBurgerPhoto pattern)
+- [x] Update Menu.tsx to use getSubPhoto() for sandwich category items
+- [x] TypeScript: 0 errors
+
+## Clover Email Receipt — Modifier Visibility Fix
+
+- [x] Add `note` field to parent lineItem in cloverSync.ts with all modifiers concatenated (bullet-point format, max 255 chars)
+- [x] Kitchen printer $0 sub-items preserved (unchanged — still appear on kitchen ticket)
+- [x] TypeScript: 0 errors

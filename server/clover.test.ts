@@ -155,7 +155,8 @@ describe("clover.createOrder", () => {
     expect(call3Url).toContain("/print_event");
     const call3Body = mockPost.mock.calls[2][1] as Record<string, unknown>;
     expect(call3Body).toHaveProperty("deviceRef");
-    expect((call3Body.deviceRef as Record<string, string>).id).toBe("09615CDB78014261A70D3BF94816F51A");
+    // Station Duo 2nd Gen PRIMARY — serial C055UG52262800, terminalPrefix 0
+    expect((call3Body.deviceRef as Record<string, string>).id).toBe("1CCA370BF6A270FF2E4035A38A246183");
 
     // Call 4: tender payment
     const call4Url = String(mockPost.mock.calls[3][0]);

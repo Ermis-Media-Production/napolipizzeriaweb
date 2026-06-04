@@ -447,6 +447,18 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
       parentItem.item = { id: item.cloverItemId };
     }
 
+    // Add modifiers as the lineItem `note` field so they appear in Clover's
+    // own email receipt to the customer. Clover only shows modifications with
+    // real catalog IDs in its receipt — free-text modifiers are invisible unless
+    // they are also stored in the `note` field of the parent line item.
+    // We still create the $0 sub-items below for the kitchen printer ticket.
+    if (item.description && item.description.trim()) {
+      const modifiers = parseModifiers(item.description);
+      // Build a compact note: each modifier on its own line (max 255 chars for Clover)
+      const noteText = modifiers.map((m) => `• ${m}`).join("\n").slice(0, 255);
+      parentItem.note = noteText;
+    }
+
     lineItems.push(parentItem);
 
     // Modifier sub-items: each modifier becomes a $0 line item

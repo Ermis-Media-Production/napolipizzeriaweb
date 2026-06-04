@@ -443,7 +443,8 @@ describe("Merchant IDs fijos", () => {
   });
 
   it("CLOVER_PRINT_DEVICE_ID es el ID correcto del Station Duo", () => {
-    expect(CLOVER_PRINT_DEVICE_ID).toBe("09615CDB78014261A70D3BF94816F51A");
+    // Station Duo 2nd Gen PRIMARY — serial C055UG52262800, terminalPrefix 0
+    expect(CLOVER_PRINT_DEVICE_ID).toBe("1CCA370BF6A270FF2E4035A38A246183");
   });
 
   it("CLOVER_ORDER_TYPE_IDS.pickup es el ID correcto de Pick up", () => {
