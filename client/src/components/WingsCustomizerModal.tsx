@@ -106,11 +106,12 @@ interface Props {
 
 // ── Spicy indicator ──────────────────────────────────────────
 function SpicyBadge({ level }: { level: 0 | 1 | 2 | 3 | 4 }) {
-  if (level === 0) return <span className="text-[9px] text-gray-400 font-medium">Not spicy</span>;
+  if (level === 0) return <span className="text-[10px] text-gray-400 font-medium">No spicy</span>;
+  const color = level >= 4 ? "oklch(0.45 0.25 20)" : level === 3 ? "oklch(0.52 0.22 27)" : level === 2 ? "oklch(0.58 0.20 40)" : "oklch(0.62 0.16 50)";
   return (
     <span className="flex items-center gap-0.5">
       {Array.from({ length: level }).map((_, i) => (
-        <Flame key={i} size={9} style={{ color: level >= 3 ? "oklch(0.55 0.22 27)" : level === 2 ? "oklch(0.60 0.18 40)" : "oklch(0.65 0.14 50)" }} />
+        <Flame key={i} size={12} fill={color} style={{ color }} />
       ))}
     </span>
   );
