@@ -1041,17 +1041,68 @@ export default function Menu() {
       }
     }
 
-    // 3. Substring containment (DB name contains the static name)
+    // 3. Aggressive normalization: strip apostrophes, punctuation, "w/" → "with"
+    const normalize = (s: string) =>
+      s.replace(/[''`]/g, "")       // apostrophes
+       .replace(/[()\[\]{}]/g, "")  // brackets
+       .replace(/w\//g, "with")     // w/ → with
+       .replace(/&/g, "and")        // & → and
+       .replace(/[^a-z0-9 ]/g, "") // remove remaining punctuation
+       .replace(/\s+/g, " ")
+       .trim();
+
+    const normKey = normalize(key);
+
+    // 3a. Exact normalized match
     for (const [dbName, id] of cloverIdByName.entries()) {
-      if (dbName.includes(key) || key.includes(dbName)) return id;
+      if (normalize(dbName) === normKey) return id;
     }
 
-    // 4. Normalize common variations: remove parentheses, "w/" → "with"
-    const normalized = key.replace(/\(/g, "").replace(/\)/g, "").replace(/w\//g, "with").replace(/\s+/g, " ");
+    // 3b. Substring containment on normalized strings
     for (const [dbName, id] of cloverIdByName.entries()) {
-      const dbNorm = dbName.replace(/\(/g, "").replace(/\)/g, "").replace(/w\//g, "with").replace(/\s+/g, " ");
-      if (dbNorm.includes(normalized) || normalized.includes(dbNorm)) return id;
+      const normDb = normalize(dbName);
+      if (normDb.includes(normKey) || normKey.includes(normDb)) return id;
     }
+
+    // 4. Token-based matching: if all words in the query appear in the DB name (or vice versa)
+    const keyTokens = normKey.split(" ").filter(Boolean);
+    for (const [dbName, id] of cloverIdByName.entries()) {
+      const dbTokens = normalize(dbName).split(" ").filter(Boolean);
+      const allKeyInDb = keyTokens.every((t) => dbTokens.some((d) => d.includes(t) || t.includes(d)));
+      const allDbInKey = dbTokens.every((t) => keyTokens.some((k) => k.includes(t) || t.includes(k)));
+      if (allKeyInDb || allDbInKey) return id;
+    }
+
+    // 5. Levenshtein distance ≤ 3 on normalized full string (catches typos like "Cambo" vs "Combo")
+    const levenshtein = (a: string, b: string): number => {
+      const m = a.length, n = b.length;
+      if (Math.abs(m - n) > 3) return 4; // early exit
+      const dp: number[][] = Array.from({ length: m + 1 }, (_, i) => {
+        const row = new Array(n + 1).fill(0);
+        row[0] = i;
+        return row;
+      });
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          dp[i][j] = a[i - 1] === b[j - 1]
+            ? dp[i - 1][j - 1]
+            : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+        }
+      }
+      return dp[m][n];
+    };
+
+    let bestMatch: string | undefined;
+    let bestDist = 4;
+    for (const [dbName, id] of cloverIdByName.entries()) {
+      const dist = levenshtein(normKey, normalize(dbName));
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestMatch = id;
+      }
+    }
+    if (bestMatch) return bestMatch;
 
     return undefined;
   }, [cloverIdByName]);
