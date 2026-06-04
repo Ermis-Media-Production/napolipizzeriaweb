@@ -997,12 +997,64 @@ export default function Menu() {
     const map = new Map<string, string>();
     if (dbMenuItems) {
       for (const item of dbMenuItems) {
-        if (item.cloverItemId) map.set(item.name.toLowerCase(), item.cloverItemId);
+        if (item.cloverItemId) map.set(item.name.toLowerCase().trim(), item.cloverItemId);
       }
     }
     return map;
   }, [dbMenuItems]);
-  const getCloverItemId = (name: string) => cloverIdByName.get(name.toLowerCase());
+
+  /**
+   * Fuzzy Clover item ID lookup.
+   * For pizza items with a size, tries multiple DB naming patterns:
+   *   - "{name} {size} Pizza" (e.g. "BBQ Chicken 14\" Pizza")
+   *   - "{name} Pizza {size} {name} Pizza" (duplicated pattern)
+   *   - "{name} {size}" (e.g. "Supreme 14\"")
+   *   - "Hand Tossed {size} Pizza" (for Plain Cheese)
+   *   - "{name} Pizza" (generic, no size)
+   * For non-pizza items: exact match, then substring containment.
+   */
+  const getCloverItemId = React.useCallback((name: string, size?: string): string | undefined => {
+    const key = name.toLowerCase().trim();
+
+    // 1. Exact match
+    const exact = cloverIdByName.get(key);
+    if (exact) return exact;
+
+    // 2. Size-aware pizza patterns
+    if (size) {
+      const s = size.toLowerCase().trim();
+      const candidates = [
+        `${key} ${s} pizza`,                       // "bbq chicken 14\" pizza"
+        `${key} pizza ${s} ${key} pizza`,           // "chicken alfredo pizza 14\" chicken alfredo pizza"
+        `${key} ${s}`,                              // "supreme 14\""
+        `${key} pizza`,                             // "meat lover pizza" (generic)
+      ];
+      // For "Plain Cheese" → try "Hand Tossed {size} Pizza" and "10\" Pizza"
+      if (key === "plain cheese" || key === "4 topping combo") {
+        candidates.push(`hand tossed ${s} pizza`);  // "hand tossed 14\" pizza"
+        candidates.push(`${s} pizza`);              // "10\" pizza"
+        candidates.push(`4 toppings combo pizza`);  // plural variant
+      }
+      for (const c of candidates) {
+        const match = cloverIdByName.get(c);
+        if (match) return match;
+      }
+    }
+
+    // 3. Substring containment (DB name contains the static name)
+    for (const [dbName, id] of cloverIdByName.entries()) {
+      if (dbName.includes(key) || key.includes(dbName)) return id;
+    }
+
+    // 4. Normalize common variations: remove parentheses, "w/" → "with"
+    const normalized = key.replace(/\(/g, "").replace(/\)/g, "").replace(/w\//g, "with").replace(/\s+/g, " ");
+    for (const [dbName, id] of cloverIdByName.entries()) {
+      const dbNorm = dbName.replace(/\(/g, "").replace(/\)/g, "").replace(/w\//g, "with").replace(/\s+/g, " ");
+      if (dbNorm.includes(normalized) || normalized.includes(dbNorm)) return id;
+    }
+
+    return undefined;
+  }, [cloverIdByName]);
 
   // Auto-scroll the sticky nav bar to center the active category button
   const scrollNavToActive = (id: string) => {
@@ -1658,6 +1710,7 @@ export default function Menu() {
           key={pizzaModalKey}
           selection={pizzaSelection}
           onClose={() => setPizzaSelection(null)}
+          resolveCloverItemId={getCloverItemId}
         />
 
         {/* Wrap Customizer Modal */}
@@ -1680,6 +1733,7 @@ export default function Menu() {
           trigger={calzoneTrigger}
           modalKey={calzoneModalKey}
           onClose={() => setCalzoneTrigger(null)}
+          resolveCloverItemId={getCloverItemId}
         />
         {/* Burger Customizer Modal */}
         <BurgerCustomizerModal

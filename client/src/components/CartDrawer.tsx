@@ -384,8 +384,11 @@ export default function CartDrawer() {
 
   const chargeCard = trpc.authnet.chargeCard.useMutation({
     onSuccess: (data) => {
+      const orderSummary = encodeURIComponent(JSON.stringify(
+        items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price, description: i.description ?? "" }))
+      ));
       clearCart();
-      navigate(`/order-success?payment=authnet&transaction_id=${data.transactionId}&auth_code=${data.authCode}&amount=${data.amount.toFixed(2)}&order_type=${data.orderType}&customer=${encodeURIComponent(data.customerName)}&items=${data.itemCount}`);
+      navigate(`/order-success?payment=authnet&transaction_id=${data.transactionId}&auth_code=${data.authCode}&amount=${data.amount.toFixed(2)}&order_type=${data.orderType}&customer=${encodeURIComponent(data.customerName)}&items=${data.itemCount}&order_summary=${orderSummary}`);
       closeCart();
     },
     onError: (err) => {
@@ -397,9 +400,13 @@ export default function CartDrawer() {
   // Test Order mutation — offline mode, bypasses payment, calls Clover directly
   const placeTestOrder = trpc.testOrder.placeTestOrder.useMutation({
     onSuccess: (data) => {
+      const orderSummary = encodeURIComponent(JSON.stringify(
+        items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price, description: i.description ?? "" }))
+      ));
+      const payload = buildOrderPayload().payload;
       clearCart();
       closeCart();
-      navigate(`/order-success?payment=test&transaction_id=${data.cloverOrderId}&amount=${(data.totalCents / 100).toFixed(2)}&order_type=${buildOrderPayload().payload.orderType}&customer=${encodeURIComponent(buildOrderPayload().payload.customerName)}`);
+      navigate(`/order-success?payment=test&transaction_id=${data.cloverOrderId}&amount=${(data.totalCents / 100).toFixed(2)}&order_type=${payload.orderType}&customer=${encodeURIComponent(payload.customerName)}&items=${items.reduce((s, i) => s + i.quantity, 0)}&order_summary=${orderSummary}`);
     },
     onError: (err) => {
       toast.error(`Test order failed: ${err.message}`);

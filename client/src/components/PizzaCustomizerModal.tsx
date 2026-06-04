@@ -39,6 +39,8 @@ export interface PizzaSelection {
 interface Props {
   selection: PizzaSelection | null;
   onClose: () => void;
+  /** Size-aware Clover item ID resolver — called at add-to-cart time with (pizzaName, size) */
+  resolveCloverItemId?: (name: string, size?: string) => string | undefined;
 }
 
 // Modifier option shape returned by listPizzaModifiers
@@ -135,12 +137,12 @@ function ToppingChip({
 }
 
 // ── Main Modal ─────────────────────────────────────────────────────────────
-export default function PizzaCustomizerModal({ selection, onClose }: Props) {
+export default function PizzaCustomizerModal({ selection, onClose, resolveCloverItemId }: Props) {
   if (!selection) return null;
-  return <PizzaCustomizerInner selection={selection} onClose={onClose} />;
+  return <PizzaCustomizerInner selection={selection} onClose={onClose} resolveCloverItemId={resolveCloverItemId} />;
 }
 
-function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelection; onClose: () => void }) {
+function PizzaCustomizerInner({ selection, onClose, resolveCloverItemId }: { selection: PizzaSelection; onClose: () => void; resolveCloverItemId?: (name: string, size?: string) => string | undefined }) {
   const { addItem } = useCart();
 
   // Load modifier groups from DB (synced from Clover)
@@ -319,6 +321,12 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
       modifications.push({ name: `Note: ${notes.trim()}`, amount: 0 });
     }
 
+    // Resolve the correct size-specific Clover item ID at add-to-cart time.
+    // The pre-resolved selection.cloverItemId is used as fallback (non-size-aware).
+    const resolvedCloverItemId = resolveCloverItemId
+      ? resolveCloverItemId(pizzaName, effectiveSize)
+      : selection.cloverItemId;
+
     addItem({
       id: `pizza-${pizzaName}-${effectiveSize}-${selectedCrustId}-${selectedCutId}-${Date.now()}`,
       name: `${pizzaName} Pizza (${effectiveSize})`,
@@ -327,7 +335,7 @@ function PizzaCustomizerInner({ selection, onClose }: { selection: PizzaSelectio
       category: "pizza",
       description: descParts.join(" · "),
       modifications,
-      cloverItemId: selection.cloverItemId,
+      cloverItemId: resolvedCloverItemId,
     });
 
     toast.success(`${pizzaName} Pizza (${effectiveSize}) added to cart!`);

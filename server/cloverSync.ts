@@ -102,8 +102,11 @@ export const CLOVER_PRINT_DEVICE_ID = "09615CDB78014261A70D3BF94816F51A";
  *   Food      → MCWCF8204E7QM  (Star TSP100, 192.168.192.12)
  *   Pizzeria  → WBSHK4762NS76  (TM-U220, 192.168.192.8)
  *
- * Clover requires printerLabel to be set as { id: "<printerId>" } on each
- * line item — using { name: "..." } is silently ignored by the API.
+ * NOTE: These IDs are kept for reference/logging only. Printer routing in
+ * atomic_order is handled by Clover based on the label assigned to the
+ * catalog item (item.id) in the merchant's inventory. Sending printerLabel
+ * in the atomic_order payload is not documented and the WordPress plugin
+ * that works correctly does NOT send it.
  */
 export const CLOVER_PRINTER_IDS = {
   PIZZA:    "65QB994H6Z44W",
@@ -361,17 +364,14 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
   );
 
   const lineItems = expandedItems.map((item) => {
-    const printerLabel = getPrinterLabel(item.name);
-    const printerIdMap: Record<PrinterLabel, string> = {
-      Pizza:    CLOVER_PRINTER_IDS.PIZZA,
-      Food:     CLOVER_PRINTER_IDS.FOOD,
-      Pizzeria: CLOVER_PRINTER_IDS.PIZZERIA,
-    };
-    const printerId = printerIdMap[printerLabel];
+    // NOTE: printerLabel is NOT sent in the atomic_order payload.
+    // Clover routes items to printers based on the label assigned to the
+    // catalog item (via item.id). The WordPress plugin confirms this approach.
+    // Sending printerLabel in atomic_order is undocumented and may cause
+    // silent failures or be ignored entirely.
     const lineItem: Record<string, unknown> = {
       name: item.name,
       price: Math.round(item.price * 100), // cents
-      printerLabel: { id: printerId },
     };
 
     // If the item has a Clover catalog ID, include it so Clover can
@@ -391,11 +391,14 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     }
 
     // Include modifications inline in the atomic order payload
+    // Structure per Clover docs (Step 2) and WordPress plugin reference:
+    //   { modifier: { id: "MOD_ID" }, name: "...", amount: X }
+    // The modifier.id is the ONLY required field inside `modifier`.
     if (item.modifications?.length) {
       lineItem.modifications = item.modifications
         .filter((mod) => mod.cloverModifierId)
         .map((mod) => ({
-          modifier: { id: mod.cloverModifierId, name: mod.name },
+          modifier: { id: mod.cloverModifierId },
           name: mod.name,
           amount: mod.amount ?? 0,
         }));

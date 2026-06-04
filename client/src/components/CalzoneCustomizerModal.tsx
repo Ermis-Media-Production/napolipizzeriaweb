@@ -32,6 +32,8 @@ interface Props {
   trigger: CalzoneTrigger | null;
   modalKey: number;
   onClose: () => void;
+  /** Size-aware Clover item ID resolver */
+  resolveCloverItemId?: (name: string, size?: string) => string | undefined;
 }
 
 function parsePrice(p: string): number {
@@ -44,12 +46,12 @@ const FREE_BADGE_STYLE = {
   fontFamily: "'Oswald', sans-serif",
 };
 
-export function CalzoneCustomizerModal({ trigger, onClose }: Props) {
+export function CalzoneCustomizerModal({ trigger, onClose, resolveCloverItemId }: Props) {
   if (!trigger) return null;
-  return <CalzoneCustomizerInner trigger={trigger} onClose={onClose} />;
+  return <CalzoneCustomizerInner trigger={trigger} onClose={onClose} resolveCloverItemId={resolveCloverItemId} />;
 }
 
-function CalzoneCustomizerInner({ trigger, onClose }: { trigger: CalzoneTrigger; onClose: () => void }) {
+function CalzoneCustomizerInner({ trigger, onClose, resolveCloverItemId }: { trigger: CalzoneTrigger; onClose: () => void; resolveCloverItemId?: (name: string, size?: string) => string | undefined }) {
   const { addItem, openCart } = useCart();
 
   const isFlatPrice = trigger.itemType === "Chicago Deep Dish" || trigger.itemType === "Sicilian";
@@ -117,6 +119,11 @@ function CalzoneCustomizerInner({ trigger, onClose }: { trigger: CalzoneTrigger;
       ? trigger.itemType
       : `${selectedSize} ${trigger.itemType}`;
 
+    // Resolve size-specific Clover item ID (e.g. "Stromboli 14\"" vs "Stromboli 10\"")
+    const resolvedCloverItemId = resolveCloverItemId
+      ? resolveCloverItemId(trigger.itemType, selectedSize || undefined)
+      : trigger.cloverItemId;
+
     addItem({
       id: `${trigger.itemType.toLowerCase().replace(/ /g, "-")}-${selectedSize || "flat"}-${Date.now()}`,
       name: itemName,
@@ -124,7 +131,7 @@ function CalzoneCustomizerInner({ trigger, onClose }: { trigger: CalzoneTrigger;
       quantity: 1,
       category: trigger.itemType.toLowerCase().replace(/ /g, "-"),
       description: parts.join(" · "),
-      cloverItemId: trigger.cloverItemId,
+      cloverItemId: resolvedCloverItemId,
     });
 
     toast.success(`${itemName} added to cart`, {
