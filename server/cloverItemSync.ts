@@ -105,6 +105,41 @@ function cloverPrinterIdToLabel(printerId: string): "Food" | "Pizza" | "Pizzeria
   }
 }
 
+// ── Map Clover tag name to local printLabel ───────────────────────────────────
+// In Clover, printer labels assigned via Dashboard are stored as "tags" in the API.
+// The tag names Pizza / Food / Pizzeria / Bar/Drinks map directly to our printLabel values.
+const VALID_PRINT_LABELS = new Set(["Pizza", "Food", "Pizzeria", "Bar/Drinks"]);
+
+function cloverTagToLabel(tagName: string): "Food" | "Pizza" | "Pizzeria" | "Bar/Drinks" | null {
+  if (VALID_PRINT_LABELS.has(tagName)) return tagName as "Food" | "Pizza" | "Pizzeria" | "Bar/Drinks";
+  return null;
+}
+
+// ── Improved routing that handles "Name SIZE\" Name" pattern ──────────────────
+// e.g. "Italian 16\" Italian" → baseName = "italian" → Pizza
+const PIZZA_SIZE_IN_MIDDLE = /^(.+?)\s+\d{1,2}["\u201d]\s+/;
+
+function getPrinterLabelImproved(itemName: string): "Food" | "Pizza" | "Pizzeria" | "Bar/Drinks" {
+  // First try the standard routing
+  const standard = getPrinterLabel(itemName) as "Food" | "Pizza" | "Pizzeria" | "Bar/Drinks";
+  if (standard !== "Food") return standard; // If it matched Pizza/Pizzeria, trust it
+
+  // Check for "Name SIZE\" Name" pattern (e.g. "Italian 16\" Italian")
+  const lower = (itemName ?? "").toLowerCase();
+  const match = lower.match(PIZZA_SIZE_IN_MIDDLE);
+  if (match) {
+    const beforeSize = match[1].trim();
+    const PIZZA_SPECIAL_NAMES = new Set([
+      "bbq chicken", "buffalo chicken", "3 cheese", "chicken alfredo",
+      "deluxe", "greek", "italian", "meat lover", "mexican style",
+      "napoli's special", "pesto chicken", "ranch", "southwestern chicken",
+      "supreme", "taco", "vegetarian", "white pizza",
+    ]);
+    if (PIZZA_SPECIAL_NAMES.has(beforeSize)) return "Pizza";
+  }
+  return "Food";
+}
+
 // ── Map Clover category name to local slug ────────────────────────────────────
 // Explicit lookup table first (exact Clover category names), then fuzzy fallback
 const CATEGORY_SLUG_MAP: Record<string, string> = {
@@ -344,15 +379,24 @@ export const cloverItemSyncRouter = router({
         const categorySlug = categoryToSlug(firstCategory?.name);
 
         // Determine printer label:
-        // Priority 1: Clover's own printerLabel assignment (most accurate)
-        // Priority 2: Keyword-based auto-detection (fallback)
-        const cloverPrinterElements = item.printerLabels?.elements ?? [];
+        // Priority 1: Clover tag name (e.g. "Pizza", "Food", "Pizzeria") — set via Dashboard
+        // Priority 2: Clover printerLabel ID (legacy printer-based assignment)
+        // Priority 3: Improved keyword-based auto-detection (fallback)
+        const cloverTagElements = item.tags?.elements ?? [];
         let cloverLabel: "Food" | "Pizza" | "Pizzeria" | "Bar/Drinks" | null = null;
-        for (const pl of cloverPrinterElements) {
-          const mapped = cloverPrinterIdToLabel(pl.id);
+        for (const tag of cloverTagElements) {
+          const mapped = cloverTagToLabel(tag.name);
           if (mapped) { cloverLabel = mapped; break; }
         }
-        const autoLabel = getPrinterLabel(item.name) as "Food" | "Pizza" | "Pizzeria" | "Bar/Drinks";
+        // Fallback: check printerLabels (legacy printer ID-based)
+        if (!cloverLabel) {
+          const cloverPrinterElements = item.printerLabels?.elements ?? [];
+          for (const pl of cloverPrinterElements) {
+            const mapped = cloverPrinterIdToLabel(pl.id);
+            if (mapped) { cloverLabel = mapped; break; }
+          }
+        }
+        const autoLabel = getPrinterLabelImproved(item.name);
         const detectedLabel = cloverLabel ?? autoLabel;
         const labelSource = cloverLabel ? "clover" : "auto";
 
