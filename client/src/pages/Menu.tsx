@@ -27,7 +27,7 @@ import SaladsCustomizerModal, { type SaladsModalTrigger, SALAD_MODAL_ITEMS } fro
 import PastaCustomizerModal, { type PastaModalTrigger, PASTA_MODAL_ITEMS } from "@/components/PastaCustomizerModal";
 import GlutenFreePizzaModal from "@/components/GlutenFreePizzaModal";
 import { LUNCH_SPECIALS, BURGERS } from "@/lib/napoliData";
-import { getMenuPhoto, getBurgerPhoto } from "@/lib/napoliPhotos";
+import { getMenuPhoto, getBurgerPhoto, getSubPhoto } from "@/lib/napoliPhotos";
 import { NutritionBadges } from "@/components/NutritionBadges";
 
 function SectionHeader({ id, title, emoji, photo }: { id: string; title: string; emoji: string; photo?: string }) {
@@ -1035,7 +1035,7 @@ function CloverSyncedItems({
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ borderTop: "1px solid oklch(0.93 0.012 80)", display: (cat === "pizza" || cat === "wings" || cat === "burger") ? "none" : undefined }}>
                 {catItems.map((item, itemIdx) => {
                   const price = parseFloat(item.price);
-                  const photo = item.imageUrl ?? (cat === "burger" ? getBurgerPhoto(item.name) : getMenuPhoto(item.name));
+                  const photo = item.imageUrl ?? (cat === "burger" ? getBurgerPhoto(item.name) : cat === "sandwich" ? getSubPhoto(item.name) : getMenuPhoto(item.name));
                   const isLunchOpen = !isLunch || lunchTimer.isOpen;
 
                   // ── Determine if this item needs a customizer modal ──

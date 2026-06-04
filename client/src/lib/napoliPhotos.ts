@@ -128,14 +128,16 @@ export const MENU_PHOTOS: Record<string, string> = {
 
   // ── SUBS — COLD ──────────────────────────────────────────────
   "Napoli Italian Special":         C + "9QBSHW65WFC2G.jpeg",
-  "Ham & Cheese":                   C + "21WHCK9MDQENT.jpeg",
+  "Ham & Cheese":                   "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/sub-ham-cheese-Tn5xxcEZpGEscnFKb45wrA.webp",
   "Fried Chicken":                  C + "TQ1HVCD5ESJ42.jpeg",
-  "Turkey & Cheese":                C + "21WHCK9MDQENT.jpeg",
+  "Turkey & Cheese":                "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/sub-turkey-cheese-4kZezzPutGjfNGJc3iTHjP.webp",
 
   // ── SUBS — HOT ───────────────────────────────────────────────
   "Buffalo Chicken Breast":         C + "HFVDXB816MJB2.jpeg",
   "Grilled Sausage & Peppers":      C + "KE3E767Y3WKAG.jpeg",
-  "California Turkey":              C + "21WHCK9MDQENT.jpeg",
+  "California Turkey":              "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/sub-california-turkey-EoEBb4Egzr5nsZUeUoP9LS.webp",
+  // Sub-prefixed key to avoid conflict with Wrap "Crispy Chicken" (line 93)
+  "Sub:Crispy Chicken":             "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/sub-crispy-chicken-4davhqAEGMBS9V5mDc9xHo.webp",
   "Philly Steak Bomb":              C + "QKCA3T979YYJA.jpeg",
   "Watertown":                      S + "napoli-watertown-sub_e7746134.jpg",
   "Newton":                         S + "napoli-newton-sub_439c08d6.jpg",
@@ -230,4 +232,12 @@ export function getMenuPhoto(name: string): string | undefined {
  */
 export function getBurgerPhoto(name: string): string | undefined {
   return MENU_PHOTOS[`Burger:${name}`] ?? MENU_PHOTOS[name];
+}
+
+/**
+ * Get a photo URL specifically for a sub/sandwich item.
+ * Uses sub-prefixed keys to avoid conflicts with wrap items that share names (e.g. Crispy Chicken).
+ */
+export function getSubPhoto(name: string): string | undefined {
+  return MENU_PHOTOS[`Sub:${name}`] ?? MENU_PHOTOS[name];
 }
