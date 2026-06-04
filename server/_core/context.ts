@@ -1,6 +1,8 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
 import { sdk } from "./sdk";
+import { parse as parseCookie } from "cookie";
+import { jwtVerify } from "jose";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
@@ -12,6 +14,33 @@ export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
   let user: User | null = null;
+
+  // DEV BYPASS: When OAUTH_SERVER_URL is not configured, auto-authenticate
+  // any request with a valid JWT cookie as a dev admin user.
+  if (!process.env.OAUTH_SERVER_URL) {
+    const cookies = parseCookie(opts.req.headers.cookie || "");
+    const sessionCookie = cookies["app_session_id"];
+    if (sessionCookie) {
+      try {
+        const secret = new TextEncoder().encode(process.env.JWT_SECRET || "napoli-dev-secret-2026");
+        const { payload } = await jwtVerify(sessionCookie, secret, { algorithms: ["HS256"] });
+        if (payload.openId) {
+          user = {
+            id: 1,
+            openId: payload.openId as string,
+            name: (payload.name as string) || "Dev Admin",
+            email: "admin@dev.local",
+            loginMethod: "dev-bypass",
+            lastSignedIn: new Date(),
+            createdAt: new Date(),
+          } as User;
+        }
+      } catch {
+        // Invalid token — fall through to null user
+      }
+    }
+    return { req: opts.req, res: opts.res, user };
+  }
 
   try {
     user = await sdk.authenticateRequest(opts.req);

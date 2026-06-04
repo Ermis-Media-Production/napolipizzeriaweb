@@ -77,6 +77,31 @@ async function startServer() {
     });
   });
 
+  // DEV LOGIN: When OAUTH_SERVER_URL is not configured, provide a simple
+  // endpoint that generates a session cookie and redirects to /admin.
+  if (!process.env.OAUTH_SERVER_URL) {
+    app.get("/api/dev-login", async (req, res) => {
+      const { SignJWT } = await import("jose");
+      const secret = new TextEncoder().encode(process.env.JWT_SECRET || "napoli-dev-secret-2026");
+      const token = await new SignJWT({
+        openId: "admin-dev-user",
+        appId: "napolipizzeria-dev",
+        name: "Dev Admin",
+      })
+        .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+        .setExpirationTime(Math.floor((Date.now() + 365 * 24 * 60 * 60 * 1000) / 1000))
+        .sign(secret);
+      res.cookie("app_session_id", token, {
+        httpOnly: false,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 365 * 24 * 60 * 60 * 1000,
+        path: "/",
+      });
+      res.redirect("/admin");
+    });
+  }
+
   registerStorageProxy(app);
   registerOAuthRoutes(app);
 
