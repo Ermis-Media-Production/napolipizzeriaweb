@@ -3,6 +3,7 @@ import type { User } from "../../drizzle/schema";
 import { sdk } from "./sdk";
 import { parse as parseCookie } from "cookie";
 import { jwtVerify } from "jose";
+import * as db from "../db";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
@@ -25,15 +26,22 @@ export async function createContext(
         const secret = new TextEncoder().encode(process.env.JWT_SECRET || "napoli-dev-secret-2026");
         const { payload } = await jwtVerify(sessionCookie, secret, { algorithms: ["HS256"] });
         if (payload.openId) {
-          user = {
-            id: 1,
-            openId: payload.openId as string,
-            name: (payload.name as string) || "Dev Admin",
-            email: "admin@dev.local",
-            loginMethod: "dev-bypass",
-            lastSignedIn: new Date(),
-            createdAt: new Date(),
-          } as User;
+          // Look up the real user from DB to get the correct role
+          const dbUser = await db.getUserByOpenId(payload.openId as string);
+          if (dbUser) {
+            user = dbUser;
+          } else {
+            user = {
+              id: 0,
+              openId: payload.openId as string,
+              name: (payload.name as string) || "Dev Admin",
+              email: "admin@dev.local",
+              loginMethod: "dev-bypass",
+              role: "admin",
+              lastSignedIn: new Date(),
+              createdAt: new Date(),
+            } as User;
+          }
         }
       } catch {
         // Invalid token — fall through to null user
