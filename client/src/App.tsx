@@ -9,6 +9,7 @@ import CartDrawer from "./components/CartDrawer";
 import FloatingCart from "./components/FloatingCart";
 import EvaChat from "./components/EvaChat";
 import Home from "./pages/Home";
+import ComingSoon from "./pages/ComingSoon";
 import Menu from "./pages/Menu";
 import Specials from "./pages/Specials";
 import Order from "./pages/Order";
@@ -26,18 +27,21 @@ import Terms from "./pages/Terms";
 import Reservations from "./pages/Reservations";
 import MyOrder from "./pages/MyOrder";
 
+// Set to true to show Coming Soon page for all public routes
+const COMING_SOON_MODE = true;
+
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/menu" component={Menu} />
-      <Route path="/specials" component={Specials} />
-      <Route path="/catering" component={Catering} />
-      <Route path="/reservations" component={Reservations} />
-      <Route path="/order" component={Order} />
-      <Route path="/terms" component={Terms} />
-      <Route path="/order-success" component={OrderSuccess} />
-      <Route path="/my-order/:orderRef" component={MyOrder} />
+      <Route path="/" component={COMING_SOON_MODE ? ComingSoon : Home} />
+      <Route path="/menu" component={COMING_SOON_MODE ? ComingSoon : Menu} />
+      <Route path="/specials" component={COMING_SOON_MODE ? ComingSoon : Specials} />
+      <Route path="/catering" component={COMING_SOON_MODE ? ComingSoon : Catering} />
+      <Route path="/reservations" component={COMING_SOON_MODE ? ComingSoon : Reservations} />
+      <Route path="/order" component={COMING_SOON_MODE ? ComingSoon : Order} />
+      <Route path="/terms" component={COMING_SOON_MODE ? ComingSoon : Terms} />
+      <Route path="/order-success" component={COMING_SOON_MODE ? ComingSoon : OrderSuccess} />
+      <Route path="/my-order/:orderRef" component={COMING_SOON_MODE ? ComingSoon : MyOrder} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/admin/orders" component={AdminOrders} />
