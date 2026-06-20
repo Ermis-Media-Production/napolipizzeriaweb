@@ -826,23 +826,54 @@ function CloverSyncedItems({
               {/* ── Pizza category: single entry point ── */}
               {cat === "pizza" && (
                 <div className="px-5 py-6 flex flex-col gap-4">
-                  {/* Hero CTA */}
-                  <div
-                    className="flex flex-col sm:flex-row items-center gap-4 p-5 rounded-xl"
-                    style={{ background: "linear-gradient(135deg, oklch(0.97 0.04 27) 0%, oklch(0.99 0.015 80) 100%)", border: "2px solid var(--napoli-red)" }}
-                  >
-                    <div className="text-5xl">🍕</div>
-                    <div className="flex-1 text-center sm:text-left">
-                      <h3 className="text-lg font-bold" style={{ color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>Hand Tossed New York Style</h3>
-                      <p className="text-sm mt-0.5" style={{ color: "oklch(0.45 0.03 30)", fontFamily: "'Lato', sans-serif" }}>Choose your pizza, size, toppings & cut — step by step</p>
-                      <p className="text-xs mt-1" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>Sizes: 10" · 14" · 16" · 18" · 24" · 28" · 30" · 36" · Gluten Free 14"</p>
-                    </div>
+
+                  {/* Pizza type cards: Hand Tossed + Gluten Free */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Hand Tossed New York Style card */}
                     <button
                       onClick={() => onPizzaCustomize({ isSpecialty: false, freeToppings: 0, allowHalfAndHalf: true })}
-                      className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-95 hover:opacity-90 shrink-0"
-                      style={{ background: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}
+                      className="relative flex flex-col overflow-hidden rounded-2xl transition-all active:scale-95 hover:shadow-xl group text-left"
+                      style={{ border: "2px solid var(--napoli-red)", background: "white" }}
                     >
-                      <span className="text-base">🍕</span> Build My Pizza
+                      <div className="w-full overflow-hidden" style={{ height: 120 }}>
+                        <img
+                          src={getMenuPhoto("Hand Tossed New York Style") || ""}
+                          alt="Hand Tossed New York Style"
+                          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                        />
+                      </div>
+                      <div className="p-3" style={{ background: "linear-gradient(135deg, oklch(0.97 0.04 27) 0%, oklch(0.99 0.015 80) 100%)" }}>
+                        <p className="font-bold leading-tight" style={{ fontSize: 13, color: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}>Hand Tossed NY Style</p>
+                        <p className="mt-0.5" style={{ fontSize: 10, color: "oklch(0.45 0.03 30)", fontFamily: "'Lato', sans-serif", lineHeight: 1.3 }}>10" · 14" · 16" · 18" · 24" · 28" · 30" · 36"</p>
+                        <span
+                          className="inline-block mt-2 px-3 py-1 rounded-lg text-white text-xs font-bold"
+                          style={{ background: "var(--napoli-red)", fontFamily: "'Oswald', sans-serif" }}
+                        >Build My Pizza →</span>
+                      </div>
+                    </button>
+
+                    {/* Gluten Free Pizza card */}
+                    <button
+                      onClick={() => onGlutenFreeOpen()}
+                      className="relative flex flex-col overflow-hidden rounded-2xl transition-all active:scale-95 hover:shadow-xl group text-left"
+                      style={{ border: "2px solid var(--napoli-green)", background: "white" }}
+                    >
+                      <div className="w-full overflow-hidden" style={{ height: 120 }}>
+                        <img
+                          src={getMenuPhoto("Gluten Free Pizza") || ""}
+                          alt="Gluten Free Pizza"
+                          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                        />
+                        <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-white text-xs font-bold" style={{ background: "var(--napoli-green)", fontFamily: "'Oswald', sans-serif", fontSize: 9 }}>GLUTEN FREE</div>
+                      </div>
+                      <div className="p-3" style={{ background: "oklch(0.96 0.06 145 / 0.15)" }}>
+                        <p className="font-bold leading-tight" style={{ fontSize: 13, color: "var(--napoli-green)", fontFamily: "'Oswald', sans-serif" }}>Gluten Free Pizza</p>
+                        <p className="mt-0.5" style={{ fontSize: 10, color: "oklch(0.45 0.03 30)", fontFamily: "'Lato', sans-serif", lineHeight: 1.3 }}>14" only · $12.75 base · +$2.75/topping</p>
+                        <span
+                          className="inline-block mt-2 px-3 py-1 rounded-lg text-white text-xs font-bold"
+                          style={{ background: "var(--napoli-green)", fontFamily: "'Oswald', sans-serif" }}
+                        >Order →</span>
+                      </div>
                     </button>
                   </div>
 
@@ -887,21 +918,6 @@ function CloverSyncedItems({
                     </div>
                   </div>
 
-                  {/* Gluten Free shortcut */}
-                  <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: "oklch(0.96 0.06 145 / 0.20)", border: "1px solid oklch(0.80 0.10 145)" }}>
-                    <span className="text-xl">🌾</span>
-                    <div className="flex-1">
-                      <p className="text-sm font-bold" style={{ color: "var(--napoli-green)", fontFamily: "'Oswald', sans-serif" }}>Gluten Free Pizza — 14"</p>
-                      <p className="text-xs" style={{ color: "oklch(0.45 0.03 30)", fontFamily: "'Lato', sans-serif" }}>$12.75 base · +$2.75/topping</p>
-                    </div>
-                    <button
-                      onClick={() => onGlutenFreeOpen()}
-                      className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95"
-                      style={{ background: "var(--napoli-green)", color: "white", fontFamily: "'Oswald', sans-serif" }}
-                    >
-                      Order
-                    </button>
-                  </div>
                 </div>
               )}
 

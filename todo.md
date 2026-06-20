@@ -577,3 +577,13 @@
 - [x] Update cloverItemSync.ts: read printer labels from Clover tags (not printerLabels endpoint)
 - [x] Add getPrinterLabelImproved() to handle "Name SIZE\" Name" pattern in future syncs
 - [ ] Physical: Verify Register is printing kitchen tickets after label restore
+
+## Pizza Category Visual Cards (Jun 21 2026)
+
+- [x] Generate AI photo for Hand Tossed New York Style pizza
+- [x] Generate AI photo for Gluten Free Pizza
+- [x] Add both photos to napoliPhotos.ts with CloudFront CDN URLs
+- [x] Convert Hand Tossed NY Style Hero CTA to visual photo card (2-column grid with Gluten Free)
+- [x] Convert Gluten Free shortcut to visual photo card (with GLUTEN FREE badge overlay)
+- [x] Remove old Gluten Free shortcut bar (now replaced by card)
+- [x] TypeScript: 0 errors

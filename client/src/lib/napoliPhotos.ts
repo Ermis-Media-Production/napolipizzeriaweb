@@ -83,6 +83,10 @@ export const MENU_PHOTOS: Record<string, string> = {
   "Vegetarian":                     S + "napoli-vegetarian-pizza-photo_533eada6.jpg",
   "White Pizza":                    C + "H9JY5SKG4R53T.jpeg",
 
+  // ── HAND TOSSED / GLUTEN FREE ─────────────────────────────────
+  "Hand Tossed New York Style":    "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/napoli-hand-tossed-ny-pizza-Ek7tQQRQc4bgKV8xkFgGWF.webp",
+  "Gluten Free Pizza":             "https://d2xsxph8kpxj0f.cloudfront.net/310519663690084073/brxvWsWYfwFxoqeFg9Rbqu/napoli-gluten-free-pizza-Yn2PHscM7FTmTeYtkERDWF.webp",
+
   // ── STUFFED DOUGH ───────────────────────────────────────────
   "Stuffed Chicago Deep Dish":      S + "napoli-deep-dish-photo_1967e276.jpg",
   "Calzone":                        S + "napoli-calzone-photo_a2c79f74.jpg",
