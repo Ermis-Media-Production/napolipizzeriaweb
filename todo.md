@@ -566,3 +566,14 @@
 - [x] Add `note` field to parent lineItem in cloverSync.ts with all modifiers concatenated (bullet-point format, max 255 chars)
 - [x] Kitchen printer $0 sub-items preserved (unchanged — still appear on kitchen ticket)
 - [x] TypeScript: 0 errors
+
+## Clover Printer Labels Restore (Jun 4 2026)
+
+- [x] Diagnose why Register stopped printing: all 436 Clover items lost their printer label tags
+- [x] Restore Pizza tag (CDNVMVFEY0TEP) to 192 pizza items via /tag_items API
+- [x] Restore Food tag (P50KQ49GN0RWC) to 230 food items via /tag_items API
+- [x] Create and restore Pizzeria tag (1GPNGFECQSEC4) to 14 beverage/dessert items
+- [x] Fix 40 misrouted items with "Name SIZE\" Name" pattern (Italian, Supreme, Pesto Chicken, Mexican Style, Meat Lover)
+- [x] Update cloverItemSync.ts: read printer labels from Clover tags (not printerLabels endpoint)
+- [x] Add getPrinterLabelImproved() to handle "Name SIZE\" Name" pattern in future syncs
+- [ ] Physical: Verify Register is printing kitchen tickets after label restore

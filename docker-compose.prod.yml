@@ -1,0 +1,105 @@
+version: "3.8"
+
+services:
+  napoli-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - VITE_OAUTH_PORTAL_URL=https://manus.im
+        - VITE_APP_ID=brxvWsWYfwFxoqeFg9Rbqu
+        - VITE_APP_TITLE=Napoli Pizzeria LV
+        - VITE_APP_LOGO=https://files.manuscdn.com/user_upload_by_module/web_dev_logo/310519663690084073/jtMmVctTZtvXwZEV.png
+        - VITE_STRIPE_PUBLISHABLE_KEY=pk_test_51TaFd4RfdLPYJKjTauD2zgMewNRqnb8DWl1bi8rNOP1i1RYIKWF4E74VQuz0Uv0I7SYoF31dgmT8jjcfYpmJD80G00AXuUUL9L
+        - VITE_AUTHNET_CLIENT_KEY=67tS6K75uS65LCnDYE9t5Ryx9MqxpKYgtM5AEEHksuF45AY36rRFTkfEBbx5n32k
+        - VITE_FRONTEND_FORGE_API_KEY=M2geNJ2mkotdBNFBdrgBvW
+        - VITE_FRONTEND_FORGE_API_URL=https://forge.manus.ai
+        - VITE_ANALYTICS_ENDPOINT=https://manus-analytics.com
+        - VITE_ANALYTICS_WEBSITE_ID=73a6a8ab-b02d-4ea7-8fb6-06d0a1740507
+    image: napoli-pizzeria-lv:latest
+    container_name: napoli-lv-app
+    restart: always
+    depends_on:
+      - napoli-lv-db
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=mysql://napoli_lv:NapoliLV2026Secure@napoli-lv-db:3306/napoli_lv
+      - JWT_SECRET=9SiD2cLMtqy2tBLDPYvWtW
+      - VITE_APP_ID=brxvWsWYfwFxoqeFg9Rbqu
+      - OAUTH_SERVER_URL=https://api.manus.im
+      - VITE_OAUTH_PORTAL_URL=https://manus.im
+      - OWNER_OPEN_ID=bes38ZvdVsqk3Y3iz5EGc7
+      - OWNER_NAME=Henys Pena
+      - BUILT_IN_FORGE_API_URL=https://forge.manus.ai
+      - BUILT_IN_FORGE_API_KEY=JwVnLdoHPi95RqY75qFCtu
+      - VITE_FRONTEND_FORGE_API_URL=https://forge.manus.ai
+      - VITE_FRONTEND_FORGE_API_KEY=M2geNJ2mkotdBNFBdrgBvW
+      - VITE_APP_TITLE=Napoli Pizzeria LV
+      - VITE_APP_LOGO=https://files.manuscdn.com/user_upload_by_module/web_dev_logo/310519663690084073/jtMmVctTZtvXwZEV.png
+      - CLOVER_API_TOKEN=1f1dc027-8644-7f11-666d-08053fecb46b
+      - CLOVER_MERCHANT_ID=MRWSQWMCDSHQ1
+      - STRIPE_SECRET_KEY=sk_test_51TaFd4RfdLPYJKjTZJOfGSATbKofmHl3ZTpgwCX2ecIYQO5qziPVqMu7oouYknb5Ixe8Ri28LGxcOYPy2gsH7y9A00rjNPZJRu
+      - STRIPE_WEBHOOK_SECRET=whsec_Q4HclMRZVM4s47vqunz6kTEE5HAft6xP
+      - VITE_STRIPE_PUBLISHABLE_KEY=pk_test_51TaFd4RfdLPYJKjTauD2zgMewNRqnb8DWl1bi8rNOP1i1RYIKWF4E74VQuz0Uv0I7SYoF31dgmT8jjcfYpmJD80G00AXuUUL9L
+      - TWILIO_ACCOUNT_SID=AC7c24b54511271286963ec63b0516a762
+      - TWILIO_AUTH_TOKEN=557355d63ef7d3d6d62f04b18e75e20a
+      - TWILIO_PHONE_NUMBER=+17022912025
+      - UBER_CLIENT_ID=uTQFN0fyNI_2IJdcntH7sBQ6UPXRiZFF
+      - UBER_CLIENT_SECRET=-N8TdbtbnCTZ9Gnu4n348CufmmBIgb2xeCADapMM
+      - UBER_CUSTOMER_ID=f9159e09-2198-4eab-b95e-7d66446be35e
+      - UBER_IS_SANDBOX=false
+      - DOORDASH_DEVELOPER_ID=2098f228-9f9b-4630-9806-b1bb655a9a47
+      - DOORDASH_KEY_ID=e17a4577-ceff-4bf6-863c-16e379a11444
+      - DOORDASH_SIGNING_SECRET=ekD3TrlVQzPYlbzlr7W_BAF-SI159J8Ia1RcYyYUfg0
+      - DOORDASH_ENV=sandbox
+      - AUTHNET_API_LOGIN_ID=59rVFp2dW7Df
+      - AUTHNET_TRANSACTION_KEY=52wt4h5W2Pb54D8g
+      - AUTHNET_IS_SANDBOX=false
+      - VITE_AUTHNET_CLIENT_KEY=67tS6K75uS65LCnDYE9t5Ryx9MqxpKYgtM5AEEHksuF45AY36rRFTkfEBbx5n32k
+      - ELAVON_MERCHANT_ALIAS=f27c29f6gjqd6kdb8hp4ky4989br
+      - ELAVON_PUBLIC_KEY=pk_vy6by9cfffq87ytx64b9w8bq3vj8
+      - ELAVON_SECRET_KEY=sk_vx3rc8x79r3ggdyk94xg9bvhvdyt
+      - ELAVON_IS_SANDBOX=true
+      - VITE_ANALYTICS_ENDPOINT=https://manus-analytics.com
+      - VITE_ANALYTICS_WEBSITE_ID=73a6a8ab-b02d-4ea7-8fb6-06d0a1740507
+    labels:
+      - traefik.enable=true
+      - "traefik.http.routers.napolilv.rule=Host(`napolipizzerialv.com`) || Host(`www.napolipizzerialv.com`)"
+      - traefik.http.routers.napolilv.entrypoints=websecure
+      - traefik.http.routers.napolilv.tls=true
+      - traefik.http.routers.napolilv.tls.certresolver=myhttpchallenge
+      - traefik.http.routers.napolilv.middlewares=napolilv-security
+      - "traefik.http.routers.napolilv-http.rule=Host(`napolipizzerialv.com`) || Host(`www.napolipizzerialv.com`)"
+      - traefik.http.routers.napolilv-http.entrypoints=web
+      - traefik.http.routers.napolilv-http.middlewares=napolilv-https-redirect
+      - traefik.http.middlewares.napolilv-https-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.napolilv-https-redirect.redirectscheme.permanent=true
+      - traefik.http.middlewares.napolilv-security.headers.STSSeconds=31536000
+      - traefik.http.middlewares.napolilv-security.headers.STSIncludeSubdomains=true
+      - traefik.http.middlewares.napolilv-security.headers.STSPreload=true
+      - traefik.http.services.napolilv.loadbalancer.server.port=3000
+    networks:
+      - n8n_default
+
+  napoli-lv-db:
+    image: mysql:8.0
+    container_name: napoli-lv-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: napoli_lv
+      MYSQL_USER: napoli_lv
+      MYSQL_PASSWORD: NapoliLV2026Secure
+      MYSQL_ROOT_PASSWORD: RootNapoliLV2026Secure
+    volumes:
+      - napoli_lv_db_data:/var/lib/mysql
+    networks:
+      - n8n_default
+    command: --max-allowed-packet=256M --innodb-buffer-pool-size=256M --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+volumes:
+  napoli_lv_db_data:
+
+networks:
+  n8n_default:
+    external: true

@@ -846,18 +846,42 @@ function CloverSyncedItems({
                     </button>
                   </div>
 
-                  {/* Quick specialty shortcuts */}
+                  {/* Quick specialty shortcuts — visual cards */}
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>Popular Specialties — tap to start</p>
-                    <div className="flex flex-wrap gap-2">
-                      {["BBQ Chicken", "Buffalo Chicken", "Supreme", "Meat Lover", "Vegetarian", "3 Cheese", "Italian", "Taco", "Greek", "White Pizza", "Ranch", "Pesto Chicken"].map((name) => (
+                    <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif" }}>Popular Specialties — tap to start</p>
+                    <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+                      {[
+                        { name: "BBQ Chicken",      photo: getMenuPhoto("BBQ Chicken") },
+                        { name: "Buffalo Chicken",  photo: getMenuPhoto("Buffalo Chicken") },
+                        { name: "Supreme",          photo: getMenuPhoto("Supreme") },
+                        { name: "Meat Lover",       photo: getMenuPhoto("Meat Lover") },
+                        { name: "Vegetarian",       photo: getMenuPhoto("Vegetarian") },
+                        { name: "3 Cheese",         photo: getMenuPhoto("3 Cheese") },
+                        { name: "Italian",          photo: getMenuPhoto("Italian") },
+                        { name: "Taco",             photo: getMenuPhoto("Taco") },
+                        { name: "Greek",            photo: getMenuPhoto("Greek") },
+                        { name: "White Pizza",      photo: getMenuPhoto("White Pizza") },
+                        { name: "Ranch",            photo: getMenuPhoto("Ranch") },
+                        { name: "Pesto Chicken",    photo: getMenuPhoto("Pesto Chicken") },
+                      ].map(({ name, photo }) => (
                         <button
                           key={name}
                           onClick={() => onPizzaCustomize({ pizzaName: name, isSpecialty: true, freeToppings: 0, allowHalfAndHalf: true })}
-                          className="px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all active:scale-95 hover:border-red-600 hover:text-red-700"
-                          style={{ borderColor: "oklch(0.82 0.015 80)", color: "oklch(0.35 0.04 30)", background: "white", fontFamily: "'Lato', sans-serif" }}
+                          className="flex-shrink-0 flex flex-col items-center gap-1.5 rounded-xl overflow-hidden transition-all active:scale-95 hover:shadow-lg group"
+                          style={{ width: 88, background: "white", border: "2px solid oklch(0.90 0.015 80)", padding: "0 0 8px 0" }}
                         >
-                          {name}
+                          <div className="w-full overflow-hidden" style={{ height: 72 }}>
+                            <img
+                              src={photo || ""}
+                              alt={name}
+                              className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                              style={{ display: photo ? "block" : "none" }}
+                            />
+                            {!photo && (
+                              <div className="w-full h-full flex items-center justify-center text-2xl" style={{ background: "oklch(0.96 0.02 30)" }}>🍕</div>
+                            )}
+                          </div>
+                          <span className="text-center leading-tight px-1" style={{ fontSize: 10, fontWeight: 700, color: "oklch(0.30 0.04 30)", fontFamily: "'Lato', sans-serif", lineHeight: 1.2 }}>{name}</span>
                         </button>
                       ))}
                     </div>
