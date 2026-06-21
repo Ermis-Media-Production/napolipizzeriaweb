@@ -37,6 +37,7 @@ import {
   LogOut,
   Package,
   PanelLeft,
+  Radio,
   Settings,
   Sliders,
   UtensilsCrossed,
@@ -49,6 +50,7 @@ import { Label } from "./ui/label";
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin/dashboard" },
+  { icon: Radio, label: "Live Orders", path: "/admin/live" },
   { icon: ClipboardList, label: "Orders", path: "/admin/orders" },
   { icon: Package, label: "Items", path: "/admin/items" },
   { icon: UtensilsCrossed, label: "Menu Manager", path: "/admin/menu" },

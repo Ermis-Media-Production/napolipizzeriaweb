@@ -587,3 +587,13 @@
 - [x] Convert Gluten Free shortcut to visual photo card (with GLUTEN FREE badge overlay)
 - [x] Remove old Gluten Free shortcut bar (now replaced by card)
 - [x] TypeScript: 0 errors
+
+## Real-Time Manager Portal — Clover Live Sync (Jun 21 2026)
+
+- [x] Extend clover.ts with liveOrders procedure (today's Clover orders with customer info, 15s polling)
+- [x] Extend clover.ts with todayStats procedure (revenue, order count, avg ticket from Clover)
+- [x] Create AdminLiveOrders.tsx page with live Clover order board (15s auto-refresh)
+- [x] Add "Live Orders" nav item to AdminLayout sidebar with pulsing dot indicator
+- [x] Register /admin/live route in App.tsx
+- [ ] Add delivery tracking panel for active DoorDash/Uber deliveries
+- [ ] Deploy to VPS after all changes

@@ -21,6 +21,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminMenuManager from "./pages/AdminMenuManager";
 import AdminModifierManager from "./pages/AdminModifierManager";
 import AdminAiCosts from "@/pages/AdminAiCosts";
+import AdminLiveOrders from "@/pages/AdminLiveOrders";
 import AdminItemsDashboard from "@/pages/AdminItemsDashboard";
 import Catering from "./pages/Catering";
 import Terms from "./pages/Terms";
@@ -44,6 +45,7 @@ function Router() {
       <Route path="/my-order/:orderRef" component={COMING_SOON_MODE ? ComingSoon : MyOrder} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
+      <Route path="/admin/live" component={AdminLiveOrders} />
       <Route path="/admin/orders" component={AdminOrders} />
       <Route path="/admin/menu" component={AdminMenuManager} />
       <Route path="/admin/modifiers" component={AdminModifierManager} />

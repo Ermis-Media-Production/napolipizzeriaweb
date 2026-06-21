@@ -15,7 +15,7 @@
 import axios from "axios";
 import { z } from "zod";
 import { CLOVER_ENV } from "./_core/env";
-import { publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { pushOrderToClover, getPrinterLabel, CLOVER_PRINTER_LABELS } from "./cloverSync";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -182,4 +182,163 @@ export const cloverRouter = router({
         })),
       }));
     }),
+
+  /**
+   * Live orders for the Manager Portal.
+   * Returns today's Clover orders with full line items, customer note, and state.
+   * Designed for 15-second polling from the admin live board.
+   */
+  liveOrders: adminProcedure
+    .input(
+      z.object({
+        limit: z.number().int().min(1).max(200).default(100),
+        /** Filter by state: open | paid | all */
+        filter: z.enum(["open", "paid", "all"]).default("all"),
+      })
+    )
+    .query(async ({ input }) => {
+      if (!CLOVER_ENV.apiToken || !CLOVER_ENV.merchantId) {
+        throw new Error("Clover credentials are not configured");
+      }
+
+      // Fetch today's orders — Clover returns UTC ms timestamps
+      // We filter client-side to today in store timezone (America/Los_Angeles)
+      const res = await axios.get(
+        cloverUrl(
+          `/orders?limit=${input.limit}&orderBy=createdTime+DESC&expand=lineItems,customers`
+        ),
+        { headers: cloverHeaders() }
+      );
+
+      type CloverLineItem = {
+        id: string;
+        name: string;
+        price: number;
+        note?: string;
+        unitQty?: number;
+        modifications?: { elements: Array<{ name: string; amount: number }> };
+      };
+
+      type CloverOrder = {
+        id: string;
+        state: string;
+        total: number;
+        currency: string;
+        note?: string;
+        createdTime: number;
+        lineItems?: { elements: CloverLineItem[] };
+        customers?: { elements: Array<{ id: string; firstName?: string; lastName?: string; phoneNumber?: string; email?: string }> };
+      };
+
+      const allOrders = (res.data.elements ?? []) as CloverOrder[];
+
+      // Filter to today in store timezone
+      const storeNow = new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" });
+      const storeToday = new Date(storeNow);
+      const todayStart = new Date(storeToday);
+      todayStart.setHours(0, 0, 0, 0);
+      const todayStartMs = todayStart.getTime();
+
+      const todayOrders = allOrders.filter((o) => o.createdTime >= todayStartMs);
+
+      const filtered =
+        input.filter === "all"
+          ? todayOrders
+          : todayOrders.filter((o) =>
+              input.filter === "open" ? o.state !== "paid" : o.state === "paid"
+            );
+
+      return filtered.map((o) => {
+        const customer = o.customers?.elements?.[0];
+        const customerName = customer
+          ? [customer.firstName, customer.lastName].filter(Boolean).join(" ")
+          : null;
+
+        // Parse order type from note field
+        const note = o.note ?? "";
+        const lower = note.toLowerCase();
+        const orderType = lower.includes("delivery")
+          ? "delivery"
+          : lower.includes("dine-in") || lower.includes("dine in")
+          ? "dine-in"
+          : lower.includes("pick-up") || lower.includes("pickup")
+          ? "pickup"
+          : "unknown";
+
+        return {
+          cloverOrderId: o.id,
+          state: o.state,
+          total: o.total,
+          currency: o.currency ?? "USD",
+          note: o.note,
+          createdTime: o.createdTime,
+          orderType,
+          customerName: customerName ?? parseCustomerNameFromNote(note),
+          customerPhone: customer?.phoneNumber ?? null,
+          lineItems: (o.lineItems?.elements ?? []).map((li) => ({
+            id: li.id,
+            name: li.name,
+            price: li.price,
+            note: li.note,
+            modifications: (li.modifications?.elements ?? []).map((m) => ({
+              name: m.name,
+              amount: m.amount,
+            })),
+          })),
+          itemCount: o.lineItems?.elements?.length ?? 0,
+        };
+      });
+    }),
+
+  /**
+   * Today's stats for the Manager Portal dashboard.
+   * Returns total revenue, order count, and average ticket from Clover.
+   */
+  todayStats: adminProcedure.query(async () => {
+    if (!CLOVER_ENV.apiToken || !CLOVER_ENV.merchantId) {
+      throw new Error("Clover credentials are not configured");
+    }
+
+    // Fetch up to 200 orders to compute today's stats
+    const res = await axios.get(
+      cloverUrl(`/orders?limit=200&orderBy=createdTime+DESC`),
+      { headers: cloverHeaders() }
+    );
+
+    type CloverOrderBasic = { id: string; state: string; total: number; createdTime: number };
+    const allOrders = (res.data.elements ?? []) as CloverOrderBasic[];
+
+    // Filter to today in store timezone
+    const storeNow = new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" });
+    const storeToday = new Date(storeNow);
+    const todayStart = new Date(storeToday);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayStartMs = todayStart.getTime();
+
+    const todayOrders = allOrders.filter((o) => o.createdTime >= todayStartMs);
+    const paidOrders = todayOrders.filter((o) => o.state === "paid");
+
+    const totalRevenue = paidOrders.reduce((sum, o) => sum + o.total, 0);
+    const orderCount = todayOrders.length;
+    const paidCount = paidOrders.length;
+    const avgTicket = paidCount > 0 ? totalRevenue / paidCount : 0;
+
+    return {
+      totalRevenueCents: totalRevenue,
+      totalRevenueDollars: (totalRevenue / 100).toFixed(2),
+      orderCount,
+      paidCount,
+      openCount: orderCount - paidCount,
+      avgTicketCents: Math.round(avgTicket),
+      avgTicketDollars: (avgTicket / 100).toFixed(2),
+    };
+  }),
 });
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Parse customer name from Clover order note (e.g. "Customer: John Doe | ...") */
+function parseCustomerNameFromNote(note: string): string | null {
+  const match = note.match(/Customer:\s*([^|\n]+)/);
+  return match ? match[1].trim() : null;
+}
