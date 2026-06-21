@@ -187,67 +187,37 @@ function AlertBanner({
   return (
     <div
       className={`
-        relative rounded-xl border-2 p-4 shadow-lg
+        relative rounded-xl border-2 shadow-lg overflow-hidden
         ${hasMissed
           ? "border-red-400 bg-red-50 dark:bg-red-950/40 dark:border-red-600"
           : "border-yellow-400 bg-yellow-50 dark:bg-yellow-950/40 dark:border-yellow-600"
         }
-        animate-[pulse_1.5s_ease-in-out_3]
       `}
-      style={{
-        animation: "alertPulse 1.5s ease-in-out 3",
-      }}
+      style={{ animation: "alertPulse 1.5s ease-in-out 3" }}
     >
       <style>{`
         @keyframes alertPulse {
           0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
+          50% { opacity: 0.75; }
         }
       `}</style>
 
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-full ${hasMissed ? "bg-red-100 dark:bg-red-900/60" : "bg-yellow-100 dark:bg-yellow-900/60"}`}>
-            <BellRing className={`h-5 w-5 ${hasMissed ? "text-red-600 dark:text-red-400" : "text-yellow-600 dark:text-yellow-400"}`} />
+      {/* Banner header */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <div className={`p-1.5 rounded-full ${hasMissed ? "bg-red-100 dark:bg-red-900/60" : "bg-yellow-100 dark:bg-yellow-900/60"}`}>
+            <BellRing className={`h-4 w-4 ${hasMissed ? "text-red-600 dark:text-red-400" : "text-yellow-600 dark:text-yellow-400"}`} />
           </div>
-          <div>
-            <p className={`font-semibold text-sm ${hasMissed ? "text-red-800 dark:text-red-300" : "text-yellow-800 dark:text-yellow-300"}`}>
-              {alerts.length === 1
-                ? `1 ${alerts[0].status === "missed" ? "missed call" : "abandoned call"} needs attention`
-                : `${alerts.length} calls need attention`
-              }
-              {missedCount > 0 && abandonedCount > 0 && (
-                <span className="font-normal ml-1">
-                  ({missedCount} missed, {abandonedCount} abandoned)
-                </span>
-              )}
-            </p>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {alerts.slice(0, 5).map(alert => (
-                <button
-                  key={alert.id}
-                  onClick={() => onCallBack(alert.customerPhone)}
-                  className={`
-                    inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium
-                    transition-colors cursor-pointer
-                    ${alert.status === "missed"
-                      ? "bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/60 dark:text-red-300"
-                      : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/60 dark:text-yellow-300"
-                    }
-                  `}
-                >
-                  <PhoneCall className="h-3 w-3" />
-                  {alert.customerName || formatPhone(alert.customerPhone)}
-                  <span className="opacity-60">· {alert.status}</span>
-                </button>
-              ))}
-              {alerts.length > 5 && (
-                <span className="text-xs text-muted-foreground self-center">+{alerts.length - 5} more</span>
-              )}
-            </div>
-          </div>
+          <p className={`font-semibold text-sm ${hasMissed ? "text-red-800 dark:text-red-300" : "text-yellow-800 dark:text-yellow-300"}`}>
+            {alerts.length === 1
+              ? `1 ${alerts[0].status === "missed" ? "missed call" : "abandoned call"} — quick callback below`
+              : `${alerts.length} calls need attention`
+            }
+            {missedCount > 0 && abandonedCount > 0 && (
+              <span className="font-normal ml-1 opacity-75">({missedCount} missed · {abandonedCount} abandoned)</span>
+            )}
+          </p>
         </div>
-
         <button
           onClick={onDismiss}
           className="shrink-0 p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
@@ -255,6 +225,63 @@ function AlertBanner({
         >
           <X className="h-4 w-4 text-muted-foreground" />
         </button>
+      </div>
+
+      {/* Per-alert call-back rows */}
+      <div className={`border-t divide-y ${
+        hasMissed ? "border-red-200 divide-red-200 dark:border-red-800 dark:divide-red-800"
+                  : "border-yellow-200 divide-yellow-200 dark:border-yellow-800 dark:divide-yellow-800"
+      }`}>
+        {alerts.slice(0, 6).map(alert => (
+          <div key={alert.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+            {/* Status dot + caller info */}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className={`shrink-0 w-2 h-2 rounded-full ${
+                alert.status === "missed" ? "bg-red-500" : "bg-yellow-400"
+              }`} />
+              <div className="min-w-0">
+                <p className="text-sm font-medium leading-tight truncate">
+                  {alert.customerName || formatPhone(alert.customerPhone)}
+                </p>
+                {alert.customerName && (
+                  <p className="text-xs text-muted-foreground">{formatPhone(alert.customerPhone)}</p>
+                )}
+              </div>
+              <Badge
+                variant="outline"
+                className={`shrink-0 text-xs capitalize ${
+                  alert.status === "missed"
+                    ? "border-red-300 text-red-700 dark:text-red-400"
+                    : "border-yellow-300 text-yellow-700 dark:text-yellow-400"
+                }`}
+              >
+                {alert.status}
+              </Badge>
+              <span className="text-xs text-muted-foreground shrink-0 hidden sm:inline">
+                {new Date(alert.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </div>
+
+            {/* Call Back button */}
+            <Button
+              size="sm"
+              onClick={() => onCallBack(alert.customerPhone)}
+              className={`shrink-0 gap-1.5 font-semibold ${
+                alert.status === "missed"
+                  ? "bg-red-600 hover:bg-red-700 text-white dark:bg-red-700 dark:hover:bg-red-600"
+                  : "bg-yellow-500 hover:bg-yellow-600 text-white dark:bg-yellow-600 dark:hover:bg-yellow-500"
+              }`}
+            >
+              <PhoneCall className="h-3.5 w-3.5" />
+              Call Back
+            </Button>
+          </div>
+        ))}
+        {alerts.length > 6 && (
+          <div className="px-4 py-2 text-xs text-muted-foreground">
+            +{alerts.length - 6} more — scroll the table below to see all
+          </div>
+        )}
       </div>
     </div>
   );
