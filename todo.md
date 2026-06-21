@@ -596,4 +596,4 @@
 - [x] Add "Live Orders" nav item to AdminLayout sidebar with pulsing dot indicator
 - [x] Register /admin/live route in App.tsx
 - [ ] Add delivery tracking panel for active DoorDash/Uber deliveries
-- [ ] Deploy to VPS after all changes
+- [x] Deploy to VPS after all changes

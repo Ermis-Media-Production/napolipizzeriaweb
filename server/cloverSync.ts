@@ -40,6 +40,8 @@ export interface CloverOrderInput {
   totalCents: number;  // total in cents
   scheduledAt?: number; // UTC ms — for scheduled orders
   orderRef?: string;   // internal order reference
+  deliveryFeeCents?: number;  // delivery fee in cents — applied as service charge
+  convenienceFeeCents?: number; // convenience fee in cents — applied as service charge
 }
 
 export interface CloverOrderResult {
@@ -360,6 +362,25 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
   if (input.customerPhone) noteLines.push(`Phone: ${input.customerPhone}`);
   if (input.orderRef) noteLines.push(`Ref: ${input.orderRef}`);
   if (input.externalId) noteLines.push(`Payment: ${input.externalId}`);
+
+  // Per Casa de Pizza architecture doc §4.1 Rule 2 & 4:
+  // $0 items and ad-hoc fees (delivery, convenience) are injected into the order
+  // note (note_fees) because Clover printers may omit $0 line items and ad-hoc
+  // items without catalog IDs. The note always prints in the ticket header.
+  const zeroItems = input.items.filter(i => i.price === 0);
+  if (zeroItems.length > 0) {
+    noteLines.push(`--- Items ---`);
+    for (const zi of zeroItems) {
+      noteLines.push(`✓ ${zi.name}${zi.description ? ` (${zi.description})` : ''}`);
+    }
+  }
+  if (input.deliveryFeeCents && input.deliveryFeeCents > 0) {
+    noteLines.push(`Delivery Fee: $${(input.deliveryFeeCents / 100).toFixed(2)}`);
+  }
+  if (input.convenienceFeeCents && input.convenienceFeeCents > 0) {
+    noteLines.push(`Convenience Fee: $${(input.convenienceFeeCents / 100).toFixed(2)}`);
+  }
+
   if (input.scheduledAt) {
     const scheduledStr = new Date(input.scheduledAt).toLocaleString("en-US", {
       timeZone: "America/Los_Angeles",
@@ -482,7 +503,56 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     { headers: cloverHeaders() }
   );
 
-  // Step 3: Fire the print event targeting the Station Duo device.
+  // Step 3a: Apply service charges (delivery fee, convenience fee) BEFORE printing.
+  // Per the Casa de Pizza architecture doc: non-standard fees must be applied as
+  // Service Charges so they appear in the recargos section of the receipt, not as
+  // ad-hoc line items. This must happen before print_event to ensure the full
+  // ticket is rendered when the printer receives the job.
+  if (input.deliveryFeeCents && input.deliveryFeeCents > 0) {
+    try {
+      // First, look up available service charges to find the delivery fee charge
+      const scListRes = await axios.get(
+        cloverUrl(`/default_service_charge`),
+        { headers: cloverHeaders() }
+      ).catch(() => null);
+      const deliveryScId = scListRes?.data?.id;
+
+      if (deliveryScId) {
+        await axios.post(
+          cloverUrl(`/orders/${orderId}/service_charge/${deliveryScId}`),
+          {},
+          { headers: cloverHeaders() }
+        );
+        console.log(`[Clover] Applied delivery service charge to order ${orderId}`);
+      } else {
+        // Fallback: add delivery fee as a line item with note injection (ad-hoc)
+        await axios.post(
+          cloverUrl(`/orders/${orderId}/line_items`),
+          {
+            name: `Delivery Fee`,
+            price: input.deliveryFeeCents,
+            unitQty: 1,
+          },
+          { headers: cloverHeaders() }
+        );
+        console.log(`[Clover] Added delivery fee as line item (no service charge found) for order ${orderId}`);
+      }
+    } catch (scErr) {
+      console.warn(`[Clover] Failed to apply delivery fee for order ${orderId}:`, scErr);
+    }
+  }
+
+  // Step 3b: Strategic 2-second delay before print_event.
+  // Per the Casa de Pizza architecture doc (§4.2): Clover processes atomic/bulk
+  // orders asynchronously. If print_event is fired immediately, the device may
+  // receive the print job before the order is fully renderable and silently
+  // discard it. The 2s pause ensures the order is committed server-side.
+  // CRITICAL: print_event MUST be fired BEFORE applying the payment tender.
+  // Clover treats paid orders differently — printing a paid order generates a
+  // "payment receipt" (summarized) instead of a "kitchen ticket" (detailed).
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+
+  // Step 3c: Fire the print event targeting the Station Duo device.
   // Including deviceRef ensures Clover routes the ticket to the correct
   // station (the one with kitchen printers attached), matching the behavior
   // of the WordPress EMP plugin Auto-Print configuration.
