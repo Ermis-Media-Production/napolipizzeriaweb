@@ -120,6 +120,20 @@
       "when": 1782048333026,
       "tag": "0016_ambiguous_multiple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1782055712758,
+      "tag": "0017_optimal_vision",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1782055798939,
+      "tag": "0018_magical_mysterio",
+      "breakpoints": true
     }
   ]
 }

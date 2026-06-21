@@ -20,6 +20,7 @@ import { aiUsageRouter } from "./aiUsageRouter";
 import { itemCategoriesRouter } from "./itemCategories";
 import { cloverItemSyncRouter } from "./cloverItemSync";
 import { deliveryTrackingRouter } from "./deliveryTracking";
+import { evaInteractionsRouter, evaKnowledgeRouter } from "./evaInteractions";
 
 export const appRouter = router({
   system: systemRouter,
@@ -51,6 +52,8 @@ export const appRouter = router({
   itemCategories: itemCategoriesRouter,
   cloverItemSync: cloverItemSyncRouter,
   deliveryTracking: deliveryTrackingRouter,
+  evaInteractions: evaInteractionsRouter,
+  evaKnowledge: evaKnowledgeRouter,
 });
 
 export type AppRouter = typeof appRouter;

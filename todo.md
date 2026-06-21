@@ -595,7 +595,7 @@
 - [x] Create AdminLiveOrders.tsx page with live Clover order board (15s auto-refresh)
 - [x] Add "Live Orders" nav item to AdminLayout sidebar with pulsing dot indicator
 - [x] Register /admin/live route in App.tsx
-- [ ] Add delivery tracking panel for active DoorDash/Uber deliveries
+- [x] Add delivery tracking panel for active DoorDash/Uber deliveries
 - [x] Deploy to VPS after all changes
 
 ## Half & Half Clover Modifier Group Integration (Jun 21 2026)
@@ -607,29 +607,45 @@
 
 ## Menu Category Reorder — Lunch Specials after Burgers (Jun 21 2026)
 
-- [ ] Move Lunch Specials order from 2 to 8 (after Burgers=7) in CATEGORY_META in Menu.tsx
-- [ ] Update horizontal category nav bar to reflect new order
-- [ ] TypeScript: 0 errors
+- [x] Move Lunch Specials order from 2 to 8 (after Burgers=7) in CATEGORY_META in Menu.tsx
+- [x] Update horizontal category nav bar to reflect new order
+- [x] TypeScript: 0 errors
 
 ## Category Enable/Disable Manager (Jun 21 2026)
 
-- [ ] Add `hidden` boolean column to itemCategories schema in drizzle/schema.ts
-- [ ] Run pnpm db:push to apply migration
-- [ ] Add getCategoryVisibility (public) and setCategoryVisibility (admin) procedures to settings.ts
-- [ ] Menu.tsx: filter out hidden categories from display (respect DB hidden flag)
-- [ ] Add Category Manager tab/section to AdminSettings page with toggle per category
-- [ ] Clover sync: when category is hidden, PATCH all items in that category to hidden=true via Clover API; when enabled, PATCH back to hidden=false
-- [ ] TypeScript: 0 errors
+- [x] Add `hidden` boolean column to itemCategories schema in drizzle/schema.ts
+- [x] Run pnpm db:push to apply migration
+- [x] Add getCategoryVisibility (public) and setCategoryVisibility (admin) procedures to settings.ts
+- [x] Menu.tsx: filter out hidden categories from display (respect DB hidden flag)
+- [x] Add Category Manager tab/section to AdminSettings page with toggle per category
+- [x] Clover sync: when category is hidden, PATCH all items in that category to hidden=true via Clover API; when enabled, PATCH back to hidden=false
+- [x] TypeScript: 0 errors
 
 ## Delivery Tracking Panel in Manager Portal (Jun 21 2026)
 
-- [ ] Add uberDeliveryId and uberTrackingUrl columns to scheduledOrders schema
-- [ ] Run pnpm db:push to apply migration
-- [ ] Add storeUberDelivery procedure in orders.ts (admin, stores deliveryId + trackingUrl for an order)
-- [ ] Add liveDeliveries procedure in orders.ts (admin, returns today's delivery orders with status)
-- [ ] Add Delivery Tracking tab/section to AdminLiveOrders page showing:
-  - Active delivery orders from DB (today, orderType=delivery)
-  - Dispatch Uber button (calls uber.createDelivery) for orders without deliveryId
-  - Tracking URL link once dispatched
-  - Status badge (pending/dispatched/delivered)
-- [ ] TypeScript: 0 errors
+- [x] Add delivery tracking columns to scheduledOrders schema (deliveryProvider, deliveryExternalId, deliveryTrackingUrl, deliveryStatus)
+- [x] Run pnpm db:push to apply migration
+- [x] Create deliveryTracking.ts router (getActiveDeliveries, refreshDeliveryStatus, cancelDelivery)
+- [x] Add Delivery Tracking panel to AdminLiveOrders page with status badges, tracking links, refresh & cancel actions
+- [x] doordash.ts: save delivery IDs to DB when orderRef provided
+- [x] TypeScript: 0 errors
+
+## Eva AI Manager Portal Integration
+- [x] Add evaInteractions table to drizzle schema (externalId, channel, status, customerPhone, transcript, recordingUrl, orderId, totalCents, endedBy, durationSeconds, summary)
+- [x] Add evaKnowledge table to drizzle schema (category, title, content, isActive, priority, expiresAt, createdBy)
+- [x] Run pnpm db:push to apply both tables
+- [x] Create evaInteractions.ts: evaInteractionsRouter (list, get, stats) + evaKnowledgeRouter (list, create, update, delete, getActive)
+- [x] Public REST endpoint POST /api/eva/interaction (called by VPS to log SMS/voice interactions)
+- [x] Public REST endpoint GET /api/eva/knowledge (called by VPS to fetch active knowledge entries)
+- [x] Register evaInteractionsRouter and evaKnowledgeRouter in routers.ts
+- [x] Register REST endpoints in _core/index.ts
+- [x] Build AdminEvaInteractions.tsx: green/yellow/red status, transcript viewer, audio player, callback button, stats cards
+- [x] Build AdminEvaTraining.tsx: add/edit/delete knowledge entries (promos, FAQs, policies, hours, custom)
+- [x] Add Eva nav section to DashboardLayout sidebar (Eva Conversations + Eva Training)
+- [x] Register /admin/eva/interactions and /admin/eva/training routes in App.tsx
+- [x] Update eva_sms_handler.py on VPS: fetch live menu from web API (15-min cache), fetch knowledge base (5-min cache), log interactions to portal
+- [x] Fix asyncio import bug in eva_sms_handler.py
+- [x] Fix lte→gte bug in handleEvaKnowledgeFetch expiry check
+- [x] Fix lucide-react broken symlink (pnpm)
+- [x] Fix AdminEvaTraining: replace @/hooks/use-toast with sonner toast
+- [x] TypeScript: 0 errors

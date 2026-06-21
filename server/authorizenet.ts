@@ -483,7 +483,7 @@ export const authorizeNetRouter = router({
           };
           // Admin receipt
           sendReceiptEmail({
-            to: "henys2325@gmail.com",
+            to: "info@napolipizzeria.net",
             subject: `🔔 New Order — $${amount.toFixed(2)} (${input.orderType}) — ${input.customerName}`,
             html: buildAdminReceiptHtml(receiptData),
           }).catch((err) => console.error("[Email] Failed to send admin receipt:", err));

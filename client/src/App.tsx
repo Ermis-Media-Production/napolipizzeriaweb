@@ -21,6 +21,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminMenuManager from "./pages/AdminMenuManager";
 import AdminModifierManager from "./pages/AdminModifierManager";
 import AdminAiCosts from "@/pages/AdminAiCosts";
+import AdminEvaInteractions from "@/pages/AdminEvaInteractions";
+import AdminEvaTraining from "@/pages/AdminEvaTraining";
 import AdminLiveOrders from "@/pages/AdminLiveOrders";
 import AdminItemsDashboard from "@/pages/AdminItemsDashboard";
 import Catering from "./pages/Catering";
@@ -53,6 +55,8 @@ function Router() {
       <Route path="/admin/settings" component={AdminSettings} />
       <Route path="/admin/ai-costs" component={AdminAiCosts} />
       <Route path="/admin/items" component={AdminItemsDashboard} />
+      <Route path="/admin/eva/interactions" component={AdminEvaInteractions} />
+      <Route path="/admin/eva/training" component={AdminEvaTraining} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

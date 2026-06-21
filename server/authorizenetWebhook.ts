@@ -140,7 +140,7 @@ export async function handleAuthorizeNetWebhook(req: Request, res: Response): Pr
           date: new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }),
         };
         sendReceiptEmail({
-          to: "henys2325@gmail.com",
+          to: "info@napolipizzeria.net",
           subject: `✅ Payment Confirmed — $${amount.toFixed(2)} — TxnID ${transactionId}`,
           html: buildAdminReceiptHtml(receiptData),
         }).catch((err) => console.error("[Email] Webhook receipt failed:", err));

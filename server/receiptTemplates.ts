@@ -1,6 +1,6 @@
 /**
  * Receipt HTML templates for Napoli Pizzeria
- * Used for email receipts sent to admin (henys2325@gmail.com) and customers.
+ * Used for email receipts sent to admin (info@napolipizzeria.net) and customers.
  */
 
 export interface ReceiptItem {

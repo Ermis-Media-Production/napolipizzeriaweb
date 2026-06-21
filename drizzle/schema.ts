@@ -382,3 +382,64 @@ export const itemCategories = mysqlTable("itemCategories", {
 
 export type ItemCategory = typeof itemCategories.$inferSelect;
 export type InsertItemCategory = typeof itemCategories.$inferInsert;
+
+
+/**
+ * Eva AI Interactions — stores every voice call and SMS conversation
+ * that Eva handles, for display in the Manager Portal.
+ *
+ * Status values:
+ *   completed  → order placed and paid (green)
+ *   abandoned  → conversation started but customer hung up / stopped (yellow)
+ *   missed     → call was never answered (red)
+ *   sms        → SMS conversation (uses same status logic)
+ */
+export const evaInteractions = mysqlTable("evaInteractions", {
+  id: int("id").autoincrement().primaryKey(),
+  externalId: varchar("externalId", { length: 128 }).notNull().unique(),
+  channel: varchar("channel", { length: 16 }).notNull().default("voice"),
+  status: varchar("status", { length: 32 }).notNull().default("missed"),
+  customerPhone: varchar("customerPhone", { length: 32 }).notNull(),
+  customerName: varchar("customerName", { length: 128 }),
+  endedBy: varchar("endedBy", { length: 32 }),
+  durationSeconds: int("durationSeconds"),
+  transcript: text("transcript"),
+  recordingUrl: varchar("recordingUrl", { length: 512 }),
+  summary: text("summary"),
+  orderId: varchar("orderId", { length: 128 }),
+  totalCents: int("totalCents"),
+  rawPayload: text("rawPayload"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EvaInteraction = typeof evaInteractions.$inferSelect;
+export type InsertEvaInteraction = typeof evaInteractions.$inferInsert;
+
+/**
+ * Eva AI Knowledge Base — custom content staff can teach Eva.
+ * Categories: promo | faq | policy | hours | info | custom
+ * Eva fetches active entries and includes them in her system prompt.
+ */
+export const evaKnowledge = mysqlTable("evaKnowledge", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Category for grouping: promo | faq | policy | hours | info | custom */
+  category: varchar("category", { length: 32 }).notNull().default("info"),
+  /** Short title shown in the admin UI */
+  title: varchar("title", { length: 256 }).notNull(),
+  /** The actual content Eva will use in her responses */
+  content: text("content").notNull(),
+  /** Whether this entry is active (Eva uses it) */
+  isActive: boolean("isActive").default(true).notNull(),
+  /** Priority: higher = Eva considers it more important (1-10) */
+  priority: int("priority").default(5).notNull(),
+  /** Optional expiry date — after this date Eva ignores this entry */
+  expiresAt: timestamp("expiresAt"),
+  /** Who created this entry */
+  createdBy: varchar("createdBy", { length: 128 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EvaKnowledge = typeof evaKnowledge.$inferSelect;
+export type InsertEvaKnowledge = typeof evaKnowledge.$inferInsert;

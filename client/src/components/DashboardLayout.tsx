@@ -21,15 +21,24 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, ShoppingBag, UtensilsCrossed, Calendar, Settings, Truck, Tag, Brain, Phone, BarChart3 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Page 1", path: "/" },
-  { icon: Users, label: "Page 2", path: "/some-path" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
+  { icon: ShoppingBag, label: "Orders", path: "/admin/orders" },
+  { icon: UtensilsCrossed, label: "Menu", path: "/admin/menu" },
+  { icon: Tag, label: "Modifiers", path: "/admin/modifiers" },
+  { icon: Calendar, label: "Reservations", path: "/admin/reservations" },
+  { icon: Truck, label: "Delivery", path: "/admin/delivery" },
+  { icon: Phone, label: "Eva — Calls & SMS", path: "/admin/eva/interactions" },
+  { icon: Brain, label: "Eva — Training", path: "/admin/eva/training" },
+  { icon: BarChart3, label: "AI Usage", path: "/admin/ai-usage" },
+  { icon: Users, label: "Customers", path: "/admin/customers" },
+  { icon: Settings, label: "Settings", path: "/admin/settings" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

@@ -1,0 +1,20 @@
+CREATE TABLE `evaInteractions` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`externalId` varchar(128) NOT NULL,
+	`channel` varchar(16) NOT NULL DEFAULT 'voice',
+	`status` varchar(32) NOT NULL DEFAULT 'missed',
+	`customerPhone` varchar(32) NOT NULL,
+	`customerName` varchar(128),
+	`endedBy` varchar(32),
+	`durationSeconds` int,
+	`transcript` text,
+	`recordingUrl` varchar(512),
+	`summary` text,
+	`orderId` varchar(128),
+	`totalCents` int,
+	`rawPayload` text,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `evaInteractions_id` PRIMARY KEY(`id`),
+	CONSTRAINT `evaInteractions_externalId_unique` UNIQUE(`externalId`)
+);
