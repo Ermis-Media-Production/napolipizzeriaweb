@@ -432,6 +432,7 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
    * Parse a description string into an array of modifier label strings.
    * Splits on " · " (frontend separator), "\n", and "|" (pipe separator).
    * Highlights Half & Half entries with asterisks.
+   * Strips __CLOVER_MOD__ tags — those are machine-readable, not for display.
    */
   function parseModifiers(description: string): string[] {
     return description
@@ -439,7 +440,29 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
       .split(/ · |\n|\|/)
       .map((s) => s.trim())
       .filter(Boolean)
+      .filter((s) => !s.startsWith("__CLOVER_MOD__")) // strip machine tags
       .map((s) => s.replace(/(Half & Half)/gi, "*** $1 ***"));
+  }
+
+  /**
+   * Parse a __CLOVER_MOD__ tag from a description string.
+   * Format: __CLOVER_MOD__:group=<groupId>:opt1=<optId1>:opt2=<optId2>
+   * Returns null if no tag is found.
+   */
+  function parseCloverModTag(description: string): { groupId: string; opt1: string; opt2: string } | null {
+    const parts = description.split(/ · |\n|\|/);
+    for (const part of parts) {
+      const trimmed = part.trim();
+      if (!trimmed.startsWith("__CLOVER_MOD__")) continue;
+      // __CLOVER_MOD__:group=5WJTSA9Z2S0GA:opt1=PNKEXAXM5Q5V2:opt2=2JE9HCEX2XY8G
+      const groupMatch = trimmed.match(/:group=([^:]+)/);
+      const opt1Match  = trimmed.match(/:opt1=([^:]+)/);
+      const opt2Match  = trimmed.match(/:opt2=([^:]+)/);
+      if (groupMatch && opt1Match && opt2Match) {
+        return { groupId: groupMatch[1], opt1: opt1Match[1], opt2: opt2Match[1] };
+      }
+    }
+    return null;
   }
 
   const lineItems: Record<string, unknown>[] = [];
@@ -452,6 +475,9 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
       Pizzeria: CLOVER_PRINTER_IDS.PIZZERIA,
     };
     const printerId = printerIdMap[printerLabel];
+
+    // Detect Half & Half __CLOVER_MOD__ tag in description before building line item
+    const cloverModTag = item.description ? parseCloverModTag(item.description) : null;
 
     // Parent item line
     const parentItem: Record<string, unknown> = {
@@ -466,6 +492,29 @@ export async function pushOrderToClover(input: CloverOrderInput): Promise<Clover
     // and ensures the item appears correctly on the kitchen ticket.
     if (item.cloverItemId) {
       parentItem.item = { id: item.cloverItemId };
+    }
+
+    // Half & Half: attach Clover modifier group + options to the parent line item.
+    // When a __CLOVER_MOD__ tag is present in the description, we attach the
+    // modifier group (5WJTSA9Z2S0GA) with opt1 (1st Half) and opt2 (2nd Half)
+    // as real Clover catalog modifiers. This ensures:
+    //   1. The modifier group appears in Clover inventory reports
+    //   2. The kitchen ticket shows "1st Half" and "2nd Half" as modifier rows
+    //   3. The Clover email receipt includes the Half & Half breakdown
+    if (cloverModTag) {
+      parentItem.modifications = [
+        {
+          modifier: { id: cloverModTag.opt1 },
+          modifierGroup: { id: cloverModTag.groupId },
+          amount: 0,
+        },
+        {
+          modifier: { id: cloverModTag.opt2 },
+          modifierGroup: { id: cloverModTag.groupId },
+          amount: 0,
+        },
+      ];
+      console.log(`[Clover] Attached Half & Half modifier group ${cloverModTag.groupId} to line item "${item.name}"`);
     }
 
     // Add modifiers as the lineItem `note` field so they appear in Clover's

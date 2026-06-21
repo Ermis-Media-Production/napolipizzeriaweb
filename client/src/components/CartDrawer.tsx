@@ -452,7 +452,7 @@ export default function CartDrawer() {
     const grandTotalVal = discountedSubtotalVal + convenienceFeeVal + salesTaxVal + deliveryFeeDollarsVal;
     return {
       payload: {
-        items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category, description: i.description ?? "" })),
+        items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, category: i.category, description: i.description ?? "", cloverItemId: i.cloverItemId })),
         customerName: customerLastName.trim() ? `${customerName} ${customerLastName}` : customerName,
         customerPhone: customerPhone || undefined,
         customerEmail: customerEmail || undefined,

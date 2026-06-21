@@ -597,3 +597,10 @@
 - [x] Register /admin/live route in App.tsx
 - [ ] Add delivery tracking panel for active DoorDash/Uber deliveries
 - [x] Deploy to VPS after all changes
+
+## Half & Half Clover Modifier Group Integration (Jun 21 2026)
+
+- [x] CartDrawer: include cloverItemId in buildOrderPayload items (was being stripped)
+- [x] PizzaCustomizerModal: resolve 1st Half (PNKEXAXM5Q5V2) / 2nd Half (2JE9HCEX2XY8G) Clover catalog IDs and embed in description with __CLOVER_MOD__ tags
+- [x] cloverSync: detect Half & Half items and attach modifier group 5WJTSA9Z2S0GA with correct option IDs to the parent line item
+- [ ] Deploy to VPS

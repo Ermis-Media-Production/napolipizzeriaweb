@@ -202,6 +202,9 @@ const CATEGORY_SLUG_MAP: Record<string, string> = {
   "lunch special": "lunch",
   "pick up special": "special",
   "mother's day offers": "special",
+  // Half & Half → pizza (special sub-items for half pizza orders)
+  "half & half": "pizza",
+  "half and half": "pizza",
   // Delivery charge → fee (hidden from menu)
   "delivery charge": "fee",
 };

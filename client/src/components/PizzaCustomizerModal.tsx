@@ -325,16 +325,38 @@ function PizzaWizard({ selection, onClose }: { selection: PizzaSelection; onClos
 
     // Resolve the Clover catalog ID for this specific pizza + size combination
     // e.g. "BBQ Chicken 16\"" → matches "BBQ Chicken 16\" Pizza" in DB
+    // For Half & Half, also resolve the 1st Half / 2nd Half Clover modifier IDs
     let cloverItemId: string | undefined;
+    let firstHalfCloverId: string | undefined;
+    let secondHalfCloverId: string | undefined;
     try {
       const searchName = `${selectedPizzaName} ${selectedSize}`;
-      const resolved = await utils.client.menuItems.resolveCloverIds.query({
-        items: [{ name: searchName, category: "pizza" }],
-      });
+      const queries = [{ name: searchName, category: "pizza" }];
+
+      // Half & Half: also resolve the modifier catalog items from Clover
+      // 1st Half → PNKEXAXM5Q5V2, 2nd Half → 2JE9HCEX2XY8G (imported from Clover)
+      if (halfAndHalf) {
+        queries.push({ name: "1st Half", category: "pizza" });
+        queries.push({ name: "2nd Half", category: "pizza" });
+      }
+
+      const resolved = await utils.client.menuItems.resolveCloverIds.query({ items: queries });
       cloverItemId = resolved[searchName] ?? undefined;
+
+      if (halfAndHalf) {
+        firstHalfCloverId = resolved["1st Half"] ?? "PNKEXAXM5Q5V2"; // fallback to known Clover ID
+        secondHalfCloverId = resolved["2nd Half"] ?? "2JE9HCEX2XY8G";
+        // Embed structured Half & Half Clover modifier data into description
+        // cloverSync.ts reads __CLOVER_MOD__ tags to attach the modifier group
+        lines.push(`__CLOVER_MOD__:group=5WJTSA9Z2S0GA:opt1=${firstHalfCloverId}:opt2=${secondHalfCloverId}`);
+      }
     } catch {
       // Non-fatal — order still goes through without catalog ID
       console.warn("[Pizza] Could not resolve cloverItemId");
+      // Still embed fallback Half & Half modifier IDs so Clover gets the group
+      if (halfAndHalf) {
+        lines.push(`__CLOVER_MOD__:group=5WJTSA9Z2S0GA:opt1=PNKEXAXM5Q5V2:opt2=2JE9HCEX2XY8G`);
+      }
     }
 
     addItem({
