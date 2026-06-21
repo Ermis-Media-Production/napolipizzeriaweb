@@ -16,8 +16,10 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (typeof window === "undefined") return;
 
   const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
-
   if (!isUnauthorized) return;
+
+  // Don't redirect to Manus OAuth when on admin pages — AdminLayout handles its own login
+  if (window.location.pathname.startsWith("/admin")) return;
 
   window.location.href = getLoginUrl();
 };

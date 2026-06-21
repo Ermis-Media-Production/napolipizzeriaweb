@@ -25,13 +25,15 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   Bot,
   ChefHat,
   ClipboardList,
+  Eye,
+  EyeOff,
   LayoutDashboard,
+  Loader2,
   LogOut,
   Package,
   PanelLeft,
@@ -42,6 +44,8 @@ import {
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin/dashboard" },
@@ -58,12 +62,120 @@ const DEFAULT_WIDTH = 240;
 const MIN_WIDTH = 180;
 const MAX_WIDTH = 360;
 
+// ── Local admin login form ─────────────────────────────────────────────────
+function AdminLoginForm({ onSuccess }: { onSuccess: () => void }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ username: username.trim(), password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Invalid credentials");
+      } else {
+        onSuccess();
+      }
+    } catch {
+      setError("Connection error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="flex flex-col items-center gap-6 p-8 max-w-sm w-full">
+        {/* Logo */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-14 w-14 rounded-full bg-red-700 flex items-center justify-center shadow-lg">
+            <ChefHat className="h-7 w-7 text-white" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-2xl font-semibold tracking-tight">Napoli Admin</h1>
+            <p className="text-sm text-muted-foreground mt-1">Sign in to manage your restaurant</p>
+          </div>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              type="text"
+              autoComplete="username"
+              placeholder="napoliadmin"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              disabled={loading}
+              required
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                placeholder="••••••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                disabled={loading}
+                required
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <p className="text-sm text-destructive text-center">{error}</p>
+          )}
+
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-red-700 hover:bg-red-800 text-white"
+          >
+            {loading ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Signing in…</>
+            ) : (
+              "Sign in"
+            )}
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Main AdminLayout ───────────────────────────────────────────────────────
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
-  const { loading, user } = useAuth();
+  const { loading, user, refresh } = useAuth();
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
@@ -81,28 +193,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center gap-4">
-            <ChefHat className="h-12 w-12 text-primary" />
-            <h1 className="text-2xl font-semibold tracking-tight text-center">
-              Napoli Admin Panel
-            </h1>
-            <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Sign in with your Manus account to access the admin dashboard.
-            </p>
-          </div>
-          <Button
-            onClick={() => { window.location.href = getLoginUrl(); }}
-            size="lg"
-            className="w-full bg-red-700 hover:bg-red-800 text-white shadow-lg"
-          >
-            Sign in
-          </Button>
-        </div>
-      </div>
-    );
+    return <AdminLoginForm onSuccess={() => refresh()} />;
   }
 
   if (user.role !== "admin") {
@@ -112,7 +203,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <ChefHat className="h-12 w-12 text-muted-foreground" />
           <h1 className="text-2xl font-semibold tracking-tight">Access Denied</h1>
           <p className="text-sm text-muted-foreground">
-            You need admin privileges to access this page. Contact the restaurant owner to request access.
+            You need admin privileges to access this page.
           </p>
           <Button variant="outline" onClick={() => { window.location.href = "/"; }}>
             Return to Website

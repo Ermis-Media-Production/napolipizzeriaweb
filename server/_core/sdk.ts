@@ -266,6 +266,15 @@ class SDKServer {
       throw ForbiddenError("Invalid session cookie");
     }
 
+    // Local admin users bypass DB lookup and Manus OAuth
+    if (session.openId.startsWith(LOCAL_ADMIN_PREFIX)) {
+      const localUser = LOCAL_ADMIN_USERS[session.openId];
+      if (!localUser) {
+        throw ForbiddenError("Unknown local admin user");
+      }
+      return { ...localUser, lastSignedIn: new Date() };
+    }
+
     if (session.openId.startsWith(CRON_OPEN_ID_PREFIX)) {
       const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
       const taskUid = userInfo.taskUid ?? null;
@@ -311,6 +320,33 @@ class SDKServer {
 }
 
 const CRON_OPEN_ID_PREFIX = "cron_";
+const LOCAL_ADMIN_PREFIX = "local_";
+
+// Local admin accounts — synthetic users that bypass Manus OAuth
+const LOCAL_ADMIN_USERS: Record<string, AuthenticatedUser> = {
+  local_napoliadmin: {
+    id: -10,
+    openId: "local_napoliadmin",
+    name: "Administrador Principal",
+    email: null,
+    loginMethod: "local",
+    role: "admin",
+    createdAt: new Date("2026-01-01"),
+    updatedAt: new Date("2026-01-01"),
+    lastSignedIn: new Date(),
+  },
+  local_napolilv_manager: {
+    id: -11,
+    openId: "local_napolilv_manager",
+    name: "Manager / Operaciones",
+    email: null,
+    loginMethod: "local",
+    role: "admin",
+    createdAt: new Date("2026-01-01"),
+    updatedAt: new Date("2026-01-01"),
+    lastSignedIn: new Date(),
+  },
+};
 
 /** Result of `sdk.authenticateRequest`. Cron callbacks set `isCron=true` and `taskUid`; see `references/periodic-updates.md`. */
 export type AuthenticatedUser = User & {
