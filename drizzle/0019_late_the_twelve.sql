@@ -1,0 +1,1 @@
+ALTER TABLE `evaInteractions` ADD `acknowledgedAt` timestamp;

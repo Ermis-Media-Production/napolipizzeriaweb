@@ -6,8 +6,14 @@
  *   🟢 completed  — order placed and paid
  *   🟡 abandoned  — conversation started but customer hung up / stopped texting
  *   🔴 missed     — call/SMS never answered
+ *
+ * Alert system:
+ *   - Polls getNewAlerts every 15s
+ *   - Plays a chime sound when new missed/abandoned calls arrive
+ *   - Shows a flashing red/yellow banner with count + dismiss button
+ *   - Shows alert badge count on the sidebar nav item (via context)
  */
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Phone,
   MessageSquare,
@@ -39,7 +45,11 @@ import {
   ChevronRight,
   Search,
   RefreshCw,
+  BellRing,
+  X,
+  BellOff,
 } from "lucide-react";
+import { toast } from "sonner";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Interaction = {
@@ -59,7 +69,41 @@ type Interaction = {
   createdAt: Date;
 };
 
+type AlertItem = {
+  id: number;
+  status: string;
+  customerPhone: string;
+  customerName: string | null;
+  createdAt: Date;
+};
+
 type TranscriptMessage = { role: string; content: string };
+
+// ── Alert sound (short chime generated via Web Audio API) ─────────────────────
+function playAlertChime() {
+  try {
+    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    const playTone = (freq: number, startTime: number, duration: number, gain: number) => {
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, startTime);
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(gain, startTime + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+    const now = ctx.currentTime;
+    playTone(880, now, 0.3, 0.4);
+    playTone(1100, now + 0.18, 0.3, 0.35);
+    playTone(1320, now + 0.36, 0.45, 0.3);
+  } catch {
+    // AudioContext not supported — silent fallback
+  }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function statusColor(status: string) {
@@ -126,6 +170,96 @@ function StatCard({ label, value, icon: Icon, color }: {
   );
 }
 
+// ── Alert Banner ──────────────────────────────────────────────────────────────
+function AlertBanner({
+  alerts,
+  onDismiss,
+  onCallBack,
+}: {
+  alerts: AlertItem[];
+  onDismiss: () => void;
+  onCallBack: (phone: string) => void;
+}) {
+  const missedCount = alerts.filter(a => a.status === "missed").length;
+  const abandonedCount = alerts.filter(a => a.status === "abandoned").length;
+  const hasMissed = missedCount > 0;
+
+  return (
+    <div
+      className={`
+        relative rounded-xl border-2 p-4 shadow-lg
+        ${hasMissed
+          ? "border-red-400 bg-red-50 dark:bg-red-950/40 dark:border-red-600"
+          : "border-yellow-400 bg-yellow-50 dark:bg-yellow-950/40 dark:border-yellow-600"
+        }
+        animate-[pulse_1.5s_ease-in-out_3]
+      `}
+      style={{
+        animation: "alertPulse 1.5s ease-in-out 3",
+      }}
+    >
+      <style>{`
+        @keyframes alertPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
+        }
+      `}</style>
+
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-full ${hasMissed ? "bg-red-100 dark:bg-red-900/60" : "bg-yellow-100 dark:bg-yellow-900/60"}`}>
+            <BellRing className={`h-5 w-5 ${hasMissed ? "text-red-600 dark:text-red-400" : "text-yellow-600 dark:text-yellow-400"}`} />
+          </div>
+          <div>
+            <p className={`font-semibold text-sm ${hasMissed ? "text-red-800 dark:text-red-300" : "text-yellow-800 dark:text-yellow-300"}`}>
+              {alerts.length === 1
+                ? `1 ${alerts[0].status === "missed" ? "missed call" : "abandoned call"} needs attention`
+                : `${alerts.length} calls need attention`
+              }
+              {missedCount > 0 && abandonedCount > 0 && (
+                <span className="font-normal ml-1">
+                  ({missedCount} missed, {abandonedCount} abandoned)
+                </span>
+              )}
+            </p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {alerts.slice(0, 5).map(alert => (
+                <button
+                  key={alert.id}
+                  onClick={() => onCallBack(alert.customerPhone)}
+                  className={`
+                    inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium
+                    transition-colors cursor-pointer
+                    ${alert.status === "missed"
+                      ? "bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/60 dark:text-red-300"
+                      : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/60 dark:text-yellow-300"
+                    }
+                  `}
+                >
+                  <PhoneCall className="h-3 w-3" />
+                  {alert.customerName || formatPhone(alert.customerPhone)}
+                  <span className="opacity-60">· {alert.status}</span>
+                </button>
+              ))}
+              {alerts.length > 5 && (
+                <span className="text-xs text-muted-foreground self-center">+{alerts.length - 5} more</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={onDismiss}
+          className="shrink-0 p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          title="Dismiss all alerts"
+        >
+          <X className="h-4 w-4 text-muted-foreground" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function AdminEvaInteractions() {
   const [page, setPage] = useState(1);
@@ -134,7 +268,12 @@ export default function AdminEvaInteractions() {
   const [channelFilter, setChannelFilter] = useState<"all" | "voice" | "sms">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "abandoned" | "missed">("all");
   const [selected, setSelected] = useState<Interaction | null>(null);
+  const [alertsMuted, setAlertsMuted] = useState(false);
   const pageSize = 25;
+
+  // Track the last seen alert IDs to detect new ones
+  const seenAlertIds = useRef<Set<number>>(new Set());
+  const isFirstPoll = useRef(true);
 
   const { data, isLoading, refetch } = trpc.evaInteractions.list.useQuery({
     page,
@@ -145,6 +284,58 @@ export default function AdminEvaInteractions() {
   });
 
   const { data: stats } = trpc.evaInteractions.stats.useQuery();
+
+  // Poll for new unacknowledged alerts every 15 seconds
+  const { data: alertData, refetch: refetchAlerts } = trpc.evaInteractions.getNewAlerts.useQuery(
+    undefined,
+    { refetchInterval: 15_000 }
+  );
+
+  const acknowledgeMutation = trpc.evaInteractions.acknowledgeAlerts.useMutation({
+    onSuccess: () => {
+      refetchAlerts();
+      toast.success("All alerts dismissed");
+    },
+  });
+
+  const alerts: AlertItem[] = alertData ?? [];
+
+  // Detect new alerts and play sound
+  useEffect(() => {
+    if (!alertData) return;
+
+    if (isFirstPoll.current) {
+      // On first load, just populate seenAlertIds without playing sound
+      alertData.forEach(a => seenAlertIds.current.add(a.id));
+      isFirstPoll.current = false;
+      return;
+    }
+
+    const newAlerts = alertData.filter(a => !seenAlertIds.current.has(a.id));
+    if (newAlerts.length > 0) {
+      newAlerts.forEach(a => seenAlertIds.current.add(a.id));
+      if (!alertsMuted) {
+        playAlertChime();
+      }
+      const missedNew = newAlerts.filter(a => a.status === "missed").length;
+      const abandonedNew = newAlerts.filter(a => a.status === "abandoned").length;
+      const label = missedNew > 0 && abandonedNew > 0
+        ? `${missedNew} missed, ${abandonedNew} abandoned`
+        : missedNew > 0
+        ? `${missedNew} missed call${missedNew > 1 ? "s" : ""}`
+        : `${abandonedNew} abandoned call${abandonedNew > 1 ? "s" : ""}`;
+      toast.error(`⚠️ Eva Alert: ${label}`, {
+        duration: 8000,
+        description: "Check the Eva Interactions panel",
+      });
+    }
+  }, [alertData, alertsMuted]);
+
+  const handleDismissAlerts = useCallback(() => {
+    // Mark all as seen locally
+    alerts.forEach(a => seenAlertIds.current.add(a.id));
+    acknowledgeMutation.mutate();
+  }, [alerts, acknowledgeMutation]);
 
   const totalPages = data ? Math.ceil(data.total / pageSize) : 1;
 
@@ -158,7 +349,7 @@ export default function AdminEvaInteractions() {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout alertCount={alerts.length}>
       <div className="p-6 space-y-6 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -168,11 +359,32 @@ export default function AdminEvaInteractions() {
               All voice calls and SMS conversations handled by Eva
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAlertsMuted(m => !m)}
+              className={`gap-2 ${alertsMuted ? "text-muted-foreground" : ""}`}
+              title={alertsMuted ? "Unmute alerts" : "Mute alert sound"}
+            >
+              {alertsMuted ? <BellOff className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              <span className="hidden sm:inline">{alertsMuted ? "Unmuted" : "Muted"}</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { refetch(); refetchAlerts(); }} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
         </div>
+
+        {/* Alert Banner */}
+        {alerts.length > 0 && (
+          <AlertBanner
+            alerts={alerts}
+            onDismiss={handleDismissAlerts}
+            onCallBack={handleCallBack}
+          />
+        )}
 
         {/* Stats */}
         {stats && (

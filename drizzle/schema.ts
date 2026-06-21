@@ -409,6 +409,8 @@ export const evaInteractions = mysqlTable("evaInteractions", {
   orderId: varchar("orderId", { length: 128 }),
   totalCents: int("totalCents"),
   rawPayload: text("rawPayload"),
+  /** Null = unacknowledged alert; set to Date when manager dismisses the alert */
+  acknowledgedAt: timestamp("acknowledgedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

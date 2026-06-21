@@ -3,7 +3,7 @@
  * tRPC router + public REST endpoint for Eva AI interaction tracking and knowledge base.
  */
 import { z } from "zod";
-import { desc, eq, and, gte, like, or, sql, isNull, lte } from "drizzle-orm";
+import { desc, eq, and, gte, like, or, sql, isNull, lte, lt, ne } from "drizzle-orm";
 import { router, protectedProcedure } from "./_core/trpc";
 import { getDb } from "./db";
 import { evaInteractions, evaKnowledge } from "../drizzle/schema";
@@ -50,6 +50,47 @@ export const evaInteractionsRouter = router({
       const rows = await db.select().from(evaInteractions)
         .where(eq(evaInteractions.id, input.id)).limit(1);
       return rows[0] ?? null;
+    }),
+
+  /** Returns unacknowledged missed/abandoned interactions for alert banner */
+  getNewAlerts: protectedProcedure
+    .query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      // Return missed/abandoned interactions that have not been acknowledged
+      return db.select({
+        id: evaInteractions.id,
+        status: evaInteractions.status,
+        customerPhone: evaInteractions.customerPhone,
+        customerName: evaInteractions.customerName,
+        createdAt: evaInteractions.createdAt,
+      }).from(evaInteractions)
+        .where(and(
+          or(
+            eq(evaInteractions.status, "missed"),
+            eq(evaInteractions.status, "abandoned"),
+          ),
+          isNull(evaInteractions.acknowledgedAt),
+        ))
+        .orderBy(desc(evaInteractions.createdAt))
+        .limit(50);
+    }),
+
+  /** Mark all unacknowledged alerts as seen */
+  acknowledgeAlerts: protectedProcedure
+    .mutation(async () => {
+      const db = await getDb();
+      if (!db) return { success: false };
+      await db.update(evaInteractions)
+        .set({ acknowledgedAt: new Date() })
+        .where(and(
+          or(
+            eq(evaInteractions.status, "missed"),
+            eq(evaInteractions.status, "abandoned"),
+          ),
+          isNull(evaInteractions.acknowledgedAt),
+        ));
+      return { success: true };
     }),
 
   stats: protectedProcedure

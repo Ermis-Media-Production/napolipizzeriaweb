@@ -649,3 +649,17 @@
 - [x] Fix lucide-react broken symlink (pnpm)
 - [x] Fix AdminEvaTraining: replace @/hooks/use-toast with sonner toast
 - [x] TypeScript: 0 errors
+
+## Eva AI — Visual & Audio Alerts for Missed/Abandoned Calls
+- [ ] Add evaInteractions.getNewAlerts tRPC procedure (returns unacknowledged missed/abandoned since last seen)
+- [ ] Add evaInteractions.acknowledgeAlerts tRPC procedure (marks alerts as seen)
+- [ ] Build EvaAlertBanner component: flashing red/yellow banner with sound when new alert arrives
+- [ ] Generate alert sound (short beep/chime) as base64 data URI — no external file needed
+- [ ] Poll getNewAlerts every 15s on AdminEvaInteractions page
+- [ ] Show alert count badge on sidebar Eva nav item
+- [ ] Dismiss button to acknowledge all alerts
+- [ ] TypeScript: 0 errors
+
+## Menu Category Fix (Jun 21 2026)
+- [x] Found 5 Lunch items misplaced in 'special' category (Lunch #6, #15, #18, #22, #23) — moved to 'lunch' category via SQL UPDATE
+- [x] Lunch category now has 23 items (was 18), special category has 253 (was 258)

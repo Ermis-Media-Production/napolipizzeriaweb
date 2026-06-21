@@ -13,6 +13,7 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
@@ -48,8 +49,10 @@ const MAX_WIDTH = 480;
 
 export default function DashboardLayout({
   children,
+  alertCount = 0,
 }: {
   children: React.ReactNode;
+  alertCount?: number;
 }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
@@ -99,7 +102,7 @@ export default function DashboardLayout({
         } as CSSProperties
       }
     >
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
+      <DashboardLayoutContent setSidebarWidth={setSidebarWidth} alertCount={alertCount}>
         {children}
       </DashboardLayoutContent>
     </SidebarProvider>
@@ -109,11 +112,13 @@ export default function DashboardLayout({
 type DashboardLayoutContentProps = {
   children: React.ReactNode;
   setSidebarWidth: (width: number) => void;
+  alertCount?: number;
 };
 
 function DashboardLayoutContent({
   children,
   setSidebarWidth,
+  alertCount = 0,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
@@ -191,6 +196,8 @@ function DashboardLayoutContent({
             <SidebarMenu className="px-2 py-1">
               {menuItems.map(item => {
                 const isActive = location === item.path;
+                const isEvaInteractions = item.path === "/admin/eva/interactions";
+                const showBadge = isEvaInteractions && alertCount > 0;
                 return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
@@ -204,6 +211,11 @@ function DashboardLayoutContent({
                       />
                       <span>{item.label}</span>
                     </SidebarMenuButton>
+                    {showBadge && (
+                      <SidebarMenuBadge className="bg-red-500 text-white text-[10px] min-w-[18px] h-[18px] rounded-full flex items-center justify-center">
+                        {alertCount > 99 ? "99+" : alertCount}
+                      </SidebarMenuBadge>
+                    )}
                   </SidebarMenuItem>
                 );
               })}
