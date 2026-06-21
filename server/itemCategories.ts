@@ -136,4 +136,24 @@ export const itemCategoriesRouter = router({
       await db.delete(itemCategories).where(eq(itemCategories.id, input.id));
       return { success: true };
     }),
+
+  /**
+   * Toggle the hidden flag for a category. Admin only.
+   * When hidden=true, the category and all its items are hidden from the public menu.
+   */
+  toggleHidden: adminProcedure
+    .input(z.object({ id: z.number(), hidden: z.boolean() }))
+    .mutation(async ({ input }) => {
+      const db = await requireDb();
+      await db
+        .update(itemCategories)
+        .set({ hidden: input.hidden })
+        .where(eq(itemCategories.id, input.id));
+      const [updated] = await db
+        .select()
+        .from(itemCategories)
+        .where(eq(itemCategories.id, input.id))
+        .limit(1);
+      return updated;
+    }),
 });

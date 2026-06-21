@@ -445,3 +445,37 @@ export const evaKnowledge = mysqlTable("evaKnowledge", {
 
 export type EvaKnowledge = typeof evaKnowledge.$inferSelect;
 export type InsertEvaKnowledge = typeof evaKnowledge.$inferInsert;
+
+/**
+ * Item Variant Groups — groups size/flavor variants under a single menu card.
+ * e.g. "French Fries" group with Small, Medium, Large variants.
+ */
+export const itemVariantGroups = mysqlTable("itemVariantGroups", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 256 }).notNull(),
+  category: varchar("category", { length: 64 }).notNull(),
+  description: text("description"),
+  imageUrl: text("imageUrl"),
+  badges: json("badges").$type<string[]>().default([]),
+  isAvailable: boolean("isAvailable").default(true).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ItemVariantGroup = typeof itemVariantGroups.$inferSelect;
+export type InsertItemVariantGroup = typeof itemVariantGroups.$inferInsert;
+
+/**
+ * Item Variants — individual size/flavor options within a variant group.
+ * Each variant maps to a specific menuItem row (which holds the Clover ID and price).
+ */
+export const itemVariants = mysqlTable("itemVariants", {
+  id: int("id").autoincrement().primaryKey(),
+  groupId: int("groupId").notNull(),
+  menuItemId: int("menuItemId").notNull(),
+  label: varchar("label", { length: 64 }).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ItemVariant = typeof itemVariants.$inferSelect;
+export type InsertItemVariant = typeof itemVariants.$inferInsert;
