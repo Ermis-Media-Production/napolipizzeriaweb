@@ -27,6 +27,11 @@ import {
   Wifi,
   WifiOff,
   ExternalLink,
+  MapPin,
+  Phone,
+  Car,
+  XCircle,
+  Navigation,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -321,6 +326,261 @@ function StatCard({
   );
 }
 
+// ── Delivery Status Badge ─────────────────────────────────────────────────────
+
+function DeliveryStatusBadge({ status }: { status: string }) {
+  const s = status.toLowerCase();
+  let bg = "oklch(0.95 0.02 30)";
+  let text = "oklch(0.50 0.04 30)";
+  let label = status;
+
+  if (s.includes("created") || s === "pending") { bg = "oklch(0.96 0.05 250)"; text = "oklch(0.35 0.12 250)"; label = "Pending"; }
+  else if (s.includes("pickup") || s.includes("enroute_pickup")) { bg = "oklch(0.97 0.05 80)"; text = "oklch(0.45 0.12 80)"; label = "Heading to pickup"; }
+  else if (s.includes("picked_up") || s.includes("enroute_dropoff")) { bg = "oklch(0.97 0.05 80)"; text = "oklch(0.45 0.12 80)"; label = "On the way"; }
+  else if (s.includes("delivered") || s.includes("complete")) { bg = "oklch(0.96 0.06 145)"; text = "oklch(0.35 0.12 145)"; label = "Delivered"; }
+  else if (s.includes("cancel")) { bg = "oklch(0.97 0.04 25)"; text = "oklch(0.45 0.12 25)"; label = "Cancelled"; }
+  else if (s.includes("return")) { bg = "oklch(0.97 0.04 25)"; text = "oklch(0.45 0.12 25)"; label = "Returning"; }
+
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
+      style={{ background: bg, color: text, fontFamily: "'Oswald', sans-serif" }}
+    >
+      {label}
+    </span>
+  );
+}
+
+// ── Delivery Tracking Panel ────────────────────────────────────────────────────
+
+function DeliveryTrackingPanel() {
+  const { data: deliveries, isLoading, refetch } = trpc.deliveryTracking.getActiveDeliveries.useQuery(
+    undefined,
+    { refetchInterval: 30_000 }
+  );
+
+  const refreshStatus = trpc.deliveryTracking.refreshDeliveryStatus.useMutation({
+    onSuccess: (data, vars) => {
+      toast.success(`Status updated: ${data.status}`);
+      refetch();
+    },
+    onError: (err) => toast.error("Failed to refresh: " + err.message),
+  });
+
+  const cancelDelivery = trpc.deliveryTracking.cancelDelivery.useMutation({
+    onSuccess: () => {
+      toast.success("Delivery cancelled.");
+      refetch();
+    },
+    onError: (err) => toast.error("Failed to cancel: " + err.message),
+  });
+
+  const activeDeliveries = (deliveries ?? []).filter(
+    (d) => d.deliveryStatus && !d.deliveryStatus.toLowerCase().includes("cancel") && !d.deliveryStatus.toLowerCase().includes("delivered") && !d.deliveryStatus.toLowerCase().includes("complete")
+  );
+  const completedDeliveries = (deliveries ?? []).filter(
+    (d) => d.deliveryStatus && (d.deliveryStatus.toLowerCase().includes("delivered") || d.deliveryStatus.toLowerCase().includes("complete") || d.deliveryStatus.toLowerCase().includes("cancel"))
+  );
+
+  return (
+    <div
+      className="rounded-lg border overflow-hidden"
+      style={{ background: "white", borderColor: "oklch(0.88 0.015 80)" }}
+    >
+      {/* Header */}
+      <div
+        className="px-5 py-4 border-b flex items-center justify-between"
+        style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.98 0.008 80)" }}
+      >
+        <div className="flex items-center gap-3">
+          <Truck size={16} style={{ color: "var(--napoli-red, #c0392b)" }} />
+          <div>
+            <h2 className="text-sm font-bold" style={{ color: "oklch(0.25 0.04 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
+              DELIVERY TRACKING
+            </h2>
+            <p className="text-xs mt-0.5" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+              Active DoorDash & Uber Direct deliveries — auto-refreshes every 30s
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => refetch()}
+          disabled={isLoading}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-all active:scale-95 disabled:opacity-60"
+          style={{ background: "oklch(0.20 0.04 30)", color: "white", fontFamily: "'Oswald', sans-serif" }}
+        >
+          <RefreshCw size={12} className={isLoading ? "animate-spin" : ""} />
+          Refresh
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="px-5 py-4">
+        {isLoading ? (
+          <div className="flex items-center gap-2 py-6">
+            <RefreshCw size={16} className="animate-spin" style={{ color: "var(--napoli-red, #c0392b)" }} />
+            <span className="text-sm" style={{ color: "oklch(0.55 0.03 30)" }}>Loading deliveries…</span>
+          </div>
+        ) : (deliveries ?? []).length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-2">
+            <Truck size={28} style={{ color: "oklch(0.75 0.015 80)" }} />
+            <p className="text-sm" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+              No deliveries dispatched yet today.
+            </p>
+            <p className="text-xs" style={{ color: "oklch(0.65 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+              Deliveries appear here once a courier is dispatched from the order page.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Active deliveries */}
+            {activeDeliveries.length > 0 && (
+              <div>
+                <p className="text-xs font-bold mb-2" style={{ color: "oklch(0.45 0.04 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.06em" }}>
+                  ACTIVE ({activeDeliveries.length})
+                </p>
+                <div className="space-y-3">
+                  {activeDeliveries.map((d) => (
+                    <div
+                      key={d.orderRef}
+                      className="rounded-lg border p-4"
+                      style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.99 0.005 80)" }}
+                    >
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-bold" style={{ color: "oklch(0.25 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
+                              {d.orderRef}
+                            </span>
+                            <span
+                              className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                              style={{
+                                background: d.deliveryProvider === "doordash" ? "oklch(0.97 0.04 25)" : "oklch(0.97 0.05 250)",
+                                color: d.deliveryProvider === "doordash" ? "oklch(0.45 0.12 25)" : "oklch(0.35 0.12 250)",
+                                fontFamily: "'Oswald', sans-serif",
+                              }}
+                            >
+                              {d.deliveryProvider === "doordash" ? "DoorDash" : "Uber"}
+                            </span>
+                            {d.deliveryStatus && <DeliveryStatusBadge status={d.deliveryStatus} />}
+                          </div>
+                          <p className="text-sm font-semibold" style={{ color: "oklch(0.35 0.04 30)", fontFamily: "'Lato', sans-serif" }}>
+                            {d.customerName}
+                          </p>
+                          {d.deliveryAddress && (
+                            <div className="flex items-start gap-1.5">
+                              <MapPin size={12} className="shrink-0 mt-0.5" style={{ color: "oklch(0.55 0.03 30)" }} />
+                              <p className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+                                {d.deliveryAddress}
+                              </p>
+                            </div>
+                          )}
+                          {d.customerPhone && (
+                            <div className="flex items-center gap-1.5">
+                              <Phone size={12} style={{ color: "oklch(0.55 0.03 30)" }} />
+                              <a
+                                href={`tel:${d.customerPhone}`}
+                                className="text-xs underline"
+                                style={{ color: "var(--napoli-red, #c0392b)", fontFamily: "'Lato', sans-serif" }}
+                              >
+                                {d.customerPhone}
+                              </a>
+                            </div>
+                          )}
+                          <p className="text-xs" style={{ color: "oklch(0.60 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+                            Total: <strong>${d.total}</strong> · {new Date(d.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "America/Los_Angeles" })}
+                          </p>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex flex-col gap-2 shrink-0">
+                          {d.deliveryTrackingUrl && (
+                            <a
+                              href={d.deliveryTrackingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold transition-all active:scale-95"
+                              style={{ background: "oklch(0.96 0.06 145)", color: "oklch(0.30 0.12 145)", border: "1px solid oklch(0.70 0.15 145)", fontFamily: "'Oswald', sans-serif" }}
+                            >
+                              <Navigation size={12} /> Track
+                            </a>
+                          )}
+                          <button
+                            onClick={() => refreshStatus.mutate({
+                              orderRef: d.orderRef,
+                              provider: d.deliveryProvider as "doordash" | "uber",
+                              externalId: d.deliveryExternalId!,
+                            })}
+                            disabled={refreshStatus.isPending}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold transition-all active:scale-95 disabled:opacity-60"
+                            style={{ background: "oklch(0.96 0.05 250)", color: "oklch(0.35 0.12 250)", border: "1px solid oklch(0.78 0.10 250)", fontFamily: "'Oswald', sans-serif" }}
+                          >
+                            <RefreshCw size={12} className={refreshStatus.isPending ? "animate-spin" : ""} /> Refresh
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (!confirm(`Cancel delivery for ${d.orderRef}?`)) return;
+                              cancelDelivery.mutate({
+                                provider: d.deliveryProvider as "doordash" | "uber",
+                                externalId: d.deliveryExternalId!,
+                                orderRef: d.orderRef,
+                              });
+                            }}
+                            disabled={cancelDelivery.isPending}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold transition-all active:scale-95 disabled:opacity-60"
+                            style={{ background: "oklch(0.97 0.04 25)", color: "oklch(0.45 0.12 25)", border: "1px solid oklch(0.88 0.12 25)", fontFamily: "'Oswald', sans-serif" }}
+                          >
+                            <XCircle size={12} /> Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Completed deliveries */}
+            {completedDeliveries.length > 0 && (
+              <div>
+                <p className="text-xs font-bold mb-2" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.06em" }}>
+                  COMPLETED / CANCELLED ({completedDeliveries.length})
+                </p>
+                <div className="space-y-2">
+                  {completedDeliveries.map((d) => (
+                    <div
+                      key={d.orderRef}
+                      className="rounded-lg border p-3 flex items-center justify-between gap-3"
+                      style={{ borderColor: "oklch(0.90 0.012 80)", background: "oklch(0.98 0.005 80)", opacity: 0.75 }}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-xs font-bold" style={{ color: "oklch(0.45 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>{d.orderRef}</span>
+                        <span className="text-xs" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>{d.customerName}</span>
+                        {d.deliveryStatus && <DeliveryStatusBadge status={d.deliveryStatus} />}
+                      </div>
+                      {d.deliveryTrackingUrl && (
+                        <a
+                          href={d.deliveryTrackingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0 text-xs flex items-center gap-1"
+                          style={{ color: "oklch(0.45 0.12 250)", fontFamily: "'Lato', sans-serif" }}
+                        >
+                          <ExternalLink size={11} /> View
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 function LiveOrdersContent() {
@@ -483,6 +743,9 @@ function LiveOrdersContent() {
           </span>
         </div>
       )}
+
+      {/* Delivery Tracking Panel */}
+      <DeliveryTrackingPanel />
 
       {/* Orders board */}
       {!ordersLoading || orders ? (

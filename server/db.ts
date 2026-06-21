@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, processedWebhookEvents } from "../drizzle/schema";
+import { eq, and, isNotNull } from "drizzle-orm";
+import { InsertUser, users, processedWebhookEvents, scheduledOrders } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -112,3 +112,73 @@ export async function markWebhookEventProcessed(eventId: string): Promise<boolea
 }
 
 // TODO: add feature queries here as your schema grows.
+
+/** Persist delivery provider info after dispatching a courier. */
+export async function updateDeliveryInfo(
+  orderRef: string,
+  info: {
+    deliveryProvider: "doordash" | "uber";
+    deliveryExternalId: string;
+    deliveryTrackingUrl: string;
+    deliveryStatus: string;
+  }
+): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot update delivery info: database not available");
+    return;
+  }
+  await db
+    .update(scheduledOrders)
+    .set({
+      deliveryProvider: info.deliveryProvider,
+      deliveryExternalId: info.deliveryExternalId,
+      deliveryTrackingUrl: info.deliveryTrackingUrl,
+      deliveryStatus: info.deliveryStatus,
+    })
+    .where(eq(scheduledOrders.orderRef, orderRef));
+}
+
+/** Update delivery status for a single order. */
+export async function updateDeliveryStatus(
+  orderRef: string,
+  status: string
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(scheduledOrders)
+    .set({ deliveryStatus: status })
+    .where(eq(scheduledOrders.orderRef, orderRef));
+}
+
+/** Get all active delivery orders (have a deliveryExternalId and not completed/cancelled). */
+export async function getActiveDeliveries() {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      id: scheduledOrders.id,
+      orderRef: scheduledOrders.orderRef,
+      customerName: scheduledOrders.customerName,
+      customerPhone: scheduledOrders.customerPhone,
+      deliveryAddress: scheduledOrders.deliveryAddress,
+      deliveryProvider: scheduledOrders.deliveryProvider,
+      deliveryExternalId: scheduledOrders.deliveryExternalId,
+      deliveryTrackingUrl: scheduledOrders.deliveryTrackingUrl,
+      deliveryStatus: scheduledOrders.deliveryStatus,
+      total: scheduledOrders.total,
+      createdAt: scheduledOrders.createdAt,
+    })
+    .from(scheduledOrders)
+    .where(
+      and(
+        isNotNull(scheduledOrders.deliveryExternalId),
+        eq(scheduledOrders.orderType, "delivery")
+      )
+    )
+    .orderBy(scheduledOrders.createdAt);
+  return rows;
+}
+
+

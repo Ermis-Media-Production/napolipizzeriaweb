@@ -19,6 +19,7 @@ import { cloverRouter } from "./clover";
 import { aiUsageRouter } from "./aiUsageRouter";
 import { itemCategoriesRouter } from "./itemCategories";
 import { cloverItemSyncRouter } from "./cloverItemSync";
+import { deliveryTrackingRouter } from "./deliveryTracking";
 
 export const appRouter = router({
   system: systemRouter,
@@ -49,6 +50,7 @@ export const appRouter = router({
   aiUsage: aiUsageRouter,
   itemCategories: itemCategoriesRouter,
   cloverItemSync: cloverItemSyncRouter,
+  deliveryTracking: deliveryTrackingRouter,
 });
 
 export type AppRouter = typeof appRouter;

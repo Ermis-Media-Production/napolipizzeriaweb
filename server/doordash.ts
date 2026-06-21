@@ -8,6 +8,7 @@ import { SignJWT } from "jose";
 import { publicProcedure, router } from "./_core/trpc";
 import { DOORDASH_ENV } from "./_core/env";
 import { TRPCError } from "@trpc/server";
+import { updateDeliveryInfo } from "./db";
 
 // ── JWT generation ─────────────────────────────────────────────────────────────
 
@@ -41,7 +42,7 @@ async function generateDoorDashJWT(): Promise<string> {
 
 // ── Shared request helper ──────────────────────────────────────────────────────
 
-async function ddRequest<T>(
+export async function ddRequest<T>(
   method: "GET" | "POST" | "PATCH" | "PUT",
   path: string,
   body?: unknown
@@ -100,6 +101,8 @@ const QuoteInputSchema = z.object({
 
 const CreateDeliveryInputSchema = z.object({
   externalDeliveryId: z.string(),
+  /** orderRef to link this delivery to a scheduledOrders row */
+  orderRef: z.string().optional(),
   dropoffAddress: z.string(),
   dropoffContactGivenName: z.string(),
   dropoffContactFamilyName: z.string().optional(),
@@ -201,6 +204,16 @@ export const doordashRouter = router({
           external_id: item.external_id ?? item.name,
         })),
       });
+
+      // Persist delivery IDs to scheduledOrders if orderRef provided
+      if (input.orderRef) {
+        await updateDeliveryInfo(input.orderRef, {
+          deliveryProvider: "doordash",
+          deliveryExternalId: data.external_delivery_id,
+          deliveryTrackingUrl: data.tracking_url,
+          deliveryStatus: data.status,
+        });
+      }
 
       return {
         externalDeliveryId: data.external_delivery_id,

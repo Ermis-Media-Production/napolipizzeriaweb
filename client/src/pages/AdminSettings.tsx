@@ -10,11 +10,22 @@
 import AdminLayout from "@/components/AdminLayout";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
-import { Settings, Save, RefreshCw, ToggleLeft, ToggleRight, Percent, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Settings, Save, RefreshCw, ToggleLeft, ToggleRight, Percent, AlertCircle, CheckCircle2, Eye, EyeOff, Layers } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AdminSettings() {
 
+  // ── Category Visibility ──────────────────────────────────────────────────────
+  const { data: categories, isLoading: catsLoading, refetch: refetchCats } = trpc.settings.getCategoryVisibility.useQuery();
+  const setCategoryVisibility = trpc.settings.setCategoryVisibility.useMutation({
+    onSuccess: (data) => {
+      toast.success(`${data.hidden ? "Hidden" : "Visible"}: category updated.`);
+      refetchCats();
+    },
+    onError: (err) => toast.error("Failed to update category: " + err.message),
+  });
+
+  // ── Convenience Fee ──────────────────────────────────────────────────────────
   // Fetch current settings
   const { data: feeConfig, isLoading, refetch } = trpc.settings.getConvenienceFee.useQuery();
 
@@ -246,6 +257,83 @@ export default function AdminSettings() {
                   )}
                 </div>
               </>
+            )}
+          </div>
+        </div>
+
+        {/* ── Category Visibility Manager ── */}
+        <div
+          className="rounded-lg border overflow-hidden"
+          style={{ background: "white", borderColor: "oklch(0.88 0.015 80)" }}
+        >
+          {/* Card header */}
+          <div
+            className="px-5 py-4 border-b flex items-center gap-3"
+            style={{ borderColor: "oklch(0.88 0.015 80)", background: "oklch(0.98 0.008 80)" }}
+          >
+            <Layers size={16} style={{ color: "var(--napoli-red, #c0392b)" }} />
+            <div>
+              <h2 className="text-sm font-bold" style={{ color: "oklch(0.25 0.04 30)", fontFamily: "'Oswald', sans-serif", letterSpacing: "0.05em" }}>
+                MENU CATEGORY VISIBILITY
+              </h2>
+              <p className="text-xs mt-0.5" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+                Toggle categories on/off. Hidden categories are removed from the web menu and synced to Clover inventory.
+              </p>
+            </div>
+          </div>
+
+          {/* Card body */}
+          <div className="px-5 py-4">
+            {catsLoading ? (
+              <div className="flex items-center gap-2 py-4">
+                <RefreshCw size={16} className="animate-spin" style={{ color: "var(--napoli-red, #c0392b)" }} />
+                <span className="text-sm" style={{ color: "oklch(0.55 0.03 30)", fontFamily: "'Lato', sans-serif" }}>Loading categories…</span>
+              </div>
+            ) : !categories || categories.length === 0 ? (
+              <p className="text-sm py-4 text-center" style={{ color: "oklch(0.55 0.03 30)" }}>
+                No categories found. Run a Clover sync first.
+              </p>
+            ) : (
+              <div className="divide-y" style={{ borderColor: "oklch(0.93 0.012 80)" }}>
+                {categories.map((cat) => (
+                  <div key={cat.slug} className="flex items-center justify-between py-3 gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span
+                        className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ background: cat.color }}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold truncate" style={{ color: "oklch(0.25 0.04 30)", fontFamily: "'Oswald', sans-serif" }}>
+                          {cat.name}
+                        </p>
+                        <p className="text-xs" style={{ color: "oklch(0.60 0.03 30)", fontFamily: "'Lato', sans-serif" }}>
+                          slug: {cat.slug}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setCategoryVisibility.mutate({ slug: cat.slug, hidden: !cat.hidden })}
+                      disabled={setCategoryVisibility.isPending}
+                      className="shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all active:scale-95"
+                      style={{
+                        background: cat.hidden ? "oklch(0.96 0.02 30)" : "oklch(0.96 0.06 145)",
+                        borderColor: cat.hidden ? "oklch(0.80 0.04 30)" : "oklch(0.70 0.15 145)",
+                        color: cat.hidden ? "oklch(0.50 0.04 30)" : "oklch(0.30 0.12 145)",
+                        fontFamily: "'Oswald', sans-serif",
+                        cursor: setCategoryVisibility.isPending ? "not-allowed" : "pointer",
+                        opacity: setCategoryVisibility.isPending ? 0.6 : 1,
+                      }}
+                      title={cat.hidden ? "Click to show this category" : "Click to hide this category"}
+                    >
+                      {cat.hidden ? (
+                        <><EyeOff size={13} /> HIDDEN</>
+                      ) : (
+                        <><Eye size={13} /> VISIBLE</>
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>

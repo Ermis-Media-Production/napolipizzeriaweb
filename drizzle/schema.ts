@@ -135,6 +135,14 @@ export const scheduledOrders = mysqlTable("scheduledOrders", {
   refundedAmount: decimal("refundedAmount", { precision: 10, scale: 2 }).default("0").notNull(),
   /** Special instructions from customer */
   specialInstructions: text("specialInstructions"),
+  /** Delivery provider: doordash | uber */
+  deliveryProvider: mysqlEnum("deliveryProvider", ["doordash", "uber"]),
+  /** DoorDash external_delivery_id or Uber delivery_id */
+  deliveryExternalId: varchar("deliveryExternalId", { length: 128 }),
+  /** Customer-facing tracking URL */
+  deliveryTrackingUrl: text("deliveryTrackingUrl"),
+  /** Current delivery status (from provider) */
+  deliveryStatus: varchar("deliveryStatus", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -366,6 +374,8 @@ export const itemCategories = mysqlTable("itemCategories", {
   color: varchar("color", { length: 16 }).default("#6b7280").notNull(),
   /** Display sort order */
   sortOrder: int("sortOrder").default(0).notNull(),
+  /** When true, this category is hidden from the web menu and Clover items are hidden */
+  hidden: boolean("hidden").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

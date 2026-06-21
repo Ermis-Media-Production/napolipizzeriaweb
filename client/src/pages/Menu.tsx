@@ -649,12 +649,12 @@ function KidsMenuGrid({
 
 const CATEGORY_META: Record<string, { label: string; emoji: string; photo?: string; order: number }> = {
   appetizer: { label: "Appetizers", emoji: "🧅", photo: "/manus-storage/napoli-appetizers_dc37c73d.jpg", order: 1 },
-  lunch:     { label: "Lunch Specials", emoji: "🕙", photo: "/manus-storage/napoli-lunch_94df386a.jpg", order: 2 },
-  pizza:     { label: "Pizzeria", emoji: "🍕", photo: "/manus-storage/napoli-pizza-header_a1b2c3d4.jpg", order: 3 },
-  wings:     { label: "Wings", emoji: "🍗", order: 4 },
-  pasta:     { label: "Pasta", emoji: "🍝", order: 5 },
-  sandwich:  { label: "Subs & Sandwiches", emoji: "🥖", order: 6 },
-  burger:    { label: "Burgers", emoji: "🍔", order: 7 },
+  pizza:     { label: "Pizzeria", emoji: "🍕", photo: "/manus-storage/napoli-pizza-header_a1b2c3d4.jpg", order: 2 },
+  wings:     { label: "Wings", emoji: "🍗", order: 3 },
+  pasta:     { label: "Pasta", emoji: "🍝", order: 4 },
+  sandwich:  { label: "Subs & Sandwiches", emoji: "🥖", order: 5 },
+  burger:    { label: "Burgers", emoji: "🍔", order: 6 },
+  lunch:     { label: "Lunch Specials", emoji: "🕙", photo: "/manus-storage/napoli-lunch_94df386a.jpg", order: 7 },
   salad:     { label: "Salads", emoji: "🥗", order: 8 },
   sides:     { label: "Sides", emoji: "🍟", order: 9 },
   dessert:   { label: "Desserts", emoji: "🍰", order: 10 },
@@ -715,6 +715,11 @@ function CloverSyncedItems({
     { includeUnavailable: false },
     { staleTime: 5 * 60 * 1000 }
   );
+  const { data: categoryVisibility } = trpc.settings.getCategoryVisibility.useQuery(
+    undefined,
+    { staleTime: 5 * 60 * 1000 }
+  );
+  const hiddenSlugs = new Set((categoryVisibility ?? []).filter((c) => c.hidden).map((c) => c.slug));
   const [lightboxState, setLightboxState] = useState<{ items: LightboxItem[]; catKey: string; index: number } | null>(null);
   const lunchTimer = useLunchTimer();
   const { lang } = useLanguage();
@@ -732,10 +737,11 @@ function CloverSyncedItems({
 
   if (!items || items.length === 0) return null;
 
-  // Group by category, skip "fee" items
+  // Group by category, skip "fee" items and hidden categories
   const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
     const cat = item.category || "special";
     if (cat === "fee") return acc;
+    if (hiddenSlugs.has(cat)) return acc;
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(item);
     return acc;
@@ -1242,6 +1248,11 @@ export default function Menu() {
   const lunchTimer = useLunchTimer();
   const [activeCategory, setActiveCategory] = useState("appetizers");
   const navScrollRef = useRef<HTMLDivElement>(null);
+  const { data: navCategoryVisibility } = trpc.settings.getCategoryVisibility.useQuery(
+    undefined,
+    { staleTime: 5 * 60 * 1000 }
+  );
+  const navHiddenSlugs = new Set((navCategoryVisibility ?? []).filter((c) => c.hidden).map((c) => c.slug));
   const [showAllToppings, setShowAllToppings] = useState(false);
   const [wingsSelection, setWingsSelection] = useState<WingsSelection | null>(null);
   const [wingsModalKey, setWingsModalKey] = useState(0);
@@ -1362,6 +1373,7 @@ export default function Menu() {
           <div className="flex gap-0.5 py-2 min-w-max">
             {Object.entries(CATEGORY_META)
               .sort((a, b) => a[1].order - b[1].order)
+              .filter(([id]) => !navHiddenSlugs.has(id))
               .map(([id, meta]) => (
               <button
                 key={id}

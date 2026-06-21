@@ -7,10 +7,48 @@
  */
 import { z } from "zod";
 import { eq } from "drizzle-orm";
+import axios from "axios";
 import { getDb } from "./db";
-import { storeSettings } from "../drizzle/schema";
+import { storeSettings, itemCategories, menuItems } from "../drizzle/schema";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
+import { CLOVER_ENV } from "./_core/env";
+
+function cloverHeaders() {
+  return {
+    Authorization: `Bearer ${CLOVER_ENV.apiToken}`,
+    "Content-Type": "application/json",
+  };
+}
+function cloverUrl(path: string) {
+  return `${CLOVER_ENV.baseUrl}/v3/merchants/${CLOVER_ENV.merchantId}${path}`;
+}
+
+/**
+ * Sync hidden state to Clover: PATCH all items in a category to hidden=true/false.
+ * Clover items with hidden=true are not visible in the POS inventory.
+ */
+async function syncCategoryHiddenToClover(slug: string, hidden: boolean): Promise<void> {
+  if (!CLOVER_ENV.apiToken || !CLOVER_ENV.merchantId) return;
+  const db = await getDb();
+  if (!db) return;
+  // Get all Clover item IDs for this category
+  const items = await db
+    .select({ cloverItemId: menuItems.cloverItemId })
+    .from(menuItems)
+    .where(eq(menuItems.category, slug));
+  const cloverIds = items.map((i) => i.cloverItemId).filter(Boolean) as string[];
+  // PATCH each item in Clover
+  await Promise.allSettled(
+    cloverIds.map((itemId) =>
+      axios.post(
+        cloverUrl(`/items/${itemId}`),
+        { hidden },
+        { headers: cloverHeaders() }
+      )
+    )
+  );
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -120,6 +158,42 @@ export const settingsRouter = router({
       percent: isNaN(percent) ? 3 : Math.max(0, Math.min(100, percent)),
     };
   }),
+
+  /**
+   * Public: returns all categories with their visibility (hidden) state.
+   * Used by Menu.tsx to filter out hidden categories.
+   */
+  getCategoryVisibility: publicProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    const cats = await db
+      .select({ id: itemCategories.id, name: itemCategories.name, slug: itemCategories.slug, hidden: itemCategories.hidden, sortOrder: itemCategories.sortOrder, color: itemCategories.color })
+      .from(itemCategories)
+      .orderBy(itemCategories.sortOrder);
+    return cats;
+  }),
+
+  /**
+   * Admin-only: toggle a category hidden/visible.
+   * Also syncs the hidden state to all Clover items in that category.
+   */
+  setCategoryVisibility: protectedProcedure
+    .input(z.object({ slug: z.string(), hidden: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only admins can update category visibility." });
+      }
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      // Update DB
+      await db
+        .update(itemCategories)
+        .set({ hidden: input.hidden })
+        .where(eq(itemCategories.slug, input.slug));
+      // Sync to Clover (fire and forget — don't fail the request if Clover is slow)
+      syncCategoryHiddenToClover(input.slug, input.hidden).catch(console.error);
+      return { slug: input.slug, hidden: input.hidden };
+    }),
 
   /**
    * Admin-only: update the Convenience Fee configuration.

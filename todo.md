@@ -603,4 +603,33 @@
 - [x] CartDrawer: include cloverItemId in buildOrderPayload items (was being stripped)
 - [x] PizzaCustomizerModal: resolve 1st Half (PNKEXAXM5Q5V2) / 2nd Half (2JE9HCEX2XY8G) Clover catalog IDs and embed in description with __CLOVER_MOD__ tags
 - [x] cloverSync: detect Half & Half items and attach modifier group 5WJTSA9Z2S0GA with correct option IDs to the parent line item
-- [ ] Deploy to VPS
+- [x] Deploy to VPS
+
+## Menu Category Reorder — Lunch Specials after Burgers (Jun 21 2026)
+
+- [ ] Move Lunch Specials order from 2 to 8 (after Burgers=7) in CATEGORY_META in Menu.tsx
+- [ ] Update horizontal category nav bar to reflect new order
+- [ ] TypeScript: 0 errors
+
+## Category Enable/Disable Manager (Jun 21 2026)
+
+- [ ] Add `hidden` boolean column to itemCategories schema in drizzle/schema.ts
+- [ ] Run pnpm db:push to apply migration
+- [ ] Add getCategoryVisibility (public) and setCategoryVisibility (admin) procedures to settings.ts
+- [ ] Menu.tsx: filter out hidden categories from display (respect DB hidden flag)
+- [ ] Add Category Manager tab/section to AdminSettings page with toggle per category
+- [ ] Clover sync: when category is hidden, PATCH all items in that category to hidden=true via Clover API; when enabled, PATCH back to hidden=false
+- [ ] TypeScript: 0 errors
+
+## Delivery Tracking Panel in Manager Portal (Jun 21 2026)
+
+- [ ] Add uberDeliveryId and uberTrackingUrl columns to scheduledOrders schema
+- [ ] Run pnpm db:push to apply migration
+- [ ] Add storeUberDelivery procedure in orders.ts (admin, stores deliveryId + trackingUrl for an order)
+- [ ] Add liveDeliveries procedure in orders.ts (admin, returns today's delivery orders with status)
+- [ ] Add Delivery Tracking tab/section to AdminLiveOrders page showing:
+  - Active delivery orders from DB (today, orderType=delivery)
+  - Dispatch Uber button (calls uber.createDelivery) for orders without deliveryId
+  - Tracking URL link once dispatched
+  - Status badge (pending/dispatched/delivered)
+- [ ] TypeScript: 0 errors

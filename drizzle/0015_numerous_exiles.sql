@@ -1,0 +1,1 @@
+ALTER TABLE `itemCategories` ADD `hidden` boolean DEFAULT false NOT NULL;
