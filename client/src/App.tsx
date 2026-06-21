@@ -29,7 +29,7 @@ import Reservations from "./pages/Reservations";
 import MyOrder from "./pages/MyOrder";
 
 // Set to true to show Coming Soon page for all public routes
-const COMING_SOON_MODE = true;
+const COMING_SOON_MODE = false;
 
 function Router() {
   return (
